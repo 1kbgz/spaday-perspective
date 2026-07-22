@@ -257,34 +257,118 @@
 <p><code class="docutils literal notranslate"><span class="pre">spaday-perspective</span></code> moves the existing <code class="docutils literal notranslate"><span class="pre">PerspectivePanel</span></code> integration out of spaday core. Its
 self-contained <code class="docutils literal notranslate"><span class="pre">&lt;perspective-panel&gt;</span></code> bundle includes Perspective’s client, viewer, workspace, datagrid,
 themes, and viewer WASM.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday.backends.starlette</span><span class="w"> </span><span class="kn">import</span> <span class="n">serve</span>
+</section>
+<section id="interactive-example">
+<h2>Interactive example<a class="headerlink" href="#interactive-example" title="Link to this heading">¶</a></h2>
+<p>This complete app serves a live Perspective table. <strong>Add trade</strong> streams a new row into the grid,
+the select switches between flat and grouped layouts, and the checkbox changes the viewer theme.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">perspective</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">perspective.handlers.starlette</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerspectiveStarletteHandler</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONResponse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.routing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Route</span><span class="p">,</span> <span class="n">WebSocketRoute</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.websockets</span><span class="w"> </span><span class="kn">import</span> <span class="n">WebSocket</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">spaday</span><span class="w"> </span><span class="kn">import</span> <span class="n">CallEndpoint</span><span class="p">,</span> <span class="n">cond</span><span class="p">,</span> <span class="n">element</span><span class="p">,</span> <span class="n">eq</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">obj</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">spaday.backends.starlette</span><span class="w"> </span><span class="kn">import</span> <span class="n">serve</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">spaday_perspective</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerspectivePanel</span>
 
-<span class="n">page</span> <span class="o">=</span> <span class="n">PerspectivePanel</span><span class="p">(</span>
-    <span class="n">config</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;ws_url&quot;</span><span class="p">:</span> <span class="s2">&quot;/perspective&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;tables&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;orders&quot;</span><span class="p">],</span>
-        <span class="s2">&quot;layout&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;viewers&quot;</span><span class="p">:</span> <span class="p">{}},</span>
-    <span class="p">},</span>
-    <span class="n">theme</span><span class="o">=</span><span class="s2">&quot;dark&quot;</span><span class="p">,</span>
+<span class="n">server</span> <span class="o">=</span> <span class="n">perspective</span><span class="o">.</span><span class="n">Server</span><span class="p">()</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">new_local_client</span><span class="p">()</span>
+<span class="n">trades</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">table</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="s2">&quot;side&quot;</span><span class="p">:</span> <span class="s2">&quot;buy&quot;</span><span class="p">,</span> <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="mf">211.10</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="s2">&quot;MSFT&quot;</span><span class="p">,</span> <span class="s2">&quot;side&quot;</span><span class="p">:</span> <span class="s2">&quot;sell&quot;</span><span class="p">,</span> <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="mf">503.02</span><span class="p">},</span>
+    <span class="p">],</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;trades&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">next_id</span> <span class="o">=</span> <span class="mi">2</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">add_trade</span><span class="p">(</span><span class="n">_request</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">next_id</span>
+    <span class="n">next_id</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="n">trades</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">next_id</span><span class="p">,</span>
+                <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="s2">&quot;AAPL&quot;</span> <span class="k">if</span> <span class="n">next_id</span> <span class="o">%</span> <span class="mi">2</span> <span class="k">else</span> <span class="s2">&quot;MSFT&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;side&quot;</span><span class="p">:</span> <span class="s2">&quot;buy&quot;</span> <span class="k">if</span> <span class="n">next_id</span> <span class="o">%</span> <span class="mi">2</span> <span class="k">else</span> <span class="s2">&quot;sell&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="mi">210</span> <span class="o">+</span> <span class="n">next_id</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">({</span><span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="n">next_id</span><span class="p">})</span>
+
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">perspective_socket</span><span class="p">(</span><span class="n">websocket</span><span class="p">:</span> <span class="n">WebSocket</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">PerspectiveStarletteHandler</span><span class="p">(</span><span class="n">perspective_server</span><span class="o">=</span><span class="n">server</span><span class="p">,</span> <span class="n">websocket</span><span class="o">=</span><span class="n">websocket</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">layout</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">grouped</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="n">viewer</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;table&quot;</span><span class="p">:</span> <span class="s2">&quot;trades&quot;</span><span class="p">,</span> <span class="s2">&quot;plugin&quot;</span><span class="p">:</span> <span class="s2">&quot;Datagrid&quot;</span><span class="p">,</span> <span class="s2">&quot;columns&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;symbol&quot;</span><span class="p">,</span> <span class="s2">&quot;side&quot;</span><span class="p">,</span> <span class="s2">&quot;price&quot;</span><span class="p">]}</span>
+    <span class="k">if</span> <span class="n">grouped</span><span class="p">:</span>
+        <span class="n">viewer</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;group_by&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;symbol&quot;</span><span class="p">],</span> <span class="s2">&quot;columns&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;price&quot;</span><span class="p">],</span> <span class="s2">&quot;aggregates&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="s2">&quot;avg&quot;</span><span class="p">}})</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;sizes&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+        <span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;main&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;tab-area&quot;</span><span class="p">,</span> <span class="s2">&quot;widgets&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;trades&quot;</span><span class="p">],</span> <span class="s2">&quot;currentIndex&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}},</span>
+        <span class="s2">&quot;master&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;sizes&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;widgets&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+        <span class="s2">&quot;mode&quot;</span><span class="p">:</span> <span class="s2">&quot;globalFilters&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;viewers&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;trades&quot;</span><span class="p">:</span> <span class="n">viewer</span><span class="p">},</span>
+    <span class="p">}</span>
+
+
+<span class="n">panel</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">PerspectivePanel</span><span class="p">()</span>
+    <span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="s2">&quot;theme&quot;</span><span class="p">,</span> <span class="n">cond</span><span class="p">(</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;dark&quot;</span><span class="p">),</span> <span class="s2">&quot;dark&quot;</span><span class="p">,</span> <span class="s2">&quot;light&quot;</span><span class="p">))</span>
+    <span class="o">.</span><span class="n">compute</span><span class="p">(</span>
+        <span class="s2">&quot;config&quot;</span><span class="p">,</span>
+        <span class="n">obj</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;ws_url&quot;</span><span class="p">:</span> <span class="s2">&quot;/perspective&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;tables&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;trades&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;layout&quot;</span><span class="p">:</span> <span class="n">cond</span><span class="p">(</span><span class="n">eq</span><span class="p">(</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;view&quot;</span><span class="p">),</span> <span class="s2">&quot;grouped&quot;</span><span class="p">),</span> <span class="n">layout</span><span class="p">(</span><span class="n">grouped</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">layout</span><span class="p">()),</span>
+            <span class="p">}</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="o">.</span><span class="n">style</span><span class="p">(</span><span class="n">display</span><span class="o">=</span><span class="s2">&quot;block&quot;</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">&quot;70vh&quot;</span><span class="p">,</span> <span class="n">margin_top</span><span class="o">=</span><span class="s2">&quot;1rem&quot;</span><span class="p">)</span>
 <span class="p">)</span>
 
-<span class="n">app</span> <span class="o">=</span> <span class="n">serve</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">packages</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;perspective&quot;</span><span class="p">])</span>
+<span class="n">view</span> <span class="o">=</span> <span class="n">element</span><span class="p">(</span><span class="s2">&quot;select&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="s2">&quot;view&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;two-way&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">child</span><span class="p">(</span>
+    <span class="n">element</span><span class="p">(</span><span class="s2">&quot;option&quot;</span><span class="p">,</span> <span class="s2">&quot;Blotter&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;blotter&quot;</span><span class="p">),</span>
+    <span class="n">element</span><span class="p">(</span><span class="s2">&quot;option&quot;</span><span class="p">,</span> <span class="s2">&quot;Average by symbol&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;grouped&quot;</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="n">dark</span> <span class="o">=</span> <span class="n">element</span><span class="p">(</span><span class="s2">&quot;input&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;checkbox&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="s2">&quot;checked&quot;</span><span class="p">,</span> <span class="s2">&quot;dark&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;two-way&quot;</span><span class="p">)</span>
+<span class="n">page</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">element</span><span class="p">(</span><span class="s2">&quot;main&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">style</span><span class="p">(</span><span class="n">margin</span><span class="o">=</span><span class="s2">&quot;1rem&quot;</span><span class="p">,</span> <span class="n">font_family</span><span class="o">=</span><span class="s2">&quot;system-ui&quot;</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">child</span><span class="p">(</span><span class="n">element</span><span class="p">(</span><span class="s2">&quot;button&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;Add trade&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="s2">&quot;click&quot;</span><span class="p">,</span> <span class="n">CallEndpoint</span><span class="p">(</span><span class="s2">&quot;POST&quot;</span><span class="p">,</span> <span class="s2">&quot;/api/trades&quot;</span><span class="p">)))</span>
+    <span class="o">.</span><span class="n">child</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">child</span><span class="p">(</span><span class="n">element</span><span class="p">(</span><span class="s2">&quot;label&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">child</span><span class="p">(</span><span class="n">dark</span><span class="p">,</span> <span class="s2">&quot; Dark theme&quot;</span><span class="p">))</span>
+    <span class="o">.</span><span class="n">child</span><span class="p">(</span><span class="n">panel</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">serve</span><span class="p">(</span>
+    <span class="n">page</span><span class="p">,</span>
+    <span class="n">packages</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;perspective&quot;</span><span class="p">],</span>
+    <span class="n">store</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;view&quot;</span><span class="p">:</span> <span class="s2">&quot;blotter&quot;</span><span class="p">,</span> <span class="s2">&quot;dark&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">},</span>
+    <span class="n">routes</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">Route</span><span class="p">(</span><span class="s2">&quot;/api/trades&quot;</span><span class="p">,</span> <span class="n">add_trade</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;POST&quot;</span><span class="p">]),</span>
+        <span class="n">WebSocketRoute</span><span class="p">(</span><span class="s2">&quot;/perspective&quot;</span><span class="p">,</span> <span class="n">perspective_socket</span><span class="p">),</span>
+    <span class="p">],</span>
+<span class="p">)</span>
 </pre></div>
 </div>
+<p>Save this as <code class="docutils literal notranslate"><span class="pre">app.py</span></code>, then run
+<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">spaday-perspective</span> <span class="pre">perspective-python</span> <span class="pre">starlette</span> <span class="pre">uvicorn</span></code> and <code class="docutils literal notranslate"><span class="pre">uvicorn</span> <span class="pre">app:app</span></code>.
+Open <a class="reference external" href="http://127.0.0.1:8000">http://127.0.0.1:8000</a>.</p>
 <p>This keeps Perspective’s bulk data on its native websocket. A spaday/transports model only needs to
 carry the small serializable connection/layout config. Replacing <code class="docutils literal notranslate"><span class="pre">config</span></code> reconnects when <code class="docutils literal notranslate"><span class="pre">ws_url</span></code>
 changes and restores changed layouts; <code class="docutils literal notranslate"><span class="pre">theme</span></code> accepts <code class="docutils literal notranslate"><span class="pre">light</span></code>, <code class="docutils literal notranslate"><span class="pre">dark</span></code>, or a Perspective theme name.</p>
 <p>Installing this project registers the <code class="docutils literal notranslate"><span class="pre">perspective</span></code> entry point with spaday. The equivalent explicit
 forms are <code class="docutils literal notranslate"><span class="pre">packages=[spaday_perspective.package]</span></code> and <code class="docutils literal notranslate"><span class="pre">packages=[&quot;spaday_perspective:package&quot;]</span></code>.</p>
-</section>
-<section id="development">
-<h2>Development<a class="headerlink" href="#development" title="Link to this heading">¶</a></h2>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>develop
-make<span class="w"> </span>build
-make<span class="w"> </span><span class="nb">test</span>
-make<span class="w"> </span>lint
-</pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This library was generated using <a class="reference external" href="https://copier.readthedocs.io/en/stable/">copier</a> from the <a class="reference external" href="https://github.com/python-project-templates/base">Base Python Project Template repository</a>.</p>
 </div>
 </section>
 </section>

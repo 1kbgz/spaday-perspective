@@ -24,21 +24,111 @@ hidden: true
 self-contained `<perspective-panel>` bundle includes Perspective's client, viewer, workspace, datagrid,
 themes, and viewer WASM.
 
+## Interactive example
+
+This complete app serves a live Perspective table. **Add trade** streams a new row into the grid,
+the select switches between flat and grouped layouts, and the checkbox changes the viewer theme.
+
 ```python
+import perspective
+from perspective.handlers.starlette import PerspectiveStarletteHandler
+from starlette.responses import JSONResponse
+from starlette.routing import Route, WebSocketRoute
+from starlette.websockets import WebSocket
+
+from spaday import CallEndpoint, cond, element, eq, field, obj
 from spaday.backends.starlette import serve
 from spaday_perspective import PerspectivePanel
 
-page = PerspectivePanel(
-    config={
-        "ws_url": "/perspective",
-        "tables": ["orders"],
-        "layout": {"viewers": {}},
-    },
-    theme="dark",
+server = perspective.Server()
+client = server.new_local_client()
+trades = client.table(
+    [
+        {"id": 1, "symbol": "AAPL", "side": "buy", "price": 211.10},
+        {"id": 2, "symbol": "MSFT", "side": "sell", "price": 503.02},
+    ],
+    name="trades",
+)
+next_id = 2
+
+
+async def add_trade(_request):
+    global next_id
+    next_id += 1
+    trades.update(
+        [
+            {
+                "id": next_id,
+                "symbol": "AAPL" if next_id % 2 else "MSFT",
+                "side": "buy" if next_id % 2 else "sell",
+                "price": 210 + next_id,
+            }
+        ]
+    )
+    return JSONResponse({"id": next_id})
+
+
+async def perspective_socket(websocket: WebSocket):
+    await PerspectiveStarletteHandler(perspective_server=server, websocket=websocket).run()
+
+
+def layout(*, grouped=False):
+    viewer = {"table": "trades", "plugin": "Datagrid", "columns": ["symbol", "side", "price"]}
+    if grouped:
+        viewer.update({"group_by": ["symbol"], "columns": ["price"], "aggregates": {"price": "avg"}})
+    return {
+        "sizes": [1],
+        "detail": {"main": {"type": "tab-area", "widgets": ["trades"], "currentIndex": 0}},
+        "master": {"sizes": [], "widgets": []},
+        "mode": "globalFilters",
+        "viewers": {"trades": viewer},
+    }
+
+
+panel = (
+    PerspectivePanel()
+    .compute("theme", cond(field("dark"), "dark", "light"))
+    .compute(
+        "config",
+        obj(
+            {
+                "ws_url": "/perspective",
+                "tables": ["trades"],
+                "layout": cond(eq(field("view"), "grouped"), layout(grouped=True), layout()),
+            }
+        ),
+    )
+    .style(display="block", height="70vh", margin_top="1rem")
 )
 
-app = serve(page, packages=["perspective"])
+view = element("select").bind("value", "view", mode="two-way").child(
+    element("option", "Blotter", value="blotter"),
+    element("option", "Average by symbol", value="grouped"),
+)
+dark = element("input", type="checkbox").bind("checked", "dark", mode="two-way")
+page = (
+    element("main")
+    .style(margin="1rem", font_family="system-ui")
+    .child(element("button").text("Add trade").on("click", CallEndpoint("POST", "/api/trades")))
+    .child(view)
+    .child(element("label").child(dark, " Dark theme"))
+    .child(panel)
+)
+
+app = serve(
+    page,
+    packages=["perspective"],
+    store={"view": "blotter", "dark": False},
+    routes=[
+        Route("/api/trades", add_trade, methods=["POST"]),
+        WebSocketRoute("/perspective", perspective_socket),
+    ],
+)
 ```
+
+Save this as `app.py`, then run
+`pip install spaday-perspective perspective-python starlette uvicorn` and `uvicorn app:app`.
+Open <http://127.0.0.1:8000>.
 
 This keeps Perspective's bulk data on its native websocket. A spaday/transports model only needs to
 carry the small serializable connection/layout config. Replacing `config` reconnects when `ws_url`
@@ -47,11 +137,5 @@ changes and restores changed layouts; `theme` accepts `light`, `dark`, or a Pers
 Installing this project registers the `perspective` entry point with spaday. The equivalent explicit
 forms are `packages=[spaday_perspective.package]` and `packages=["spaday_perspective:package"]`.
 
-## Development
-
-```bash
-make develop
-make build
-make test
-make lint
-```
+> [!NOTE]
+> This library was generated using [copier](https://copier.readthedocs.io/en/stable/) from the [Base Python Project Template repository](https://github.com/python-project-templates/base).
