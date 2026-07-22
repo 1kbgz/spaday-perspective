@@ -199,7 +199,10 @@
   <ul>
 <li class="toctree-l1 has-children"><a class="reference internal" href="autoapi/index.html">API Reference</a><input aria-label="Toggle navigation of API Reference" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="autoapi/test_all/index.html">test_all</a></li>
-<li class="toctree-l2"><a class="reference internal" href="autoapi/spaday_perspective/index.html">spaday_perspective</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="autoapi/spaday_perspective/index.html">spaday_perspective</a><input aria-label="Toggle navigation of spaday_perspective" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="autoapi/spaday_perspective/components/index.html">spaday_perspective.components</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -244,16 +247,44 @@
 </div>
 <section class="tex2jax_ignore mathjax_ignore" id="spaday-perspective">
 <h1>spaday-perspective<a class="headerlink" href="#spaday-perspective" title="Link to this heading">¶</a></h1>
-<p><a class="reference external" href="https://perspective-dev.github.io">perspective</a> for <a class="reference external" href="https://1kbgz.github.io/spaday/">spaday</a></p>
+<p><a class="reference external" href="https://perspective-dev.github.io">Perspective</a> for <a class="reference external" href="https://1kbgz.github.io/spaday/">spaday</a></p>
 <p><a class="reference external" href="https://github.com/1kbgz/spaday-perspective/actions/workflows/build.yaml"><img alt="Build Status" src="https://github.com/1kbgz/spaday-perspective/actions/workflows/build.yaml/badge.svg?branch=main&amp;event=push" /></a>
 <a class="reference external" href="https://codecov.io/gh/1kbgz/spaday-perspective"><img alt="codecov" src="https://codecov.io/gh/1kbgz/spaday-perspective/branch/main/graph/badge.svg" /></a>
 <a class="reference external" href="https://github.com/1kbgz/spaday-perspective"><img alt="License" src="https://img.shields.io/github/license/1kbgz/spaday-perspective" /></a>
 <a class="reference external" href="https://pypi.python.org/pypi/spaday-perspective"><img alt="PyPI" src="https://img.shields.io/pypi/v/spaday-perspective.svg" /></a></p>
 <section id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>This library was generated using <a class="reference external" href="https://copier.readthedocs.io/en/stable/">copier</a> from the <a class="reference external" href="https://github.com/python-project-templates/base">Base Python Project Template repository</a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">spaday-perspective</span></code> moves the existing <code class="docutils literal notranslate"><span class="pre">PerspectivePanel</span></code> integration out of spaday core. Its
+self-contained <code class="docutils literal notranslate"><span class="pre">&lt;perspective-panel&gt;</span></code> bundle includes Perspective’s client, viewer, workspace, datagrid,
+themes, and viewer WASM.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday.backends.starlette</span><span class="w"> </span><span class="kn">import</span> <span class="n">serve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">spaday_perspective</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerspectivePanel</span>
+
+<span class="n">page</span> <span class="o">=</span> <span class="n">PerspectivePanel</span><span class="p">(</span>
+    <span class="n">config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;ws_url&quot;</span><span class="p">:</span> <span class="s2">&quot;/perspective&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;tables&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;orders&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;layout&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;viewers&quot;</span><span class="p">:</span> <span class="p">{}},</span>
+    <span class="p">},</span>
+    <span class="n">theme</span><span class="o">=</span><span class="s2">&quot;dark&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">serve</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">packages</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;perspective&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>This keeps Perspective’s bulk data on its native websocket. A spaday/transports model only needs to
+carry the small serializable connection/layout config. Replacing <code class="docutils literal notranslate"><span class="pre">config</span></code> reconnects when <code class="docutils literal notranslate"><span class="pre">ws_url</span></code>
+changes and restores changed layouts; <code class="docutils literal notranslate"><span class="pre">theme</span></code> accepts <code class="docutils literal notranslate"><span class="pre">light</span></code>, <code class="docutils literal notranslate"><span class="pre">dark</span></code>, or a Perspective theme name.</p>
+<p>Installing this project registers the <code class="docutils literal notranslate"><span class="pre">perspective</span></code> entry point with spaday. The equivalent explicit
+forms are <code class="docutils literal notranslate"><span class="pre">packages=[spaday_perspective.package]</span></code> and <code class="docutils literal notranslate"><span class="pre">packages=[&quot;spaday_perspective:package&quot;]</span></code>.</p>
+</section>
+<section id="development">
+<h2>Development<a class="headerlink" href="#development" title="Link to this heading">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>develop
+make<span class="w"> </span>build
+make<span class="w"> </span><span class="nb">test</span>
+make<span class="w"> </span>lint
+</pre></div>
 </div>
 </section>
 </section>

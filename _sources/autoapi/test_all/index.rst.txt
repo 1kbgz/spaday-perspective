@@ -9,11 +9,17 @@ Functions
 
 .. autoapisummary::
 
-   test_all.test_all
+   test_all.test_perspective_panel_serializes_config_and_theme
+   test_all.test_package_drives_bootstrap_asset_url
+   test_all.test_generated_component_is_current
 
 
 Module Contents
 ---------------
 
-.. py:function:: test_all()
+.. py:function:: test_perspective_panel_serializes_config_and_theme()
+
+.. py:function:: test_package_drives_bootstrap_asset_url()
+
+.. py:function:: test_generated_component_is_current()
 

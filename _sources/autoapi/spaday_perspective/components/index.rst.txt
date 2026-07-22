@@ -1,24 +1,7 @@
-spaday_perspective
-==================
+spaday_perspective.components
+=============================
 
-.. py:module:: spaday_perspective
-
-
-Submodules
-----------
-
-.. toctree::
-   :maxdepth: 1
-
-   /autoapi/spaday_perspective/components/index
-
-
-Attributes
-----------
-
-.. autoapisummary::
-
-   spaday_perspective.package
+.. py:module:: spaday_perspective.components
 
 
 Classes
@@ -26,11 +9,11 @@ Classes
 
 .. autoapisummary::
 
-   spaday_perspective.PerspectivePanel
+   spaday_perspective.components.PerspectivePanel
 
 
-Package Contents
-----------------
+Module Contents
+---------------
 
 .. py:class:: PerspectivePanel(*children: spaday.component.Child, key: Optional[str] = None, config: Any = None, theme: Optional[str] = None, **props: Any)
 
@@ -44,6 +27,4 @@ Package Contents
       :value: 'perspective-panel'
 
 
-
-.. py:data:: package
 
