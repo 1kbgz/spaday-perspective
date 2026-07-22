@@ -36,11 +36,5 @@ changes and restores changed layouts; `theme` accepts `light`, `dark`, or a Pers
 Installing this project registers the `perspective` entry point with spaday. The equivalent explicit
 forms are `packages=[spaday_perspective.package]` and `packages=["spaday_perspective:package"]`.
 
-## Development
-
-```bash
-make develop
-make build
-make test
-make lint
-```
+> [!NOTE]
+> This library was generated using [copier](https://copier.readthedocs.io/en/stable/) from the [Base Python Project Template repository](https://github.com/python-project-templates/base).
