@@ -14,6 +14,7 @@ const BUNDLES = [
   {
     entryPoints: ["src/ts/index.ts"],
     outfile: "dist/cdn/index.js",
+    loader: { ".wasm": "binary" },
   },
 ];
 
