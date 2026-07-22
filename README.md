@@ -9,9 +9,6 @@
 
 ## Overview
 
-> [!NOTE]
-> This library was generated using [copier](https://copier.readthedocs.io/en/stable/) from the [Base Python Project Template repository](https://github.com/python-project-templates/base).
-
 `spaday-perspective` moves the existing `PerspectivePanel` integration out of spaday core. Its
 self-contained `<perspective-panel>` bundle includes Perspective's client, viewer, workspace, datagrid,
 themes, and viewer WASM.
@@ -38,3 +35,6 @@ changes and restores changed layouts; `theme` accepts `light`, `dark`, or a Pers
 
 Installing this project registers the `perspective` entry point with spaday. The equivalent explicit
 forms are `packages=[spaday_perspective.package]` and `packages=["spaday_perspective:package"]`.
+
+> [!NOTE]
+> This library was generated using [copier](https://copier.readthedocs.io/en/stable/) from the [Base Python Project Template repository](https://github.com/python-project-templates/base).
