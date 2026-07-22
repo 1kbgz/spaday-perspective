@@ -39,13 +39,18 @@
     "test": "TZ=UTC playwright test",
     "watch": "nodemon --watch src -e ts,css,html --exec \"pnpm build:debug\""
   },
-  "dependencies": {},
+  "dependencies": {
+    "@perspective-dev/client": "4.5.2",
+    "@perspective-dev/viewer": "4.5.2",
+    "@perspective-dev/viewer-datagrid": "4.5.2",
+    "@perspective-dev/workspace": "4.5.2"
+  },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "cpy": "^13.2.2",
     "esbuild": "^0.28.0",
-    "lightningcss": "^1.29.3",
     "http-server": "^14.1.1",
+    "lightningcss": "^1.29.3",
     "nodemon": "^3.1.10",
     "npm-run-all": "^4.1.5",
     "prettier": "^3.8.1",

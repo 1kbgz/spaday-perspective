@@ -29,7 +29,12 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 
-dependencies = []
+dependencies = [
+    "spaday>=0.3.0",
+]
+
+[project.entry-points."spaday.component_packages"]
+perspective = "spaday_perspective:package"
 
 [project.optional-dependencies]
 develop = [
@@ -166,4 +171,3 @@ title = "spaday-perspective"
 root = "README.md"
 pages = []
 use-autoapi = true
-

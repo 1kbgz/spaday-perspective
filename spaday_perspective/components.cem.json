@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0.0",
+  "modules": [
+    {
+      "path": "src/ts/index.ts",
+      "declarations": [
+        {
+          "kind": "class",
+          "name": "PerspectivePanel",
+          "customElement": true,
+          "tagName": "perspective-panel",
+          "summary": "Perspective workspace whose data connection and layout are configured by a serializable prop.",
+          "attributes": [
+            { "name": "config", "type": { "text": "unknown" } },
+            { "name": "theme", "type": { "text": "string" } }
+          ],
+          "slots": []
+        }
+      ]
+    }
+  ]
+}
