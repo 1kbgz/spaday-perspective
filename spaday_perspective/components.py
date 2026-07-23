@@ -16,9 +16,9 @@ class PerspectivePanel(Component):
     def __init__(
         self,
         *children: Child,
-        key: Optional[str] = None,
+        key: Optional[str] = None,  # noqa: UP045
         config: Any = None,
-        theme: Optional[str] = None,
+        theme: Optional[str] = None,  # noqa: UP045
         **props: Any,
     ) -> None:
         super().__init__(
