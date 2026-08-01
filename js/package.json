@@ -46,7 +46,7 @@
     "@perspective-dev/workspace": "4.5.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "^1.62.0",
     "cpy": "^13.2.2",
     "esbuild": "^0.28.0",
     "http-server": "^14.1.1",
