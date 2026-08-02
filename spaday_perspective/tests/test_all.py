@@ -1,5 +1,9 @@
+<<<<<<< before updating
 import ast
 from pathlib import Path
+=======
+from spaday_perspective import *
+>>>>>>> after updating
 
 from spaday import generate
 from spaday.bootstrap import bootstrap
