@@ -37,6 +37,14 @@ dependencies = [
 perspective = "spaday_perspective:package"
 
 [project.optional-dependencies]
+examples = [
+    "perspective-python>=4.5,<4.6",
+    "pydantic>=2",
+    "starlette",
+    "transports",
+    "uvicorn",
+    "websockets",
+]
 develop = [
     "build",
     "bump-my-version",
@@ -169,5 +177,10 @@ section-order = [
 [tool.yardang]
 title = "spaday-perspective"
 root = "README.md"
-pages = []
-use-autoapi = true
+pages = [
+    "docs/src/tutorial.md",
+    "docs/src/how-to.md",
+    "docs/src/reference.md",
+    "docs/src/explanation.md",
+]
+use-autoapi = false
