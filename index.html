@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="API Reference" href="autoapi/index.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Build a live market workspace" href="docs/src/tutorial.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
         <title>spaday-perspective v0.1.0</title>
@@ -197,14 +197,10 @@
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <ul>
-<li class="toctree-l1 has-children"><a class="reference internal" href="autoapi/index.html">API Reference</a><input aria-label="Toggle navigation of API Reference" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="autoapi/test_all/index.html">test_all</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="autoapi/spaday_perspective/index.html">spaday_perspective</a><input aria-label="Toggle navigation of spaday_perspective" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="autoapi/spaday_perspective/components/index.html">spaday_perspective.components</a></li>
-</ul>
-</li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="docs/src/tutorial.html">Build a live market workspace</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/src/how-to.html">How to stream data and change layouts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/src/reference.html">API reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/src/explanation.html">Why Perspective uses its own data channel</a></li>
 </ul>
 
 </div>
@@ -258,8 +254,17 @@
 self-contained <code class="docutils literal notranslate"><span class="pre">&lt;perspective-panel&gt;</span></code> bundle includes Perspective’s client, viewer, workspace, datagrid,
 themes, and viewer WASM.</p>
 </section>
-<section id="interactive-example">
-<h2>Interactive example<a class="headerlink" href="#interactive-example" title="Link to this heading">¶</a></h2>
+<section id="documentation">
+<h2>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="docs/src/tutorial.html"><span class="std std-doc">Build a live market workspace</span></a> — guided first application.</p></li>
+<li><p><a class="reference internal" href="docs/src/how-to.html"><span class="std std-doc">Stream data and change layouts</span></a> — task-focused server and UI recipes.</p></li>
+<li><p><a class="reference internal" href="docs/src/reference.html"><span class="std std-doc">API reference</span></a> — component props, layout shape, and package descriptor.</p></li>
+<li><p><a class="reference internal" href="docs/src/explanation.html"><span class="std std-doc">Why Perspective uses its own data channel</span></a> — integration design and tradeoffs.</p></li>
+</ul>
+</section>
+<section id="quick-example">
+<h2>Quick example<a class="headerlink" href="#quick-example" title="Link to this heading">¶</a></h2>
 <p>This complete app serves a live Perspective table. <strong>Add trade</strong> streams a new row into the grid,
 the select switches between flat and grouped layouts, and the checkbox changes the viewer theme.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">perspective</span>
@@ -366,6 +371,17 @@ carry the small serializable connection/layout config. Replacing <code class="do
 changes and restores changed layouts; <code class="docutils literal notranslate"><span class="pre">theme</span></code> accepts <code class="docutils literal notranslate"><span class="pre">light</span></code>, <code class="docutils literal notranslate"><span class="pre">dark</span></code>, or a Perspective theme name.</p>
 <p>Installing this project registers the <code class="docutils literal notranslate"><span class="pre">perspective</span></code> entry point with spaday. The equivalent explicit
 forms are <code class="docutils literal notranslate"><span class="pre">packages=[spaday_perspective.package]</span></code> and <code class="docutils literal notranslate"><span class="pre">packages=[&quot;spaday_perspective:package&quot;]</span></code>.</p>
+</section>
+<section id="run-the-local-example">
+<h2>Run the local example<a class="headerlink" href="#run-the-local-example" title="Link to this heading">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[examples]&quot;</span>
+python<span class="w"> </span>-m<span class="w"> </span>spaday_perspective.example
+</pre></div>
+</div>
+<p>Open <code class="docutils literal notranslate"><span class="pre">http://127.0.0.1:8015</span></code> to inspect the <a class="reference download internal" download="" href="_downloads/cc8b1e2c9f76cedf238a34523d69aeb3/example.py"><span class="xref download myst">complete market-monitor example</span></a>: live native
+Perspective streaming, flat and grouped layouts, server-authoritative order submission, reactive metrics,
+and light/dark themes. It passes the local package descriptor directly, so it does not install or resolve
+the integration from GitHub.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>This library was generated using <a class="reference external" href="https://copier.readthedocs.io/en/stable/">copier</a> from the <a class="reference external" href="https://github.com/python-project-templates/base">Base Python Project Template repository</a>.</p>
@@ -378,12 +394,12 @@ forms are <code class="docutils literal notranslate"><span class="pre">packages=
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="autoapi/index.html">
+          <a class="next-page" href="docs/src/tutorial.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">API Reference</div>
+                <div class="title">Build a live market workspace</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>

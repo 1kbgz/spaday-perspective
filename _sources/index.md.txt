@@ -6,6 +6,14 @@ hidden: true
 
 
 
+docs/src/tutorial.md
+
+docs/src/how-to.md
+
+docs/src/reference.md
+
+docs/src/explanation.md
+
 
 ```
 
@@ -24,7 +32,14 @@ hidden: true
 self-contained `<perspective-panel>` bundle includes Perspective's client, viewer, workspace, datagrid,
 themes, and viewer WASM.
 
-## Interactive example
+## Documentation
+
+- [Build a live market workspace](docs/src/tutorial.md) — guided first application.
+- [Stream data and change layouts](docs/src/how-to.md) — task-focused server and UI recipes.
+- [API reference](docs/src/reference.md) — component props, layout shape, and package descriptor.
+- [Why Perspective uses its own data channel](docs/src/explanation.md) — integration design and tradeoffs.
+
+## Quick example
 
 This complete app serves a live Perspective table. **Add trade** streams a new row into the grid,
 the select switches between flat and grouped layouts, and the checkbox changes the viewer theme.
@@ -136,6 +151,18 @@ changes and restores changed layouts; `theme` accepts `light`, `dark`, or a Pers
 
 Installing this project registers the `perspective` entry point with spaday. The equivalent explicit
 forms are `packages=[spaday_perspective.package]` and `packages=["spaday_perspective:package"]`.
+
+## Run the local example
+
+```bash
+python -m pip install -e ".[examples]"
+python -m spaday_perspective.example
+```
+
+Open `http://127.0.0.1:8015` to inspect the [complete market-monitor example](spaday_perspective/example.py): live native
+Perspective streaming, flat and grouped layouts, server-authoritative order submission, reactive metrics,
+and light/dark themes. It passes the local package descriptor directly, so it does not install or resolve
+the integration from GitHub.
 
 > [!NOTE]
 > This library was generated using [copier](https://copier.readthedocs.io/en/stable/) from the [Base Python Project Template repository](https://github.com/python-project-templates/base).
