@@ -38,7 +38,7 @@ export const bundle = async (config) => {
   const result = await esbuild.build({
     ...DEFAULT_BUILD,
     ...config,
-    loader: { ...COMMON_LOADER, ...(config.loader || {}) },
+    loader: { ...COMMON_LOADER, ...config.loader },
   });
 
   if (result.metafile) {
