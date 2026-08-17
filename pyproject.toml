@@ -30,7 +30,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "spaday>=0.3.0",
+    "spaday>=0.6.0",
 ]
 
 [project.entry-points."spaday.component_packages"]
