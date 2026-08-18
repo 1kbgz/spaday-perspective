@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from spaday.catalog import ComponentSchema, PropertySchema
 from spaday.component import Child, Component
 
 __all__ = ["PerspectivePanel"]
@@ -12,6 +13,17 @@ class PerspectivePanel(Component):
     """Perspective workspace whose data connection and layout are configured by a serializable prop."""
 
     tag = "perspective-panel"
+    schema = ComponentSchema(
+        tag="perspective-panel",
+        class_name="PerspectivePanel",
+        summary="Perspective workspace whose data connection and layout are configured by a serializable prop.",
+        props=(
+            PropertySchema(name="config", kind="json", choices=(), default=None, description=None),
+            PropertySchema(name="theme", kind="string", choices=(), default=None, description=None),
+        ),
+        events=(),
+        slots=(),
+    )
 
     def __init__(
         self,
