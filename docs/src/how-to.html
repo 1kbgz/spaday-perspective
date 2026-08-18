@@ -244,14 +244,14 @@
 <section id="stream-rows-from-python">
 <h2>Stream rows from Python<a class="headerlink" href="#stream-rows-from-python" title="Link to this heading">¶</a></h2>
 <p>Keep the table returned by <code class="docutils literal notranslate"><span class="pre">client.table()</span></code>, then update it whenever application data changes:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">trades</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">table</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">1_000</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;trades&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">trades</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">table</span><span class="p">(</span><span class="n">schema</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">1_000</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"trades"</span><span class="p">)</span>
 
 <span class="n">trades</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
     <span class="p">[</span>
         <span class="p">{</span>
-            <span class="s2">&quot;symbol&quot;</span><span class="p">:</span> <span class="s2">&quot;NVDA&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;quantity&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
-            <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="mf">182.40</span><span class="p">,</span>
+            <span class="s2">"symbol"</span><span class="p">:</span> <span class="s2">"NVDA"</span><span class="p">,</span>
+            <span class="s2">"quantity"</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+            <span class="s2">"price"</span><span class="p">:</span> <span class="mf">182.40</span><span class="p">,</span>
         <span class="p">}</span>
     <span class="p">]</span>
 <span class="p">)</span>
@@ -267,13 +267,13 @@ spaday store.</p>
 <span class="kn">from</span><span class="w"> </span><span class="nn">spaday_perspective</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerspectivePanel</span>
 
 <span class="n">panel</span> <span class="o">=</span> <span class="n">PerspectivePanel</span><span class="p">()</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span>
-    <span class="s2">&quot;config&quot;</span><span class="p">,</span>
+    <span class="s2">"config"</span><span class="p">,</span>
     <span class="n">obj</span><span class="p">(</span>
         <span class="p">{</span>
-            <span class="s2">&quot;ws_url&quot;</span><span class="p">:</span> <span class="s2">&quot;/perspective&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;tables&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;trades&quot;</span><span class="p">],</span>
-            <span class="s2">&quot;layout&quot;</span><span class="p">:</span> <span class="n">cond</span><span class="p">(</span>
-                <span class="n">eq</span><span class="p">(</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;view&quot;</span><span class="p">),</span> <span class="s2">&quot;grouped&quot;</span><span class="p">),</span>
+            <span class="s2">"ws_url"</span><span class="p">:</span> <span class="s2">"/perspective"</span><span class="p">,</span>
+            <span class="s2">"tables"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"trades"</span><span class="p">],</span>
+            <span class="s2">"layout"</span><span class="p">:</span> <span class="n">cond</span><span class="p">(</span>
+                <span class="n">eq</span><span class="p">(</span><span class="n">field</span><span class="p">(</span><span class="s2">"view"</span><span class="p">),</span> <span class="s2">"grouped"</span><span class="p">),</span>
                 <span class="n">grouped_layout</span><span class="p">,</span>
                 <span class="n">blotter_layout</span><span class="p">,</span>
             <span class="p">),</span>
@@ -282,9 +282,9 @@ spaday store.</p>
 <span class="p">)</span>
 
 <span class="n">controls</span> <span class="o">=</span> <span class="n">element</span><span class="p">(</span>
-    <span class="s2">&quot;nav&quot;</span><span class="p">,</span>
-    <span class="n">element</span><span class="p">(</span><span class="s2">&quot;button&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;Blotter&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="s2">&quot;click&quot;</span><span class="p">,</span> <span class="n">SetField</span><span class="p">(</span><span class="s2">&quot;view&quot;</span><span class="p">,</span> <span class="s2">&quot;blotter&quot;</span><span class="p">)),</span>
-    <span class="n">element</span><span class="p">(</span><span class="s2">&quot;button&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;By symbol&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="s2">&quot;click&quot;</span><span class="p">,</span> <span class="n">SetField</span><span class="p">(</span><span class="s2">&quot;view&quot;</span><span class="p">,</span> <span class="s2">&quot;grouped&quot;</span><span class="p">)),</span>
+    <span class="s2">"nav"</span><span class="p">,</span>
+    <span class="n">element</span><span class="p">(</span><span class="s2">"button"</span><span class="p">)</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Blotter"</span><span class="p">)</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="s2">"click"</span><span class="p">,</span> <span class="n">SetField</span><span class="p">(</span><span class="s2">"view"</span><span class="p">,</span> <span class="s2">"blotter"</span><span class="p">)),</span>
+    <span class="n">element</span><span class="p">(</span><span class="s2">"button"</span><span class="p">)</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"By symbol"</span><span class="p">)</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="s2">"click"</span><span class="p">,</span> <span class="n">SetField</span><span class="p">(</span><span class="s2">"view"</span><span class="p">,</span> <span class="s2">"grouped"</span><span class="p">)),</span>
 <span class="p">)</span>
 </pre></div>
 </div>
@@ -296,7 +296,7 @@ not reconnect the table websocket.</p>
 <p>Perspective uses its own theme names. Compute the wrapper property explicitly:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday</span><span class="w"> </span><span class="kn">import</span> <span class="n">cond</span><span class="p">,</span> <span class="n">field</span>
 
-<span class="n">panel</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="s2">&quot;theme&quot;</span><span class="p">,</span> <span class="n">cond</span><span class="p">(</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;dark&quot;</span><span class="p">),</span> <span class="s2">&quot;dark&quot;</span><span class="p">,</span> <span class="s2">&quot;light&quot;</span><span class="p">))</span>
+<span class="n">panel</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="s2">"theme"</span><span class="p">,</span> <span class="n">cond</span><span class="p">(</span><span class="n">field</span><span class="p">(</span><span class="s2">"dark"</span><span class="p">),</span> <span class="s2">"dark"</span><span class="p">,</span> <span class="s2">"light"</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>The aliases map to <code class="docutils literal notranslate"><span class="pre">Pro</span> <span class="pre">Dark</span></code> and <code class="docutils literal notranslate"><span class="pre">Pro</span> <span class="pre">Light</span></code>. A full Perspective theme name is also accepted.</p>

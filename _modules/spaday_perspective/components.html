@@ -238,17 +238,29 @@
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">spaday.catalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">ComponentSchema</span><span class="p">,</span> <span class="n">PropertySchema</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">spaday.component</span><span class="w"> </span><span class="kn">import</span> <span class="n">Child</span><span class="p">,</span> <span class="n">Component</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;PerspectivePanel&quot;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"PerspectivePanel"</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="PerspectivePanel">
 <a class="viewcode-back" href="../../docs/src/reference.html#spaday_perspective.PerspectivePanel">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">PerspectivePanel</span><span class="p">(</span><span class="n">Component</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Perspective workspace whose data connection and layout are configured by a serializable prop.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Perspective workspace whose data connection and layout are configured by a serializable prop."""</span>
 
-    <span class="n">tag</span> <span class="o">=</span> <span class="s2">&quot;perspective-panel&quot;</span>
+    <span class="n">tag</span> <span class="o">=</span> <span class="s2">"perspective-panel"</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">ComponentSchema</span><span class="p">(</span>
+        <span class="n">tag</span><span class="o">=</span><span class="s2">"perspective-panel"</span><span class="p">,</span>
+        <span class="n">class_name</span><span class="o">=</span><span class="s2">"PerspectivePanel"</span><span class="p">,</span>
+        <span class="n">summary</span><span class="o">=</span><span class="s2">"Perspective workspace whose data connection and layout are configured by a serializable prop."</span><span class="p">,</span>
+        <span class="n">props</span><span class="o">=</span><span class="p">(</span>
+            <span class="n">PropertySchema</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"config"</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"json"</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="kc">None</span><span class="p">),</span>
+            <span class="n">PropertySchema</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"theme"</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"string"</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="kc">None</span><span class="p">),</span>
+        <span class="p">),</span>
+        <span class="n">events</span><span class="o">=</span><span class="p">(),</span>
+        <span class="n">slots</span><span class="o">=</span><span class="p">(),</span>
+    <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -262,8 +274,8 @@
             <span class="o">*</span><span class="n">children</span><span class="p">,</span>
             <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span>
             <span class="n">props</span><span class="o">=</span><span class="p">{</span>
-                <span class="s2">&quot;config&quot;</span><span class="p">:</span> <span class="n">config</span><span class="p">,</span>
-                <span class="s2">&quot;theme&quot;</span><span class="p">:</span> <span class="n">theme</span><span class="p">,</span>
+                <span class="s2">"config"</span><span class="p">:</span> <span class="n">config</span><span class="p">,</span>
+                <span class="s2">"theme"</span><span class="p">:</span> <span class="n">theme</span><span class="p">,</span>
             <span class="p">},</span>
             <span class="o">**</span><span class="n">props</span><span class="p">,</span>
         <span class="p">)</span></div>

@@ -32,4 +32,5 @@ The wrapper queues asynchronous changes in assignment order.
 ## `package`
 
 `spaday_perspective.package` is named `perspective`. Its self-contained browser asset includes the
-Perspective client, viewer, workspace, datagrid plugin, themes, and viewer WASM.
+Perspective client, viewer, workspace, datagrid plugin, themes, and viewer WASM. Its `components`
+collection contains `PerspectivePanel`; `catalog` returns the wrapper's property, event, and slot schema.
