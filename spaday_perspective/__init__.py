@@ -4,7 +4,7 @@ from spaday import ComponentPackage
 
 from .components import PerspectivePanel
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 package = ComponentPackage(
     name="perspective",
