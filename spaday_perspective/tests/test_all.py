@@ -1,4 +1,5 @@
 import ast
+import json
 from pathlib import Path
 
 from spaday import generate
@@ -24,3 +25,11 @@ def test_generated_component_is_current():
     root = Path(__file__).parent.parent
     fresh = generate(str(root / "components.cem.json"))
     assert ast.dump(ast.parse(fresh)) == ast.dump(ast.parse((root / "components.py").read_text(encoding="utf-8")))
+
+
+def test_perspective_python_pin_matches_the_bundled_js_client():
+    # the frontend bundle inlines @perspective-dev/* at an exact version, and Perspective's
+    # websocket wire protocol is version-locked — the Python server must match it exactly
+    root = Path(__file__).parent.parent.parent
+    js_version = json.loads((root / "js" / "package.json").read_text(encoding="utf-8"))["dependencies"]["@perspective-dev/client"]
+    assert f'"perspective-python=={js_version}"' in (root / "pyproject.toml").read_text(encoding="utf-8")
