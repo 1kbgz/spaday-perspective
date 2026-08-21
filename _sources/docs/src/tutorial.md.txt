@@ -46,18 +46,10 @@ Perspective owns this websocket and the bulk table data carried by it.
 Continue in the same file:
 
 ```python
+# Perspective's whole-element config: a regular-layout tree plus per-panel viewer configs
 layout = {
-    "sizes": [1],
-    "detail": {
-        "main": {
-            "type": "tab-area",
-            "widgets": ["market"],
-            "currentIndex": 0,
-        }
-    },
-    "master": {"sizes": [], "widgets": []},
-    "mode": "globalFilters",
-    "viewers": {
+    "layout": {"type": "tab-layout", "tabs": ["market"]},
+    "panels": {
         "market": {
             "table": "trades",
             "plugin": "Datagrid",

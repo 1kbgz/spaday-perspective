@@ -251,8 +251,8 @@
 <section id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">spaday-perspective</span></code> moves the existing <code class="docutils literal notranslate"><span class="pre">PerspectivePanel</span></code> integration out of spaday core. Its
-self-contained <code class="docutils literal notranslate"><span class="pre">&lt;perspective-panel&gt;</span></code> bundle includes Perspective’s client, viewer, workspace, datagrid,
-themes, and viewer WASM.</p>
+self-contained <code class="docutils literal notranslate"><span class="pre">&lt;perspective-panel&gt;</span></code> bundle includes Perspective’s client, viewer (the multi-panel
+workspace element since Perspective 5), datagrid, themes, and viewer WASM.</p>
 </section>
 <section id="documentation">
 <h2>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">¶</a></h2>
@@ -314,11 +314,8 @@ the select switches between flat and grouped layouts, and the checkbox changes t
     <span class="k">if</span> <span class="n">grouped</span><span class="p">:</span>
         <span class="n">viewer</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">"group_by"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"symbol"</span><span class="p">],</span> <span class="s2">"columns"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"price"</span><span class="p">],</span> <span class="s2">"aggregates"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"price"</span><span class="p">:</span> <span class="s2">"avg"</span><span class="p">}})</span>
     <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">"sizes"</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-        <span class="s2">"detail"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"main"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"tab-area"</span><span class="p">,</span> <span class="s2">"widgets"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"trades"</span><span class="p">],</span> <span class="s2">"currentIndex"</span><span class="p">:</span> <span class="mi">0</span><span class="p">}},</span>
-        <span class="s2">"master"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"sizes"</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">"widgets"</span><span class="p">:</span> <span class="p">[]},</span>
-        <span class="s2">"mode"</span><span class="p">:</span> <span class="s2">"globalFilters"</span><span class="p">,</span>
-        <span class="s2">"viewers"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"trades"</span><span class="p">:</span> <span class="n">viewer</span><span class="p">},</span>
+        <span class="s2">"layout"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"tab-layout"</span><span class="p">,</span> <span class="s2">"tabs"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"trades"</span><span class="p">]},</span>
+        <span class="s2">"panels"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"trades"</span><span class="p">:</span> <span class="n">viewer</span><span class="p">},</span>
     <span class="p">}</span>
 
 

@@ -282,18 +282,10 @@
 <section id="add-the-panel">
 <h2>Add the panel<a class="headerlink" href="#add-the-panel" title="Link to this heading">¶</a></h2>
 <p>Continue in the same file:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">layout</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">"sizes"</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-    <span class="s2">"detail"</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">"main"</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"tab-area"</span><span class="p">,</span>
-            <span class="s2">"widgets"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"market"</span><span class="p">],</span>
-            <span class="s2">"currentIndex"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="p">}</span>
-    <span class="p">},</span>
-    <span class="s2">"master"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"sizes"</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">"widgets"</span><span class="p">:</span> <span class="p">[]},</span>
-    <span class="s2">"mode"</span><span class="p">:</span> <span class="s2">"globalFilters"</span><span class="p">,</span>
-    <span class="s2">"viewers"</span><span class="p">:</span> <span class="p">{</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Perspective's whole-element config: a regular-layout tree plus per-panel viewer configs</span>
+<span class="n">layout</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"layout"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"tab-layout"</span><span class="p">,</span> <span class="s2">"tabs"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"market"</span><span class="p">]},</span>
+    <span class="s2">"panels"</span><span class="p">:</span> <span class="p">{</span>
         <span class="s2">"market"</span><span class="p">:</span> <span class="p">{</span>
             <span class="s2">"table"</span><span class="p">:</span> <span class="s2">"trades"</span><span class="p">,</span>
             <span class="s2">"plugin"</span><span class="p">:</span> <span class="s2">"Datagrid"</span><span class="p">,</span>
