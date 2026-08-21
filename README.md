@@ -10,8 +10,8 @@
 ## Overview
 
 `spaday-perspective` moves the existing `PerspectivePanel` integration out of spaday core. Its
-self-contained `<perspective-panel>` bundle includes Perspective's client, viewer, workspace, datagrid,
-themes, and viewer WASM.
+self-contained `<perspective-panel>` bundle includes Perspective's client, viewer (the multi-panel
+workspace element since Perspective 5), datagrid, themes, and viewer WASM.
 
 ## Documentation
 
@@ -73,11 +73,8 @@ def layout(*, grouped=False):
     if grouped:
         viewer.update({"group_by": ["symbol"], "columns": ["price"], "aggregates": {"price": "avg"}})
     return {
-        "sizes": [1],
-        "detail": {"main": {"type": "tab-area", "widgets": ["trades"], "currentIndex": 0}},
-        "master": {"sizes": [], "widgets": []},
-        "mode": "globalFilters",
-        "viewers": {"trades": viewer},
+        "layout": {"type": "tab-layout", "tabs": ["trades"]},
+        "panels": {"trades": viewer},
     }
 
 

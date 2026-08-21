@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("registers a themed Perspective workspace without connecting eagerly", async ({
+test("registers a themed Perspective viewer without connecting eagerly", async ({
   page,
 }) => {
   await page.goto("/dist/index.html");
@@ -14,9 +14,11 @@ test("registers a themed Perspective workspace without connecting eagerly", asyn
     "theme",
     "Pro Dark",
   );
+  // Perspective 5: the viewer IS the multi-panel workspace element, and theme is
+  // viewer config (applied via restore), not an attribute
   await expect(
-    page.locator("perspective-panel perspective-workspace"),
-  ).toHaveAttribute("theme", "Pro Dark");
+    page.locator("perspective-panel perspective-viewer"),
+  ).toBeAttached();
 });
 
 test("an unthemed panel follows the wa-dark page mode until themed explicitly", async ({
@@ -26,23 +28,23 @@ test("an unthemed panel follows the wa-dark page mode until themed explicitly", 
   await page.evaluate(() => {
     document.body.appendChild(document.createElement("perspective-panel"));
   });
-  const workspace = page.locator("perspective-panel perspective-workspace");
-  await expect(workspace).toHaveAttribute("theme", "Pro Light");
+  const panel = page.locator("perspective-panel");
+  await expect(panel).toHaveJSProperty("theme", "Pro Light");
 
   await page.evaluate(() => document.documentElement.classList.add("wa-dark"));
-  await expect(workspace).toHaveAttribute("theme", "Pro Dark");
+  await expect(panel).toHaveJSProperty("theme", "Pro Dark");
 
   await page.evaluate(() =>
     document.documentElement.classList.remove("wa-dark"),
   );
-  await expect(workspace).toHaveAttribute("theme", "Pro Light");
+  await expect(panel).toHaveJSProperty("theme", "Pro Light");
 
   // an explicit theme takes over: later mode flips no longer apply
   await page.evaluate(() => {
     document.querySelector("perspective-panel").theme = "dark";
     document.documentElement.classList.remove("wa-dark");
   });
-  await expect(workspace).toHaveAttribute("theme", "Pro Dark");
+  await expect(panel).toHaveJSProperty("theme", "Pro Dark");
 });
 
 test("runs the Python workspace and submits trades", async ({ page }) => {

@@ -131,12 +131,10 @@ def layout(*, grouped: bool = False) -> dict:
                 "sort": [["quantity", "desc"]],
             }
         )
+    # Perspective 5's whole-element config: a regular-layout tree plus per-panel viewer configs
     return {
-        "sizes": [1],
-        "detail": {"main": {"type": "tab-area", "widgets": ["market"], "currentIndex": 0}},
-        "master": {"sizes": [], "widgets": []},
-        "mode": "globalFilters",
-        "viewers": {"market": viewer},
+        "layout": {"type": "tab-layout", "tabs": ["market"]},
+        "panels": {"market": viewer},
     }
 
 

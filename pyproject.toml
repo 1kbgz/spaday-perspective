@@ -32,7 +32,7 @@ classifiers = [
 dependencies = [
     # exact pin: the bundled JS client (js/package.json @perspective-dev/*) and the Python server
     # speak a version-locked wire protocol — upgrade both together
-    "perspective-python==4.5.2",
+    "perspective-python==5.2.0",
     "spaday>=0.6.0,<1.0",
 ]
 
@@ -59,7 +59,6 @@ develop = [
     "mdformat-tables>=1",
     "pytest",
     "pytest-cov",
-    "perspective-python>=4.5,<4.6",
     "pydantic>=2",
     "ruff",
     "starlette",

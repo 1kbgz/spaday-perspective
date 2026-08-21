@@ -40,10 +40,9 @@
     "watch": "nodemon --watch src -e ts,css,html --exec \"pnpm build:debug\""
   },
   "dependencies": {
-    "@perspective-dev/client": "4.5.2",
-    "@perspective-dev/viewer": "4.5.2",
-    "@perspective-dev/viewer-datagrid": "4.5.2",
-    "@perspective-dev/workspace": "4.5.2"
+    "@perspective-dev/client": "5.2.0",
+    "@perspective-dev/viewer": "5.2.0",
+    "@perspective-dev/viewer-datagrid": "5.2.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.0",

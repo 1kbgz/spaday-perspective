@@ -3,8 +3,6 @@ import perspectiveViewer from "@perspective-dev/viewer";
 import CLIENT_WASM from "@perspective-dev/viewer/dist/wasm/perspective-viewer.wasm";
 import PRO from "@perspective-dev/viewer/dist/css/pro.css";
 import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
-import WORKSPACE_CSS from "@perspective-dev/workspace/dist/css/workspace.css";
-import "@perspective-dev/workspace";
 import "@perspective-dev/viewer-datagrid";
 
 export interface PerspectiveConfig {
@@ -24,7 +22,7 @@ function injectStyles(): void {
   if (stylesInjected || typeof document === "undefined") return;
   stylesInjected = true;
   const style = document.createElement("style");
-  style.textContent = [WORKSPACE_CSS, PRO, PRO_DARK].join("\n");
+  style.textContent = [PRO, PRO_DARK].join("\n");
   document.head.appendChild(style);
 }
 
@@ -34,15 +32,19 @@ function wsUrl(url: string): string {
   return `${scheme}://${location.host}${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
-type Workspace = HTMLElement & {
+// Perspective 5's `<perspective-viewer>` is the multi-panel workspace element
+// (the separate `<perspective-workspace>` is gone): `load(client)` binds every
+// server table, `restore` accepts the whole-element workspace config, and
+// `save` emits it. Theme is viewer config now, not an attribute; the element
+// auto-sizes, so no manual resize plumbing.
+type Viewer = HTMLElement & {
   load(client: unknown): Promise<void>;
-  restore(layout: unknown): Promise<void>;
+  restore(config: unknown): Promise<void>;
   save(): Promise<unknown>;
-  resize(): Promise<void>;
 };
 
 class PerspectivePanel extends HTMLElement {
-  #workspace: Workspace | null = null;
+  #viewer: Viewer | null = null;
   #config: PerspectiveConfig = {};
   #connectedUrl: string | null = null;
   #lastLayout: string | null = null;
@@ -50,40 +52,19 @@ class PerspectivePanel extends HTMLElement {
   #explicitTheme = false;
   #modeObserver: MutationObserver | null = null;
   #queue: Promise<unknown> = Promise.resolve();
-  #resizeObserver: ResizeObserver | null = null;
-  #resizeRaf = 0;
 
   connectedCallback(): void {
     injectStyles();
-    if (!this.#workspace) {
+    if (!this.#viewer) {
       this.style.display ||= "block";
-      this.#workspace = document.createElement(
-        "perspective-workspace",
-      ) as Workspace;
-      this.appendChild(this.#workspace);
-      this.#workspace.addEventListener("workspace-new-view", () =>
-        this.#applyTheme(),
-      );
-    }
-    if (!this.#resizeObserver && typeof ResizeObserver !== "undefined") {
-      this.#resizeObserver = new ResizeObserver(() => {
-        if (this.#resizeRaf) return;
-        this.#resizeRaf = requestAnimationFrame(() => {
-          this.#resizeRaf = 0;
-          void this.#workspace?.resize();
-        });
-      });
-      this.#resizeObserver.observe(this);
+      this.#viewer = document.createElement("perspective-viewer") as Viewer;
+      this.appendChild(this.#viewer);
     }
     this.#followPageMode();
     this.#apply();
   }
 
   disconnectedCallback(): void {
-    this.#resizeObserver?.disconnect();
-    this.#resizeObserver = null;
-    if (this.#resizeRaf) cancelAnimationFrame(this.#resizeRaf);
-    this.#resizeRaf = 0;
     this.#modeObserver?.disconnect();
     this.#modeObserver = null;
   }
@@ -137,14 +118,16 @@ class PerspectivePanel extends HTMLElement {
     return this.#config;
   }
 
+  // Theme rides viewer config in 5.x; queue it behind wasm init and any
+  // in-flight load/restore (a pre-load restore is swallowed by the queue's
+  // catch and re-applied at the end of the next #apply).
   #applyTheme(): void {
-    if (!this.#workspace) return;
-    this.#workspace.setAttribute("theme", this.#theme);
-    for (const viewer of this.#workspace.querySelectorAll(
-      "perspective-viewer",
-    )) {
-      viewer.setAttribute("theme", this.#theme);
-    }
+    this.#queue = this.#queue
+      .catch(() => {})
+      .then(async () => {
+        await ready;
+        await this.#viewer?.restore({ theme: this.#theme });
+      });
   }
 
   #apply(): void {
@@ -153,26 +136,26 @@ class PerspectivePanel extends HTMLElement {
       .catch(() => {})
       .then(async () => {
         await ready;
-        if (!this.#workspace) return;
+        if (!this.#viewer) return;
         if (config.ws_url && config.ws_url !== this.#connectedUrl) {
           this.#connectedUrl = config.ws_url;
           const client = await perspective.websocket(wsUrl(config.ws_url));
-          await this.#workspace.load(client);
+          await this.#viewer.load(client);
         }
         if (this.#connectedUrl && config.layout) {
           const layout = JSON.stringify(config.layout);
           if (layout !== this.#lastLayout) {
             this.#lastLayout = layout;
-            await this.#workspace.restore(config.layout);
+            await this.#viewer.restore(config.layout);
           }
         }
-        this.#applyTheme();
+        await this.#viewer.restore({ theme: this.#theme });
       });
   }
 
   async save(): Promise<unknown> {
     await this.#queue.catch(() => {});
-    return this.#workspace?.save();
+    return this.#viewer?.save();
   }
 }
 
