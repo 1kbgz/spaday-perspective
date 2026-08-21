@@ -16,10 +16,10 @@ Tag: `<perspective-panel>`.
 
 ## Configuration
 
-| Key      | Type        | Description                                                    |
-| -------- | ----------- | -------------------------------------------------------------- |
-| `ws_url` | `str`       | Perspective websocket URL; relative URLs use the current host. |
-| `tables` | `list[str]` | Informational list of table names available on the server.     |
+| Key      | Type        | Description                                                                                               |
+| -------- | ----------- | --------------------------------------------------------------------------------------------------------- |
+| `ws_url` | `str`       | Perspective websocket URL; relative URLs use the current host.                                            |
+| `tables` | `list[str]` | Informational list of table names available on the server.                                                |
 | `layout` | mapping     | Value accepted by `<perspective-viewer>.restore()` — the whole-element config (`layout` tree + `panels`). |
 
 Changing `ws_url` opens a new client connection. Changing the serialized `layout` restores the viewer's panels.
