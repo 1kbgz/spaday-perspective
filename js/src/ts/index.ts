@@ -47,6 +47,8 @@ class PerspectivePanel extends HTMLElement {
   #connectedUrl: string | null = null;
   #lastLayout: string | null = null;
   #theme = "Pro Light";
+  #explicitTheme = false;
+  #modeObserver: MutationObserver | null = null;
   #queue: Promise<unknown> = Promise.resolve();
   #resizeObserver: ResizeObserver | null = null;
   #resizeRaf = 0;
@@ -73,6 +75,7 @@ class PerspectivePanel extends HTMLElement {
       });
       this.#resizeObserver.observe(this);
     }
+    this.#followPageMode();
     this.#apply();
   }
 
@@ -81,14 +84,49 @@ class PerspectivePanel extends HTMLElement {
     this.#resizeObserver = null;
     if (this.#resizeRaf) cancelAnimationFrame(this.#resizeRaf);
     this.#resizeRaf = 0;
+    this.#modeObserver?.disconnect();
+    this.#modeObserver = null;
   }
 
   set theme(name: string) {
+    this.#explicitTheme = true;
+    this.#modeObserver?.disconnect();
+    this.#modeObserver = null;
     this.#theme = THEMES[name] ?? name;
     this.#applyTheme();
   }
   get theme(): string {
     return this.#theme;
+  }
+
+  // With no explicit `theme`, follow spaday's page-mode convention: the nearest
+  // `wa-dark`/`wa-light` ancestor (root class set by `bind_root_class("wa-dark", ...)`)
+  // picks Pro Dark / Pro Light, and a MutationObserver tracks class changes live.
+  // Setting `theme` at any point takes over permanently.
+  #pageMode(): string {
+    const scope = this.closest(".wa-dark, .wa-light");
+    const dark = scope
+      ? scope.classList.contains("wa-dark")
+      : document.documentElement.classList.contains("wa-dark");
+    return dark ? THEMES.dark : THEMES.light;
+  }
+
+  #followPageMode(): void {
+    if (this.#explicitTheme || this.#modeObserver) return;
+    const apply = () => {
+      const next = this.#pageMode();
+      if (next !== this.#theme) {
+        this.#theme = next;
+        this.#applyTheme();
+      }
+    };
+    apply();
+    this.#modeObserver = new MutationObserver(apply);
+    this.#modeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+      subtree: true,
+    });
   }
 
   set config(config: PerspectiveConfig) {
