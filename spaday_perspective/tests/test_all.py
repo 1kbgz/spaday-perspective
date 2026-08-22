@@ -29,7 +29,10 @@ def test_generated_component_is_current():
 
 def test_perspective_python_pin_matches_the_bundled_js_client():
     # the frontend bundle inlines @perspective-dev/* at an exact version, and Perspective's
-    # websocket wire protocol is version-locked — the Python server must match it exactly
+    # websocket wire protocol is version-locked but stable within a minor — the Python server
+    # requirement must track the bundled client's minor
     root = Path(__file__).parent.parent.parent
     js_version = json.loads((root / "js" / "package.json").read_text(encoding="utf-8"))["dependencies"]["@perspective-dev/client"]
-    assert f'"perspective-python=={js_version}"' in (root / "pyproject.toml").read_text(encoding="utf-8")
+    major, minor = js_version.split(".")[:2]
+    expected = f'"perspective-python>={major}.{minor},<{major}.{int(minor) + 1}"'
+    assert expected in (root / "pyproject.toml").read_text(encoding="utf-8")
