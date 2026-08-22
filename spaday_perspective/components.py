@@ -20,8 +20,46 @@ class PerspectivePanel(Component):
         props=(
             PropertySchema(name="config", kind="json", choices=(), default=None, description=None),
             PropertySchema(name="theme", kind="string", choices=(), default=None, description=None),
+            PropertySchema(
+                name="themes",
+                kind="json",
+                choices=(),
+                default=None,
+                description="Theme names offered by the status-bar picker; light/dark map to Pro Light/Pro Dark.",
+            ),
+            PropertySchema(
+                name="autosize",
+                kind="boolean",
+                choices=(),
+                default=None,
+                description="Auto-size mode (on by default); disable to drive resizes imperatively.",
+            ),
+            PropertySchema(
+                name="autopause",
+                kind="boolean",
+                choices=(),
+                default=None,
+                description="Auto-pause rendering while the element is not visible (on by default).",
+            ),
+            PropertySchema(
+                name="throttle",
+                kind="number",
+                choices=(),
+                default=None,
+                description="Render throttle in milliseconds; unset restores adaptive throttling.",
+            ),
+            PropertySchema(name="settings", kind="boolean", choices=(), default=None, description="Whether the settings sidebar is open."),
         ),
-        events=(),
+        events=(
+            "perspective-click",
+            "perspective-select",
+            "perspective-global-filter",
+            "perspective-global-filter-update",
+            "perspective-config-update",
+            "perspective-toggle-settings",
+            "perspective-statusbar-pointerdown",
+            "perspective-table-delete",
+        ),
         slots=(),
     )
 
@@ -31,6 +69,11 @@ class PerspectivePanel(Component):
         key: str | None = None,
         config: Any = None,
         theme: str | None = None,
+        themes: Any = None,
+        autosize: bool | None = None,
+        autopause: bool | None = None,
+        throttle: float | None = None,
+        settings: bool | None = None,
         **props: Any,
     ) -> None:
         super().__init__(
@@ -39,6 +82,11 @@ class PerspectivePanel(Component):
             props={
                 "config": config,
                 "theme": theme,
+                "themes": themes,
+                "autosize": autosize,
+                "autopause": autopause,
+                "throttle": throttle,
+                "settings": settings,
             },
             **props,
         )

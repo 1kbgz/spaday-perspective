@@ -65,3 +65,17 @@ panel.compute("theme", cond(field("dark"), "dark", "light"))
 ```
 
 The aliases map to `Pro Dark` and `Pro Light`. A full Perspective theme name is also accepted.
+
+## Persist user-edited layouts
+
+`perspective-config-update` re-dispatches from the panel whenever the user edits the workspace —
+drags a panel, changes a view, filters. Bind it to an endpoint to persist the edit:
+
+```python
+from spaday import CallEndpoint, event_value
+
+panel.on("perspective-config-update", CallEndpoint("POST", "/api/layout", event_value()))
+```
+
+Serve the stored config back through `config["layout"]` on the next load. `panel.save()` (JS)
+returns the same whole-element shape on demand.
