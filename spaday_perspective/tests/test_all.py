@@ -33,3 +33,12 @@ def test_perspective_python_pin_matches_the_bundled_js_client():
     root = Path(__file__).parent.parent.parent
     js_version = json.loads((root / "js" / "package.json").read_text(encoding="utf-8"))["dependencies"]["@perspective-dev/client"]
     assert f'"perspective-python=={js_version}"' in (root / "pyproject.toml").read_text(encoding="utf-8")
+
+
+def test_panel_serializes_viewer_options_and_declares_events():
+    node = PerspectivePanel(settings=True, autosize=False, throttle=500, themes=["light", "dark"]).to_node()
+    assert node["props"]["settings"] == {"Bool": True}
+    assert node["props"]["autosize"] == {"Bool": False}
+    assert node["props"]["throttle"] == {"Int": 500}
+    assert node["props"]["themes"]["List"] == [{"Str": "light"}, {"Str": "dark"}]
+    assert "perspective-config-update" in PerspectivePanel.schema.events
