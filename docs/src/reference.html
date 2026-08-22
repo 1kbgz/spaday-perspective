@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="Why Perspective uses its own data channel" href="explanation.html"><link rel="prev" title="How to stream data and change layouts" href="how-to.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>API reference - spaday-perspective v0.4.0</title>
+        <title>API reference - spaday-perspective v0.4.1</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -167,7 +167,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.0</code></div></a>
+      <a href="../../index.html"><div class="brand">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.1</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -188,7 +188,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
-  <span class="sidebar-brand-text">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.0</code></span>
+  <span class="sidebar-brand-text">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.1</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -261,12 +261,32 @@
 <td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">light</span></code>, <code class="docutils literal notranslate"><span class="pre">dark</span></code>, or a Perspective theme name.</p></td>
 </tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">themes</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">list[str]</span></code></p></td>
+<td><p>Theme names offered by the status-bar picker (same shorthands accepted).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">autosize</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<td><p>Auto-size mode (on by default).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autopause</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<td><p>Pause rendering while not visible (on by default).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">throttle</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<td><p>Render throttle in milliseconds; unset restores adaptive throttling.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">settings</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<td><p>Whether the settings sidebar is open.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="spaday_perspective.PerspectivePanel">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">spaday_perspective.</span></span><span class="sig-name descname"><span class="pre">PerspectivePanel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">children</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Component</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theme</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">props</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/spaday_perspective/components.html#PerspectivePanel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spaday_perspective.PerspectivePanel" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">spaday_perspective.</span></span><span class="sig-name descname"><span class="pre">PerspectivePanel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">children</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Component</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theme</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">themes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">autosize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">autopause</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">throttle</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">settings</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">props</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/spaday_perspective/components.html#PerspectivePanel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spaday_perspective.PerspectivePanel" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Component</span></code></p>
 <p>Perspective workspace whose data connection and layout are configured by a serializable prop.</p>
 </dd></dl>
@@ -301,9 +321,23 @@
 <p>Changing <code class="docutils literal notranslate"><span class="pre">ws_url</span></code> opens a new client connection. Changing the serialized <code class="docutils literal notranslate"><span class="pre">layout</span></code> restores the viewer’s panels.
 The wrapper queues asynchronous changes in assignment order.</p>
 </section>
+<section id="events">
+<h2>Events<a class="headerlink" href="#events" title="Link to this heading">¶</a></h2>
+<p>Perspective’s viewer events do not bubble, so the panel re-dispatches the observational set as
+bubbling DOM events usable from spaday’s <code class="docutils literal notranslate"><span class="pre">.on(...)</span></code>: <code class="docutils literal notranslate"><span class="pre">perspective-click</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-select</span></code>,
+<code class="docutils literal notranslate"><span class="pre">perspective-global-filter</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-global-filter-update</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-config-update</span></code>,
+<code class="docutils literal notranslate"><span class="pre">perspective-toggle-settings</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-statusbar-pointerdown</span></code>, and <code class="docutils literal notranslate"><span class="pre">perspective-table-delete</span></code>.
+<code class="docutils literal notranslate"><span class="pre">perspective-config-update</span></code> fires on user edits (layout drags, view changes, filters) — bind it to
+persist user-edited workspaces. The cancelable <code class="docutils literal notranslate"><span class="pre">*-before</span></code> events are not re-dispatched; attach to
+the viewer directly for those.</p>
+</section>
 <section id="methods">
 <h2>Methods<a class="headerlink" href="#methods" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">save()</span></code> waits for pending connection and restore work, then returns the workspace’s saved layout.</p>
+<p><code class="docutils literal notranslate"><span class="pre">save()</span></code> waits for pending connection and restore work, then returns the whole-element workspace
+config (<code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> under the hood — a <code class="docutils literal notranslate"><span class="pre">layout</span></code> tree plus per-panel viewer configs).</p>
+<p><code class="docutils literal notranslate"><span class="pre">viewer</span></code> returns the underlying <code class="docutils literal notranslate"><span class="pre">&lt;perspective-viewer&gt;</span></code> element — the escape hatch for its
+imperative and query API (<code class="docutils literal notranslate"><span class="pre">getTable</span></code>, <code class="docutils literal notranslate"><span class="pre">getSelection</span></code>, <code class="docutils literal notranslate"><span class="pre">download</span></code>, <code class="docutils literal notranslate"><span class="pre">copy</span></code>, <code class="docutils literal notranslate"><span class="pre">addPanel</span></code>/<code class="docutils literal notranslate"><span class="pre">removePanel</span></code>,
+<code class="docutils literal notranslate"><span class="pre">setActivePanel</span></code>, the agent methods, …), typically from a <code class="docutils literal notranslate"><span class="pre">NamedJs</span></code> handler.</p>
 </section>
 <section id="package">
 <h2><code class="docutils literal notranslate"><span class="pre">package</span></code><a class="headerlink" href="#package" title="Link to this heading">¶</a></h2>
@@ -374,6 +408,7 @@ collection contains <code class="docutils literal notranslate"><span class="pre"
 </ul>
 </li>
 <li><a class="reference internal" href="#configuration">Configuration</a></li>
+<li><a class="reference internal" href="#events">Events</a></li>
 <li><a class="reference internal" href="#methods">Methods</a></li>
 <li><a class="reference internal" href="#package"><code class="docutils literal notranslate"><span class="pre">package</span></code></a></li>
 </ul>
@@ -387,7 +422,7 @@ collection contains <code class="docutils literal notranslate"><span class="pre"
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=6c02275b"></script>
+</div><script src="../../_static/documentation_options.js?v=c87aa342"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>

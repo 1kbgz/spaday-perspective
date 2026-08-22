@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="API reference" href="reference.html"><link rel="prev" title="Build a live market workspace" href="tutorial.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>How to stream data and change layouts - spaday-perspective v0.4.0</title>
+        <title>How to stream data and change layouts - spaday-perspective v0.4.1</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -167,7 +167,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.0</code></div></a>
+      <a href="../../index.html"><div class="brand">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.1</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -188,7 +188,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
-  <span class="sidebar-brand-text">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.0</code></span>
+  <span class="sidebar-brand-text">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.1</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -301,6 +301,18 @@ not reconnect the table websocket.</p>
 </div>
 <p>The aliases map to <code class="docutils literal notranslate"><span class="pre">Pro</span> <span class="pre">Dark</span></code> and <code class="docutils literal notranslate"><span class="pre">Pro</span> <span class="pre">Light</span></code>. A full Perspective theme name is also accepted.</p>
 </section>
+<section id="persist-user-edited-layouts">
+<h2>Persist user-edited layouts<a class="headerlink" href="#persist-user-edited-layouts" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">perspective-config-update</span></code> re-dispatches from the panel whenever the user edits the workspace —
+drags a panel, changes a view, filters. Bind it to an endpoint to persist the edit:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday</span><span class="w"> </span><span class="kn">import</span> <span class="n">CallEndpoint</span><span class="p">,</span> <span class="n">event_value</span>
+
+<span class="n">panel</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="s2">"perspective-config-update"</span><span class="p">,</span> <span class="n">CallEndpoint</span><span class="p">(</span><span class="s2">"POST"</span><span class="p">,</span> <span class="s2">"/api/layout"</span><span class="p">,</span> <span class="n">event_value</span><span class="p">()))</span>
+</pre></div>
+</div>
+<p>Serve the stored config back through <code class="docutils literal notranslate"><span class="pre">config[&quot;layout&quot;]</span></code> on the next load. <code class="docutils literal notranslate"><span class="pre">panel.save()</span></code> (JS)
+returns the same whole-element shape on demand.</p>
+</section>
 </section>
 
         </article>
@@ -362,6 +374,7 @@ not reconnect the table websocket.</p>
 <li><a class="reference internal" href="#stream-rows-from-python">Stream rows from Python</a></li>
 <li><a class="reference internal" href="#switch-between-saved-layouts">Switch between saved layouts</a></li>
 <li><a class="reference internal" href="#map-a-page-theme">Map a page theme</a></li>
+<li><a class="reference internal" href="#persist-user-edited-layouts">Persist user-edited layouts</a></li>
 </ul>
 </li>
 </ul>
@@ -373,7 +386,7 @@ not reconnect the table websocket.</p>
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=6c02275b"></script>
+</div><script src="../../_static/documentation_options.js?v=c87aa342"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
