@@ -16,6 +16,20 @@ const THEMES: Record<string, string> = {
   light: "Pro Light",
   dark: "Pro Dark",
 };
+// Perspective's events do not bubble out of `<perspective-viewer>`; re-dispatch the
+// observational set from the panel (bubbling + composed) so spaday's declarative
+// `.on("perspective-config-update", ...)` works. The cancelable `-before` events are
+// deliberately not re-dispatched — a re-dispatched copy cannot cancel the original.
+const REDISPATCH = [
+  "perspective-click",
+  "perspective-select",
+  "perspective-global-filter",
+  "perspective-global-filter-update",
+  "perspective-config-update",
+  "perspective-toggle-settings",
+  "perspective-statusbar-pointerdown",
+  "perspective-table-delete",
+];
 let stylesInjected = false;
 
 function injectStyles(): void {
@@ -34,13 +48,20 @@ function wsUrl(url: string): string {
 
 // Perspective 5's `<perspective-viewer>` is the multi-panel workspace element
 // (the separate `<perspective-workspace>` is gone): `load(client)` binds every
-// server table, `restore` accepts the whole-element workspace config, and
-// `save` emits it. Theme is viewer config now, not an attribute; the element
-// auto-sizes, so no manual resize plumbing.
+// server table, `restoreWorkspace`/`saveWorkspace` carry the whole-element
+// config (the single-panel `restore`/`save` are the per-panel forms). Theme is
+// viewer config now, not an attribute; the element auto-sizes, so no manual
+// resize plumbing.
 type Viewer = HTMLElement & {
   load(client: unknown): Promise<void>;
   restore(config: unknown): Promise<void>;
-  save(): Promise<unknown>;
+  restoreWorkspace(config: unknown): Promise<void>;
+  saveWorkspace(): Promise<unknown>;
+  resetThemes(themes?: string[] | null): Promise<unknown>;
+  setAutoSize(autosize: boolean): void;
+  setAutoPause(autopause: boolean): Promise<unknown>;
+  setThrottle(val?: number | null): void;
+  toggleConfig(force?: boolean | null): Promise<unknown>;
 };
 
 class PerspectivePanel extends HTMLElement {
@@ -51,6 +72,11 @@ class PerspectivePanel extends HTMLElement {
   #theme = "Pro Light";
   #explicitTheme = false;
   #modeObserver: MutationObserver | null = null;
+  #themes: string[] | null = null;
+  #autosize: boolean | null = null;
+  #autopause: boolean | null = null;
+  #throttle: number | null = null;
+  #settings: boolean | null = null;
   #queue: Promise<unknown> = Promise.resolve();
 
   connectedCallback(): void {
@@ -59,9 +85,26 @@ class PerspectivePanel extends HTMLElement {
       this.style.display ||= "block";
       this.#viewer = document.createElement("perspective-viewer") as Viewer;
       this.appendChild(this.#viewer);
+      for (const name of REDISPATCH) {
+        this.#viewer.addEventListener(name, (event) =>
+          this.dispatchEvent(
+            new CustomEvent(name, {
+              detail: (event as CustomEvent).detail,
+              bubbles: true,
+              composed: true,
+            }),
+          ),
+        );
+      }
     }
     this.#followPageMode();
     this.#apply();
+  }
+
+  /** The underlying `<perspective-viewer>` — the escape hatch for its imperative/query
+   * API (`getTable`, `download`, `copy`, `getSelection`, agent methods, ...). */
+  get viewer(): HTMLElement | null {
+    return this.#viewer;
   }
 
   disconnectedCallback(): void {
@@ -118,16 +161,61 @@ class PerspectivePanel extends HTMLElement {
     return this.#config;
   }
 
-  // Theme rides viewer config in 5.x; queue it behind wasm init and any
-  // in-flight load/restore (a pre-load restore is swallowed by the queue's
-  // catch and re-applied at the end of the next #apply).
-  #applyTheme(): void {
+  // Element-level options, each a serializable prop queued behind wasm init.
+  set themes(names: string[] | null) {
+    this.#themes = names?.map((name) => THEMES[name] ?? name) ?? null;
+    this.#enqueue(() => this.#viewer?.resetThemes(this.#themes));
+  }
+  get themes(): string[] | null {
+    return this.#themes;
+  }
+
+  set autosize(autosize: boolean) {
+    this.#autosize = !!autosize;
+    this.#enqueue(() => this.#viewer?.setAutoSize(this.#autosize!));
+  }
+  get autosize(): boolean | null {
+    return this.#autosize;
+  }
+
+  set autopause(autopause: boolean) {
+    this.#autopause = !!autopause;
+    this.#enqueue(() => this.#viewer?.setAutoPause(this.#autopause!));
+  }
+  get autopause(): boolean | null {
+    return this.#autopause;
+  }
+
+  set throttle(val: number | null) {
+    this.#throttle = val;
+    this.#enqueue(() => this.#viewer?.setThrottle(this.#throttle));
+  }
+  get throttle(): number | null {
+    return this.#throttle;
+  }
+
+  set settings(open: boolean) {
+    this.#settings = !!open;
+    this.#enqueue(() => this.#viewer?.toggleConfig(this.#settings!));
+  }
+  get settings(): boolean | null {
+    return this.#settings;
+  }
+
+  #enqueue(step: () => unknown): void {
     this.#queue = this.#queue
       .catch(() => {})
       .then(async () => {
         await ready;
-        await this.#viewer?.restore({ theme: this.#theme });
+        await step();
       });
+  }
+
+  // Theme rides viewer config in 5.x; queue it behind wasm init and any
+  // in-flight load/restore (a pre-load restore is swallowed by the queue's
+  // catch and re-applied at the end of the next #apply).
+  #applyTheme(): void {
+    this.#enqueue(() => this.#viewer?.restore({ theme: this.#theme }));
   }
 
   #apply(): void {
@@ -146,16 +234,17 @@ class PerspectivePanel extends HTMLElement {
           const layout = JSON.stringify(config.layout);
           if (layout !== this.#lastLayout) {
             this.#lastLayout = layout;
-            await this.#viewer.restore(config.layout);
+            await this.#viewer.restoreWorkspace(config.layout);
           }
         }
         await this.#viewer.restore({ theme: this.#theme });
       });
   }
 
+  /** The whole-element workspace config (layout tree + per-panel viewer configs). */
   async save(): Promise<unknown> {
     await this.#queue.catch(() => {});
-    return this.#viewer?.save();
+    return this.#viewer?.saveWorkspace();
   }
 }
 
