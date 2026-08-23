@@ -10,15 +10,18 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    // off: @perspective-dev/viewer-datagrid's shipped types import viewer *source*
+    // (src/ts/extensions.js), dragging raw .ts with an unused param into this program;
+    // oxlint still flags unused in our own code. Restore when fixed upstream.
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "outDir": "./dist/esm",
     "resolveJsonModule": true,
-    "rootDir": ".",
+    "rootDir": "./src/ts",
     "skipLibCheck": true,
     "strict": true,
     "target": "ES2020",
     "useDefineForClassFields": true
   },
-  "include": ["./src/ts/*.ts", "./tests/*.ts"]
+  "include": ["./src/ts/*.ts"]
 }
