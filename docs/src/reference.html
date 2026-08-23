@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="Why Perspective uses its own data channel" href="explanation.html"><link rel="prev" title="How to stream data and change layouts" href="how-to.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>API reference - spaday-perspective v0.4.1</title>
+        <title>API reference - spaday-perspective v0.4.2</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -167,7 +167,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.1</code></div></a>
+      <a href="../../index.html"><div class="brand">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.2</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -188,7 +188,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
-  <span class="sidebar-brand-text">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.1</code></span>
+  <span class="sidebar-brand-text">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.4.2</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -308,10 +308,14 @@
 <td><p>Perspective websocket URL; relative URLs use the current host.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tables</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">list[str]</span></code></p></td>
-<td><p>Informational list of table names available on the server.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">list</span></code></p></td>
+<td><p>Table names (<code class="docutils literal notranslate"><span class="pre">str</span></code>), or <code class="docutils literal notranslate"><span class="pre">{name,</span> <span class="pre">architecture,</span> <span class="pre">index,</span> <span class="pre">limit}</span></code> mappings for per-table architecture.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">layout</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">default_architecture</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">server</span></code> (default) or <code class="docutils literal notranslate"><span class="pre">client-server</span></code>, applied to <code class="docutils literal notranslate"><span class="pre">tables</span></code> entries without their own <code class="docutils literal notranslate"><span class="pre">architecture</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">layout</span></code></p></td>
 <td><p>mapping</p></td>
 <td><p>Value accepted by <code class="docutils literal notranslate"><span class="pre">&lt;perspective-viewer&gt;.restore()</span></code> — the whole-element config (<code class="docutils literal notranslate"><span class="pre">layout</span></code> tree + <code class="docutils literal notranslate"><span class="pre">panels</span></code>).</p></td>
 </tr>
@@ -320,6 +324,15 @@
 </div>
 <p>Changing <code class="docutils literal notranslate"><span class="pre">ws_url</span></code> opens a new client connection. Changing the serialized <code class="docutils literal notranslate"><span class="pre">layout</span></code> restores the viewer’s panels.
 The wrapper queues asynchronous changes in assignment order.</p>
+</section>
+<section id="table-architectures">
+<h2>Table architectures<a class="headerlink" href="#table-architectures" title="Link to this heading">¶</a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">server</span></code> table (the default) reads over the websocket: every scroll, sort, and filter round-trips
+to the Python server. A <code class="docutils literal notranslate"><span class="pre">client-server</span></code> table mirrors into a local Web Worker engine: the wrapper
+opens the server table, seeds a local copy (with the entry’s <code class="docutils literal notranslate"><span class="pre">index</span></code> / <code class="docutils literal notranslate"><span class="pre">limit</span></code>) from an arrow
+snapshot, and feeds row deltas forward, loading the worker client before the websocket client so the
+local copy wins the viewer’s table-name lookup. Reads are then local; the server stays authoritative
+for writes. Set architectures in the initial <code class="docutils literal notranslate"><span class="pre">config</span></code> — changing the mirrored set later reconnects.</p>
 </section>
 <section id="events">
 <h2>Events<a class="headerlink" href="#events" title="Link to this heading">¶</a></h2>
@@ -408,6 +421,7 @@ collection contains <code class="docutils literal notranslate"><span class="pre"
 </ul>
 </li>
 <li><a class="reference internal" href="#configuration">Configuration</a></li>
+<li><a class="reference internal" href="#table-architectures">Table architectures</a></li>
 <li><a class="reference internal" href="#events">Events</a></li>
 <li><a class="reference internal" href="#methods">Methods</a></li>
 <li><a class="reference internal" href="#package"><code class="docutils literal notranslate"><span class="pre">package</span></code></a></li>
@@ -422,7 +436,7 @@ collection contains <code class="docutils literal notranslate"><span class="pre"
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=c87aa342"></script>
+</div><script src="../../_static/documentation_options.js?v=ff822928"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>

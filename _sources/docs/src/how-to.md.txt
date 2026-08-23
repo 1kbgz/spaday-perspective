@@ -79,3 +79,24 @@ panel.on("perspective-config-update", CallEndpoint("POST", "/api/layout", event_
 
 Serve the stored config back through `config["layout"]` on the next load. `panel.save()` (JS)
 returns the same whole-element shape on demand.
+
+## Mirror a table into a local worker
+
+For tables that are read-heavy in the browser, mirror them client-side with a per-table
+architecture — reads (scrolls, sorts, filters) stop round-tripping to Python:
+
+```python
+panel = PerspectivePanel(
+    config={
+        "ws_url": "/perspective",
+        "tables": [
+            {"name": "trades", "architecture": "client-server", "index": "symbol"},
+            "orders",  # plain entries stay on the server
+        ],
+        "layout": layout,
+    }
+)
+```
+
+`index` and `limit` apply to the local copy. `default_architecture` flips the default for every
+plain entry.
