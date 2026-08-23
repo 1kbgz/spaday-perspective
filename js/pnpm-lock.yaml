@@ -11,6 +11,9 @@ importers:
       '@perspective-dev/client':
         specifier: 5.2.0
         version: 5.2.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
+      '@perspective-dev/server':
+        specifier: 5.2.0
+        version: 5.2.0
       '@perspective-dev/viewer':
         specifier: 5.2.0
         version: 5.2.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)

@@ -36,6 +36,9 @@ def test_perspective_python_pin_matches_the_bundled_js_client():
     major, minor = js_version.split(".")[:2]
     expected = f'"perspective-python>={major}.{minor},<{major}.{int(minor) + 1}"'
     assert expected in (root / "pyproject.toml").read_text(encoding="utf-8")
+    # every bundled @perspective-dev package moves in lockstep with the client
+    deps = json.loads((root / "js" / "package.json").read_text(encoding="utf-8"))["dependencies"]
+    assert all(v == js_version for k, v in deps.items() if k.startswith("@perspective-dev/"))
 
 
 def test_panel_serializes_viewer_options_and_declares_events():
