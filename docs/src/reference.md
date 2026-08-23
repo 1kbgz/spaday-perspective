@@ -21,14 +21,24 @@ Tag: `<perspective-panel>`.
 
 ## Configuration
 
-| Key      | Type        | Description                                                                                               |
-| -------- | ----------- | --------------------------------------------------------------------------------------------------------- |
-| `ws_url` | `str`       | Perspective websocket URL; relative URLs use the current host.                                            |
-| `tables` | `list[str]` | Informational list of table names available on the server.                                                |
-| `layout` | mapping     | Value accepted by `<perspective-viewer>.restore()` — the whole-element config (`layout` tree + `panels`). |
+| Key                    | Type    | Description                                                                                               |
+| ---------------------- | ------- | --------------------------------------------------------------------------------------------------------- |
+| `ws_url`               | `str`   | Perspective websocket URL; relative URLs use the current host.                                            |
+| `tables`               | `list`  | Table names (`str`), or `{name, architecture, index, limit}` mappings for per-table architecture.         |
+| `default_architecture` | `str`   | `server` (default) or `client-server`, applied to `tables` entries without their own `architecture`.      |
+| `layout`               | mapping | Value accepted by `<perspective-viewer>.restore()` — the whole-element config (`layout` tree + `panels`). |
 
 Changing `ws_url` opens a new client connection. Changing the serialized `layout` restores the viewer's panels.
 The wrapper queues asynchronous changes in assignment order.
+
+## Table architectures
+
+A `server` table (the default) reads over the websocket: every scroll, sort, and filter round-trips
+to the Python server. A `client-server` table mirrors into a local Web Worker engine: the wrapper
+opens the server table, seeds a local copy (with the entry's `index` / `limit`) from an arrow
+snapshot, and feeds row deltas forward, loading the worker client before the websocket client so the
+local copy wins the viewer's table-name lookup. Reads are then local; the server stays authoritative
+for writes. Set architectures in the initial `config` — changing the mirrored set later reconnects.
 
 ## Events
 

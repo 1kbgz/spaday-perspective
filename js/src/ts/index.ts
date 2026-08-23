@@ -1,17 +1,35 @@
 import perspective from "@perspective-dev/client";
 import perspectiveViewer from "@perspective-dev/viewer";
 import CLIENT_WASM from "@perspective-dev/viewer/dist/wasm/perspective-viewer.wasm";
+import SERVER_WASM from "@perspective-dev/server/dist/wasm/perspective-server.wasm";
 import PRO from "@perspective-dev/viewer/dist/css/pro.css";
 import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
 import "@perspective-dev/viewer-datagrid";
 
+export type PerspectiveArchitecture = "server" | "client-server";
+
+export interface PerspectiveTableConfig {
+  name: string;
+  architecture?: PerspectiveArchitecture;
+  index?: string;
+  limit?: number;
+}
+
 export interface PerspectiveConfig {
   ws_url?: string;
-  tables?: string[];
+  tables?: (string | PerspectiveTableConfig)[];
+  default_architecture?: PerspectiveArchitecture;
   layout?: unknown;
 }
 
+type PspClient = Awaited<ReturnType<typeof perspective.websocket>>;
+type PspTable = Awaited<ReturnType<PspClient["open_table"]>>;
+type PspView = Awaited<ReturnType<PspTable["view"]>>;
+
 const ready = perspectiveViewer.init_client(CLIENT_WASM);
+// registration only — the engine binary is instantiated on the first `worker()` call
+// (a `client-server` table architecture), so `server`-only pages never pay for it
+perspective.init_server(SERVER_WASM);
 const THEMES: Record<string, string> = {
   light: "Pro Light",
   dark: "Pro Dark",
@@ -69,6 +87,10 @@ class PerspectivePanel extends HTMLElement {
   #config: PerspectiveConfig = {};
   #connectedUrl: string | null = null;
   #lastLayout: string | null = null;
+  #lastMirrored: string | null = null;
+  #local: PspClient | null = null;
+  #localLoaded = false;
+  #mirrors: { view: PspView; table: PspTable }[] = [];
   #theme = "Pro Light";
   #explicitTheme = false;
   #modeObserver: MutationObserver | null = null;
@@ -218,6 +240,30 @@ class PerspectivePanel extends HTMLElement {
     this.#enqueue(() => this.#viewer?.restore({ theme: this.#theme }));
   }
 
+  // `client-server` tables mirror into a local worker: open the server table, take a
+  // view, seed a local table from its arrow (with the configured index/limit), and feed
+  // row deltas forward. `viewer.load` ACCUMULATES clients and resolves panel table names
+  // across all of them in load order, so the worker is loaded before the websocket
+  // client — the local copies win the name lookup. `server` tables (the default) resolve
+  // from the websocket client as before.
+  #mirroredTables(config: PerspectiveConfig): PerspectiveTableConfig[] {
+    if (!config.ws_url) return [];
+    return (config.tables ?? [])
+      .map((t) => (typeof t === "string" ? { name: t } : t))
+      .filter(
+        (t) =>
+          (t.architecture ?? config.default_architecture ?? "server") ===
+          "client-server",
+      );
+  }
+
+  async #teardownMirrors(): Promise<void> {
+    for (const mirror of this.#mirrors.splice(0)) {
+      await mirror.view.delete().catch(() => {});
+      await mirror.table.delete({ lazy: true }).catch(() => {});
+    }
+  }
+
   #apply(): void {
     const config = this.#config;
     this.#queue = this.#queue
@@ -225,19 +271,56 @@ class PerspectivePanel extends HTMLElement {
       .then(async () => {
         await ready;
         if (!this.#viewer) return;
-        if (config.ws_url && config.ws_url !== this.#connectedUrl) {
-          this.#connectedUrl = config.ws_url;
-          const client = await perspective.websocket(wsUrl(config.ws_url));
-          await this.#viewer.load(client);
-        }
-        if (this.#connectedUrl && config.layout) {
-          const layout = JSON.stringify(config.layout);
-          if (layout !== this.#lastLayout) {
-            this.#lastLayout = layout;
-            await this.#viewer.restoreWorkspace(config.layout);
+        try {
+          const mirrored = this.#mirroredTables(config);
+          const mirroredKey = JSON.stringify(mirrored);
+          if (
+            config.ws_url &&
+            (config.ws_url !== this.#connectedUrl ||
+              mirroredKey !== this.#lastMirrored)
+          ) {
+            this.#connectedUrl = config.ws_url;
+            this.#lastMirrored = mirroredKey;
+            await this.#teardownMirrors();
+            const remote = await perspective.websocket(wsUrl(config.ws_url));
+            if (mirrored.length) {
+              this.#local ??= await perspective.worker();
+              for (const t of mirrored) {
+                const serverTable = await remote.open_table(t.name);
+                const view = await serverTable.view();
+                const table = await this.#local.table(await view.to_arrow(), {
+                  name: t.name,
+                  index: t.index,
+                  limit: t.limit,
+                });
+                await view.on_update(
+                  async (updated: { delta?: ArrayBuffer }) => {
+                    if (updated?.delta) await table.update(updated.delta);
+                  },
+                  { mode: "row" },
+                );
+                this.#mirrors.push({ view, table });
+              }
+              if (!this.#localLoaded) {
+                this.#localLoaded = true;
+                await this.#viewer.load(this.#local);
+              }
+            }
+            await this.#viewer.load(remote);
           }
+          if (this.#connectedUrl && config.layout) {
+            const layout = JSON.stringify(config.layout);
+            if (layout !== this.#lastLayout) {
+              this.#lastLayout = layout;
+              await this.#viewer.restoreWorkspace(config.layout);
+            }
+          }
+          await this.#viewer.restore({ theme: this.#theme });
+        } catch (error) {
+          // surface (don't swallow) apply failures; the queue itself stays alive
+          console.error("perspective-panel: config apply failed", error);
+          throw error;
         }
-        await this.#viewer.restore({ theme: this.#theme });
       });
   }
 
