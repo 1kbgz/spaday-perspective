@@ -91,6 +91,7 @@ class PerspectivePanel extends HTMLElement {
   #local: PspClient | null = null;
   #localLoaded = false;
   #mirrors: { view: PspView; table: PspTable }[] = [];
+  #loaded = false;
   #theme = "Pro Light";
   #explicitTheme = false;
   #modeObserver: MutationObserver | null = null;
@@ -106,6 +107,8 @@ class PerspectivePanel extends HTMLElement {
     if (!this.#viewer) {
       this.style.display ||= "block";
       this.#viewer = document.createElement("perspective-viewer") as Viewer;
+      // the viewer has no intrinsic height; fill the panel, which the embedder sizes
+      this.#viewer.style.height = "100%";
       this.appendChild(this.#viewer);
       for (const name of REDISPATCH) {
         this.#viewer.addEventListener(name, (event) =>
@@ -218,7 +221,18 @@ class PerspectivePanel extends HTMLElement {
 
   set settings(open: boolean) {
     this.#settings = !!open;
-    this.#enqueue(() => this.#viewer?.toggleConfig(this.#settings!));
+    this.#enqueue(() => {
+      // skip no-op forced toggles: in Perspective 5.2 they still flip the
+      // persisted settings flag + host attribute (see the restoreWorkspace
+      // heal in #apply), desyncing the flag from the sidebar
+      if (
+        !this.#viewer ||
+        this.#viewer.hasAttribute("settings") === this.#settings
+      ) {
+        return;
+      }
+      return this.#viewer.toggleConfig(this.#settings!);
+    });
   }
   get settings(): boolean | null {
     return this.#settings;
@@ -234,9 +248,12 @@ class PerspectivePanel extends HTMLElement {
   }
 
   // Theme rides viewer config in 5.x; queue it behind wasm init and any
-  // in-flight load/restore (a pre-load restore is swallowed by the queue's
-  // catch and re-applied at the end of the next #apply).
+  // in-flight load/restore. Before the first `load` there is nothing to theme —
+  // and restore on an empty element creates a deferred table-less panel whose
+  // config-update dispatch errors ("Panel has no `table`") — so pre-load themes
+  // just park in #theme, which #apply restores after loading.
   #applyTheme(): void {
+    if (!this.#loaded) return;
     this.#enqueue(() => this.#viewer?.restore({ theme: this.#theme }));
   }
 
@@ -307,15 +324,30 @@ class PerspectivePanel extends HTMLElement {
               }
             }
             await this.#viewer.load(remote);
+            this.#loaded = true;
           }
           if (this.#connectedUrl && config.layout) {
             const layout = JSON.stringify(config.layout);
             if (layout !== this.#lastLayout) {
               this.#lastLayout = layout;
               await this.#viewer.restoreWorkspace(config.layout);
+              // Perspective 5.2: restoring a layout with no `active` (sidebar closed)
+              // onto an already-closed element force-toggles settings as a no-op but
+              // still flips the persisted flag + host `settings` attribute — the
+              // datagrid then shows per-column Edit buttons and eats the next settings
+              // click. A bare toggleConfig() flips the stale flag back without opening.
+              if (
+                this.#settings !== true &&
+                !(config.layout as { active?: unknown }).active &&
+                this.#viewer.hasAttribute("settings")
+              ) {
+                await this.#viewer.toggleConfig();
+              }
             }
           }
-          await this.#viewer.restore({ theme: this.#theme });
+          if (this.#loaded) {
+            await this.#viewer.restore({ theme: this.#theme });
+          }
         } catch (error) {
           // surface (don't swallow) apply failures; the queue itself stays alive
           console.error("perspective-panel: config apply failed", error);
