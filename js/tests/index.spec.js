@@ -161,3 +161,70 @@ test("mirrors client-server tables into a local worker with the configured index
   // the plain-server panel still sees every trade on the websocket table
   expect(r.direct).toBeGreaterThanOrEqual(80);
 });
+
+test("the inner viewer fills the panel", async ({ page }) => {
+  await page.goto("http://127.0.0.1:8015");
+  const panel = page.locator("perspective-panel");
+  await expect(panel).toBeVisible();
+  // perspective-viewer has no intrinsic height; without the panel sizing it, the
+  // workspace builds but renders as a 0-height blank
+  const sizes = await page.evaluate(() => {
+    const panel = document.querySelector("perspective-panel");
+    const viewer = panel.querySelector("perspective-viewer");
+    return { panel: panel.clientHeight, viewer: viewer.offsetHeight };
+  });
+  expect(sizes.panel).toBeGreaterThan(0);
+  expect(sizes.viewer).toBe(sizes.panel);
+});
+
+test("a pre-load theme does not error the config-update dispatch", async ({
+  page,
+}) => {
+  // spaday applies the theme prop before config, so the panel used to call
+  // viewer.restore({theme}) on the empty element — creating a deferred panel with
+  // no `table`, whose perspective-config-update dispatch logs
+  // "[config-update dispatch] Panel has no `table`"
+  const errors = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error") errors.push(msg.text());
+  });
+  await page.goto("http://127.0.0.1:8015");
+  await expect(page.locator("perspective-panel")).toBeVisible();
+  // wait until the workspace is actually bound (past the load/restore window)
+  await page.waitForFunction(async () => {
+    try {
+      const table = await document
+        .querySelector("perspective-panel")
+        .viewer.getTable({ wait: false });
+      return (await table.size()) >= 0;
+    } catch {
+      return false;
+    }
+  });
+  await page.waitForTimeout(1000);
+  expect(errors.filter((e) => e.includes("Panel has no"))).toEqual([]);
+});
+
+test("a closed-sidebar layout restore leaves the settings attribute unset", async ({
+  page,
+}) => {
+  // Perspective 5.2's forced no-op settings toggle (restoreWorkspace with no
+  // `active`) flips the persisted flag + host `settings` attribute, making the
+  // datagrid render per-column Edit buttons and eat the first settings click
+  await page.goto("http://127.0.0.1:8015");
+  const panel = page.locator("perspective-panel");
+  await expect(panel).toBeVisible();
+  await page.waitForFunction(async () => {
+    try {
+      const table = await document
+        .querySelector("perspective-panel")
+        .viewer.getTable({ wait: false });
+      return (await table.size()) >= 0;
+    } catch {
+      return false;
+    }
+  });
+  await expect(panel.locator("perspective-viewer")).not.toHaveAttribute(
+    "settings",
+  );
+});
