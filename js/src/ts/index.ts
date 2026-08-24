@@ -72,7 +72,7 @@ function wsUrl(url: string): string {
 // resize plumbing.
 type Viewer = HTMLElement & {
   load(client: unknown): Promise<void>;
-  restore(config: unknown): Promise<void>;
+  restore(config: unknown, options?: { panel?: string }): Promise<void>;
   restoreWorkspace(config: unknown): Promise<void>;
   saveWorkspace(): Promise<unknown>;
   resetThemes(themes?: string[] | null): Promise<unknown>;
@@ -254,7 +254,35 @@ class PerspectivePanel extends HTMLElement {
   // just park in #theme, which #apply restores after loading.
   #applyTheme(): void {
     if (!this.#loaded) return;
-    this.#enqueue(() => this.#viewer?.restore({ theme: this.#theme }));
+    this.#enqueue(() => this.#restoreTheme());
+  }
+
+  // Perspective 5 stamps a concrete theme per panel at creation and a bare
+  // restore({theme}) restyles only the ACTIVE panel, so background panels keep
+  // rendering their old theme. Restore the element chrome + active panel first,
+  // then stamp every panel by id.
+  async #restoreTheme(): Promise<void> {
+    if (!this.#viewer) return;
+    await this.#viewer.restore({ theme: this.#theme });
+    const ws = (await this.#viewer.saveWorkspace()) as {
+      panels?: Record<string, unknown>;
+    };
+    for (const id of Object.keys(ws.panels ?? {})) {
+      await this.#viewer.restore({ theme: this.#theme }, { panel: id });
+    }
+  }
+
+  // A workspace restore creates each panel with its config's theme (or the light
+  // registry default) — stamp the current theme into panels that carry none, the
+  // same fill-in the legacy csp-gateway UI applies before restoring.
+  #themedLayout(layout: unknown): unknown {
+    const cloned = JSON.parse(JSON.stringify(layout)) as {
+      panels?: Record<string, { theme?: string }>;
+    };
+    for (const panel of Object.values(cloned.panels ?? {})) {
+      panel.theme ||= this.#theme;
+    }
+    return cloned;
   }
 
   // `client-server` tables mirror into a local worker: open the server table, take a
@@ -330,7 +358,9 @@ class PerspectivePanel extends HTMLElement {
             const layout = JSON.stringify(config.layout);
             if (layout !== this.#lastLayout) {
               this.#lastLayout = layout;
-              await this.#viewer.restoreWorkspace(config.layout);
+              await this.#viewer.restoreWorkspace(
+                this.#themedLayout(config.layout),
+              );
               // Perspective 5.2: restoring a layout with no `active` (sidebar closed)
               // onto an already-closed element force-toggles settings as a no-op but
               // still flips the persisted flag + host `settings` attribute — the
