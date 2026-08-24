@@ -228,3 +228,53 @@ test("a closed-sidebar layout restore leaves the settings attribute unset", asyn
     "settings",
   );
 });
+
+test("theme applies to every panel, not just the active one", async ({
+  page,
+}) => {
+  // Perspective 5 records a concrete theme per panel at creation and a bare
+  // restore({theme}) restyles only the ACTIVE panel — unthemed background panels
+  // would render the registry default (light) forever. save() is no witness (it
+  // falls back to the element-level selected theme), so assert the RENDERED
+  // background of every panel's datagrid.
+  await page.goto("/dist/index.html");
+  await page.evaluate(() => {
+    const layout = {
+      layout: { type: "tab-layout", tabs: ["a", "b"] },
+      panels: {
+        a: { table: "trades", plugin: "Datagrid" },
+        b: { table: "trades", plugin: "Datagrid" },
+      },
+    };
+    const panel = document.createElement("perspective-panel");
+    panel.style.cssText = "display:block;width:600px;height:300px";
+    panel.theme = "dark";
+    panel.config = {
+      ws_url: "ws://127.0.0.1:8015/perspective",
+      tables: ["trades"],
+      layout,
+    };
+    document.body.appendChild(panel);
+  });
+  const grids = page.locator("perspective-viewer-datagrid");
+  await expect(grids).toHaveCount(2, { timeout: 30000 });
+  const backgrounds = async () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll("perspective-viewer-datagrid")].map(
+        (g) => getComputedStyle(g).backgroundColor,
+      ),
+    );
+  await expect(async () => {
+    const dark = await backgrounds();
+    expect(dark[0]).toBe(dark[1]);
+    expect(dark[0]).not.toBe("rgb(255, 255, 255)");
+  }).toPass({ timeout: 15000 });
+  await page.evaluate(() => {
+    document.querySelector("perspective-panel").theme = "light";
+  });
+  await expect(async () => {
+    const light = await backgrounds();
+    expect(light[0]).toBe(light[1]);
+    expect(light[0]).toBe("rgb(255, 255, 255)");
+  }).toPass({ timeout: 15000 });
+});
