@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254" shape-rendering="geometricPrecision" role="img" aria-label="spaday-perspective">
+  <title>spaday-perspective</title>
+  <defs>
+    <clipPath id="viewport-clip">
+      <rect x="124" y="243" width="1006" height="854" rx="62"/>
+    </clipPath>
+  </defs>
+
+  <rect x="88" y="96" width="1078" height="1036" rx="108" fill="#0C4253"/>
+  <rect x="124" y="243" width="1006" height="854" rx="62" fill="#F2F3EF"/>
+  <circle cx="208" cy="175" r="25" fill="#FC6B47"/>
+  <circle cx="295" cy="175" r="25" fill="#AECEC3"/>
+  <circle cx="383" cy="175" r="25" fill="#F2F3EF"/>
+
+  <g clip-path="url(#viewport-clip)">
+    <g fill="none" stroke="#0C4253" stroke-width="9" stroke-linecap="round">
+      <path d="M170 450 L1075 360"/>
+      <path d="M170 1050 L1075 360"/>
+    </g>
+
+    <path fill-rule="evenodd" fill="#FC6B47" d="M870.0 516.3 L886.3 516.3 L886.3 465.9 L937.0 465.9 L957.0 446.0 L957.0 400.3 L937.0 380.4 L870.0 380.4 Z M886.3 449.6 L886.3 396.7 L930.3 396.7 L940.7 407.0 L940.7 439.3 L930.3 449.6 Z"/>
+    <path fill-rule="evenodd" fill="#AECEC3" d="M625.0 703.1 L660.8 703.1 L660.8 592.5 L772.2 592.5 L815.9 548.8 L815.9 448.6 L772.2 404.8 L625.0 404.8 Z M660.8 556.7 L660.8 440.6 L757.4 440.6 L780.1 463.3 L780.1 534.1 L757.4 556.7 Z"/>
+    <path fill-rule="evenodd" fill="#0C4253" d="M170.0 1050.0 L242.0 1050.0 L242.0 827.6 L466.0 827.6 L554.0 739.6 L554.0 538.0 L466.0 450.0 L170.0 450.0 Z M242.0 755.6 L242.0 522.0 L436.4 522.0 L482.0 567.6 L482.0 710.0 L436.4 755.6 Z"/>
+
+    <circle cx="1075" cy="360" r="18" fill="#FC6B47"/>
+  </g>
+</svg>
