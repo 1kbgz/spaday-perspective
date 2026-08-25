@@ -32,7 +32,7 @@ classifiers = [
 dependencies = [
     # the bundled JS client (js/package.json @perspective-dev/*) and the Python server speak a
     # version-locked wire protocol, stable within a minor — track the client's minor, upgrade together
-    "perspective-python>=5.2,<5.3",
+    "perspective-python>=5.3,<5.4",
     "spaday>=0.6.0,<1.0",
 ]
 
