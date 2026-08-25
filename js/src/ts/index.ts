@@ -5,6 +5,7 @@ import SERVER_WASM from "@perspective-dev/server/dist/wasm/perspective-server.wa
 import PRO from "@perspective-dev/viewer/dist/css/pro.css";
 import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
 import "@perspective-dev/viewer-datagrid";
+import "@perspective-dev/viewer-charts";
 
 export type PerspectiveArchitecture = "server" | "client-server";
 
