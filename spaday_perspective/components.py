@@ -59,6 +59,8 @@ class PerspectivePanel(Component):
             "perspective-toggle-settings",
             "perspective-statusbar-pointerdown",
             "perspective-table-delete",
+            "perspective-ready",
+            "perspective-error",
         ),
         slots=(),
     )

@@ -11,74 +11,124 @@
           "tagName": "perspective-panel",
           "summary": "Perspective workspace whose data connection and layout are configured by a serializable prop.",
           "attributes": [
-            { "name": "config", "type": { "text": "unknown" } },
-            { "name": "theme", "type": { "text": "string" } },
+            {
+              "name": "config",
+              "type": {
+                "text": "unknown"
+              }
+            },
+            {
+              "name": "theme",
+              "type": {
+                "text": "string"
+              }
+            },
             {
               "name": "themes",
-              "type": { "text": "unknown" },
+              "type": {
+                "text": "unknown"
+              },
               "description": "Theme names offered by the status-bar picker; light/dark map to Pro Light/Pro Dark."
             },
             {
               "name": "autosize",
-              "type": { "text": "boolean" },
+              "type": {
+                "text": "boolean"
+              },
               "description": "Auto-size mode (on by default); disable to drive resizes imperatively."
             },
             {
               "name": "autopause",
-              "type": { "text": "boolean" },
+              "type": {
+                "text": "boolean"
+              },
               "description": "Auto-pause rendering while the element is not visible (on by default)."
             },
             {
               "name": "throttle",
-              "type": { "text": "number" },
+              "type": {
+                "text": "number"
+              },
               "description": "Render throttle in milliseconds; unset restores adaptive throttling."
             },
             {
               "name": "settings",
-              "type": { "text": "boolean" },
+              "type": {
+                "text": "boolean"
+              },
               "description": "Whether the settings sidebar is open."
             }
           ],
           "events": [
             {
               "name": "perspective-click",
-              "type": { "text": "CustomEvent" },
+              "type": {
+                "text": "CustomEvent"
+              },
               "description": "A datapoint was clicked; detail carries the row context."
             },
             {
               "name": "perspective-select",
-              "type": { "text": "CustomEvent" },
+              "type": {
+                "text": "CustomEvent"
+              },
               "description": "The selection changed."
             },
             {
               "name": "perspective-global-filter",
-              "type": { "text": "CustomEvent" },
+              "type": {
+                "text": "CustomEvent"
+              },
               "description": "A cross-panel global filter was applied from a selection."
             },
             {
               "name": "perspective-global-filter-update",
-              "type": { "text": "CustomEvent" },
+              "type": {
+                "text": "CustomEvent"
+              },
               "description": "The global filter set changed; detail carries the filters."
             },
             {
               "name": "perspective-config-update",
-              "type": { "text": "CustomEvent" },
+              "type": {
+                "text": "CustomEvent"
+              },
               "description": "The viewer configuration changed (layout drag, view edit, filter); use to persist user-edited workspaces."
             },
             {
               "name": "perspective-toggle-settings",
-              "type": { "text": "CustomEvent" },
+              "type": {
+                "text": "CustomEvent"
+              },
               "description": "The settings sidebar opened or closed."
             },
             {
               "name": "perspective-statusbar-pointerdown",
-              "type": { "text": "CustomEvent" },
+              "type": {
+                "text": "CustomEvent"
+              },
               "description": "The status bar was clicked."
             },
             {
               "name": "perspective-table-delete",
-              "type": { "text": "CustomEvent" },
+              "type": {
+                "text": "CustomEvent"
+              },
               "description": "A bound table was deleted on the server."
+            },
+            {
+              "name": "perspective-ready",
+              "type": {
+                "text": "CustomEvent"
+              },
+              "description": "One-shot: the panel connected, loaded its tables, and applied and rendered its initial workspace config."
+            },
+            {
+              "name": "perspective-error",
+              "type": {
+                "text": "CustomEvent"
+              },
+              "description": "A config apply failed (connection, mirror, or restore); detail carries the error."
             }
           ],
           "slots": []

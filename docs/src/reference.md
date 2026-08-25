@@ -47,7 +47,11 @@ bubbling DOM events usable from spaday's `.on(...)`: `perspective-click`, `persp
 `perspective-global-filter`, `perspective-global-filter-update`, `perspective-config-update`,
 `perspective-toggle-settings`, `perspective-statusbar-pointerdown`, and `perspective-table-delete`.
 `perspective-config-update` fires on user edits (layout drags, view changes, filters) — bind it to
-persist user-edited workspaces. The cancelable `*-before` events are not re-dispatched; attach to
+persist user-edited workspaces. Two panel-level lifecycle events complete the picture:
+`perspective-ready` fires once, after the panel has connected, loaded its tables, and applied and
+rendered its initial workspace config — the signal to dismiss a branded startup overlay — and
+`perspective-error` fires when a config apply fails (connection, mirror, or restore), with the error
+in `detail`, so a host can swap its loader for an error state. The cancelable `*-before` events are not re-dispatched; attach to
 the viewer directly for those.
 
 ## Methods

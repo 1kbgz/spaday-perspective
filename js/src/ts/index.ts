@@ -76,6 +76,7 @@ type Viewer = HTMLElement & {
   restore(config: unknown, options?: { panel?: string }): Promise<void>;
   restoreWorkspace(config: unknown): Promise<void>;
   saveWorkspace(): Promise<unknown>;
+  flush(): Promise<unknown>;
   resetThemes(themes?: string[] | null): Promise<unknown>;
   setAutoSize(autosize: boolean): void;
   setAutoPause(autopause: boolean): Promise<unknown>;
@@ -93,6 +94,7 @@ class PerspectivePanel extends HTMLElement {
   #localLoaded = false;
   #mirrors: { view: PspView; table: PspTable }[] = [];
   #loaded = false;
+  #readyFired = false;
   #theme = "Pro Light";
   #explicitTheme = false;
   #modeObserver: MutationObserver | null = null;
@@ -385,9 +387,36 @@ class PerspectivePanel extends HTMLElement {
           if (this.#loaded) {
             await this.#viewer.restore({ theme: this.#theme });
           }
+          // one-shot readiness: connected, tables loaded, and the initial workspace
+          // config (when the config carries one) applied and rendered — the stable
+          // signal a branded startup overlay can key off, unlike
+          // perspective-config-update, which describes config changes and never
+          // fires when initialization fails
+          if (
+            !this.#readyFired &&
+            this.#loaded &&
+            (!config.layout || this.#lastLayout !== null)
+          ) {
+            this.#readyFired = true;
+            await this.#viewer.flush();
+            this.dispatchEvent(
+              new CustomEvent("perspective-ready", {
+                bubbles: true,
+                composed: true,
+              }),
+            );
+          }
         } catch (error) {
-          // surface (don't swallow) apply failures; the queue itself stays alive
+          // surface (don't swallow) apply failures; the queue itself stays alive,
+          // and hosts can swap a loader for an error state
           console.error("perspective-panel: config apply failed", error);
+          this.dispatchEvent(
+            new CustomEvent("perspective-error", {
+              detail: error,
+              bubbles: true,
+              composed: true,
+            }),
+          );
           throw error;
         }
       });
