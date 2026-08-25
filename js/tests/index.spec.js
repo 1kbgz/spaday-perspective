@@ -374,3 +374,58 @@ test("restores chart plugins alongside the datagrid", async ({ page }) => {
   });
   expect(r.saved).toEqual(r.requested); // no Datagrid fallback: chart plugins registered
 });
+
+test("fires perspective-ready once and perspective-error on failure", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto("http://127.0.0.1:8015");
+  await expect(page.locator("perspective-panel")).toBeVisible();
+  const r = await page.evaluate(async () => {
+    const seen = { ready: 0, error: 0 };
+    const layout = (tabs) => ({
+      layout: { type: "tab-layout", tabs: Object.keys(tabs) },
+      panels: tabs,
+    });
+    const good = document.createElement("perspective-panel");
+    // count at document level (bubbling proof) but scope to the test panels — the
+    // page's own panel also fires perspective-ready with this bundle
+    document.addEventListener("perspective-ready", (event) => {
+      if (event.target === good) seen.ready++;
+    });
+    document.addEventListener("perspective-error", () => seen.error++);
+    good.style.cssText = "display:block;width:600px;height:300px";
+    good.config = {
+      ws_url: "/perspective",
+      tables: ["trades"],
+      layout: layout({
+        one: { table: "trades", plugin: "Datagrid", columns: ["symbol"] },
+      }),
+    };
+    const readyOnce = new Promise((resolve, reject) => {
+      good.addEventListener("perspective-ready", resolve, { once: true });
+      setTimeout(() => reject(new Error("no perspective-ready in 30s")), 30000);
+    });
+    document.body.appendChild(good);
+    await readyOnce;
+    // a later config change must not re-fire ready
+    good.config = {
+      ...good.config,
+      layout: layout({
+        two: { table: "trades", plugin: "Datagrid", columns: ["price"] },
+      }),
+    };
+    await good.save(); // drain the queue
+    const bad = document.createElement("perspective-panel");
+    bad.config = { ws_url: "/does-not-exist" };
+    const errored = new Promise((resolve, reject) => {
+      bad.addEventListener("perspective-error", resolve, { once: true });
+      setTimeout(() => reject(new Error("no perspective-error in 30s")), 30000);
+    });
+    document.body.appendChild(bad);
+    await errored;
+    return seen;
+  });
+  expect(r.ready).toBe(1); // one-shot, bubbled to document
+  expect(r.error).toBeGreaterThanOrEqual(1);
+});
