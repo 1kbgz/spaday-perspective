@@ -17,6 +17,9 @@ importers:
       '@perspective-dev/viewer':
         specifier: 5.2.0
         version: 5.2.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
+      '@perspective-dev/viewer-charts':
+        specifier: 5.2.0
+        version: 5.2.0
       '@perspective-dev/viewer-datagrid':
         specifier: 5.2.0
         version: 5.2.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
@@ -474,6 +477,9 @@ packages:
 
   '@perspective-dev/server@5.2.0':
     resolution: {integrity: sha512-WRBiokT2/BYM8Ipe7Dg1/2UYNb01Vsox79KBfFVI800VmwdId0GdqI95zufN5ZoFffeBfri1sr3S3AShBRFXKA==}
+
+  '@perspective-dev/viewer-charts@5.2.0':
+    resolution: {integrity: sha512-Gf0Vw4GmPU73d8r1jCxBQ/pAz1G2fbon3JIPU9BQI/Godz3l0MwrsMVicPgp/iLKHd6NU4l82KFRGDTBJVdbBQ==}
 
   '@perspective-dev/viewer-datagrid@5.2.0':
     resolution: {integrity: sha512-v/SR/35YfyKfivO21nglJFiyG1iE5G8vMwIwWI6fQuwjW764pmNrm/zcrNWNY70x5XHkPRM94aY6LjkLsLkO2g==}
@@ -1828,6 +1834,8 @@ snapshots:
       - utf-8-validate
 
   '@perspective-dev/server@5.2.0': {}
+
+  '@perspective-dev/viewer-charts@5.2.0': {}
 
   '@perspective-dev/viewer-datagrid@5.2.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)':
     dependencies:

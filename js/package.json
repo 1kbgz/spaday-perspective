@@ -44,6 +44,7 @@
     "@perspective-dev/client": "5.2.0",
     "@perspective-dev/server": "5.2.0",
     "@perspective-dev/viewer": "5.2.0",
+    "@perspective-dev/viewer-charts": "5.2.0",
     "@perspective-dev/viewer-datagrid": "5.2.0"
   },
   "devDependencies": {

@@ -323,3 +323,54 @@ test("stamps the theme onto every panel of a multi-panel workspace", async ({
   expect(r.length).toBe(2); // the queued layout replacement landed after the theme work
   for (const theme of r) expect(theme).toBe("Pro Dark");
 });
+
+test("restores chart plugins alongside the datagrid", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto("http://127.0.0.1:8015");
+  await expect(page.locator("perspective-panel")).toBeVisible();
+  const r = await page.evaluate(async () => {
+    const requested = ["Datagrid", "X Bar", "Treemap"];
+    const panel = document.createElement("perspective-panel");
+    panel.style.cssText = "display:block;width:900px;height:300px";
+    panel.config = {
+      ws_url: "/perspective",
+      tables: ["trades"],
+      layout: {
+        layout: { type: "tab-layout", tabs: ["grid", "bar", "tree"] },
+        panels: {
+          grid: {
+            table: "trades",
+            plugin: "Datagrid",
+            columns: ["symbol", "price"],
+          },
+          bar: {
+            table: "trades",
+            plugin: "X Bar",
+            group_by: ["symbol"],
+            columns: ["price"],
+          },
+          tree: {
+            table: "trades",
+            plugin: "Treemap",
+            group_by: ["symbol"],
+            columns: ["quantity", "price"],
+          },
+        },
+      },
+    };
+    document.body.appendChild(panel);
+    const plugins = async () => {
+      const token = await panel.save();
+      return Object.values(token.panels ?? {})
+        .map((p) => p.plugin)
+        .sort();
+    };
+    let saved = await plugins();
+    for (let i = 0; i < 60 && saved.length !== 3; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      saved = await plugins();
+    }
+    return { saved, requested: requested.sort() };
+  });
+  expect(r.saved).toEqual(r.requested); // no Datagrid fallback: chart plugins registered
+});
