@@ -429,3 +429,46 @@ test("fires perspective-ready once and perspective-error on failure", async ({
   expect(r.ready).toBe(1); // one-shot, bubbled to document
   expect(r.error).toBeGreaterThanOrEqual(1);
 });
+
+test("survives another bundle registering shared engines first", async ({
+  page,
+}) => {
+  await page.goto("http://127.0.0.1:8015");
+  const r = await page.evaluate(async () => {
+    // simulate spaday-regular-layout / spaday-regular-table having won the registration
+    // race for the engines this bundle also registers
+    const rig = document.createElement("iframe");
+    document.body.appendChild(rig);
+    const win = rig.contentWindow;
+    const errors = [];
+    win.addEventListener("error", (e) => errors.push(String(e.message)));
+    for (const tag of [
+      "regular-layout",
+      "regular-layout-frame",
+      "regular-layout-tab",
+      "regular-table",
+    ]) {
+      win.customElements.define(tag, class extends win.HTMLElement {});
+    }
+    let imported = true;
+    try {
+      await win.eval(
+        `import("${location.origin}/components/perspective/cdn/index.js")`,
+      );
+    } catch (error) {
+      imported = false;
+      errors.push(String(error));
+    }
+    return {
+      imported,
+      panelDefined: !!win.customElements.get("perspective-panel"),
+      defineRestored: String(win.customElements.define).includes("native code"),
+      errors,
+    };
+  });
+  expect(r.errors).toEqual([]);
+  expect(r.imported).toBe(true); // the bundle no longer dies on duplicate defines
+  expect(r.panelDefined).toBe(true);
+  expect(r.defineRestored).toBe(true); // the guard did not leak past the imports
+  expect(r.errors).toEqual([]);
+});

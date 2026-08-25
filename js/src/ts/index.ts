@@ -1,3 +1,5 @@
+// the guard must execute before the upstream imports register their elements
+import { restoreDefine } from "./define-guard";
 import perspective from "@perspective-dev/client";
 import perspectiveViewer from "@perspective-dev/viewer";
 import CLIENT_WASM from "@perspective-dev/viewer/dist/wasm/perspective-viewer.wasm";
@@ -6,6 +8,8 @@ import PRO from "@perspective-dev/viewer/dist/css/pro.css";
 import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
 import "@perspective-dev/viewer-datagrid";
 import "@perspective-dev/viewer-charts";
+
+restoreDefine();
 
 export type PerspectiveArchitecture = "server" | "client-server";
 
