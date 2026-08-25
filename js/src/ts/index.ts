@@ -260,16 +260,22 @@ class PerspectivePanel extends HTMLElement {
   // Perspective 5 stamps a concrete theme per panel at creation and a bare
   // restore({theme}) restyles only the ACTIVE panel, so background panels keep
   // rendering their old theme. Restore the element chrome + active panel first,
-  // then stamp every panel by id.
+  // then stamp every panel by id — concurrently: each restore restyles that
+  // panel's plugin, so serial stamping lags with tab count (~300ms at 8 panels
+  // vs ~150ms concurrent). The restores touch disjoint panels and run inside
+  // the queue, so no layout replacement can interleave with them.
   async #restoreTheme(): Promise<void> {
     if (!this.#viewer) return;
-    await this.#viewer.restore({ theme: this.#theme });
-    const ws = (await this.#viewer.saveWorkspace()) as {
+    const viewer = this.#viewer;
+    await viewer.restore({ theme: this.#theme });
+    const ws = (await viewer.saveWorkspace()) as {
       panels?: Record<string, unknown>;
     };
-    for (const id of Object.keys(ws.panels ?? {})) {
-      await this.#viewer.restore({ theme: this.#theme }, { panel: id });
-    }
+    await Promise.all(
+      Object.keys(ws.panels ?? {}).map((id) =>
+        viewer.restore({ theme: this.#theme }, { panel: id }),
+      ),
+    );
   }
 
   // A workspace restore creates each panel with its config's theme (or the light

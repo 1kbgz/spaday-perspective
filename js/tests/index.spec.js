@@ -278,3 +278,48 @@ test("theme applies to every panel, not just the active one", async ({
     expect(light[0]).toBe("rgb(255, 255, 255)");
   }).toPass({ timeout: 15000 });
 });
+
+test("stamps the theme onto every panel of a multi-panel workspace", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto("http://127.0.0.1:8015");
+  await expect(page.locator("perspective-panel")).toBeVisible();
+  const r = await page.evaluate(async () => {
+    const panels = Object.fromEntries(
+      ["a", "b", "c"].map((name) => [
+        name,
+        { table: "trades", plugin: "Datagrid", columns: ["symbol", "price"] },
+      ]),
+    );
+    const panel = document.createElement("perspective-panel");
+    panel.style.cssText = "display:block;width:900px;height:300px";
+    panel.config = {
+      ws_url: "/perspective",
+      tables: ["trades"],
+      layout: { layout: { type: "tab-layout", tabs: ["a", "b", "c"] }, panels },
+    };
+    document.body.appendChild(panel);
+    const themes = async () => {
+      const token = await panel.save(); // drains the queue first
+      return Object.values(token.panels ?? {}).map((p) => p.theme);
+    };
+    // wait for the initial workspace (3 panels) to settle
+    for (let i = 0; i < 60 && (await themes()).length !== 3; i++)
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    panel.theme = "dark"; // concurrent per-panel restores, live tables still streaming
+    // immediately queue a layout replacement behind the theme work
+    panel.config = {
+      ...panel.config,
+      layout: { layout: { type: "tab-layout", tabs: ["a", "b"] }, panels },
+    };
+    let saved = await themes();
+    for (let i = 0; i < 60 && saved.length !== 2; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      saved = await themes();
+    }
+    return saved;
+  });
+  expect(r.length).toBe(2); // the queued layout replacement landed after the theme work
+  for (const theme of r) expect(theme).toBe("Pro Dark");
+});
