@@ -472,3 +472,39 @@ test("survives another bundle registering shared engines first", async ({
   expect(r.defineRestored).toBe(true); // the guard did not leak past the imports
   expect(r.errors).toEqual([]);
 });
+
+test("saveClean strips per-session transient state from the workspace config", async ({
+  page,
+}) => {
+  await page.goto("http://127.0.0.1:8015");
+  await expect(page.locator("perspective-panel")).toBeVisible();
+  await page.waitForFunction(async () => {
+    const panel = document.querySelector("perspective-panel");
+    return panel && (await panel.save());
+  });
+  const r = await page.evaluate(async () => {
+    const panel = document.querySelector("perspective-panel");
+    const full = await panel.save();
+    // make sure there is transient state to strip, whatever the live config holds
+    const anyPanel = Object.values(full.panels ?? {})[0];
+    if (anyPanel) anyPanel.theme = "Pro Dark";
+    const clean = await panel.saveClean();
+    const cleanedPanels = Object.values(clean.panels ?? {});
+    return {
+      sameShape: typeof clean === "object" && "panels" in clean,
+      themes: cleanedPanels.map((p) => "theme" in p),
+      overrides: cleanedPanels.flatMap((p) =>
+        Object.values(p.plugin_config?.columns ?? {}).map(
+          (c) => "column_size_override" in c,
+        ),
+      ),
+      originalUntouched:
+        Object.values((await panel.save()).panels ?? {}).length ===
+        cleanedPanels.length,
+    };
+  });
+  expect(r.sameShape).toBe(true);
+  expect(r.themes.every((present) => present === false)).toBe(true);
+  expect(r.overrides.every((present) => present === false)).toBe(true);
+  expect(r.originalUntouched).toBe(true);
+});

@@ -131,7 +131,18 @@
               "description": "A config apply failed (connection, mirror, or restore); detail carries the error."
             }
           ],
-          "slots": []
+          "slots": [],
+          "methods": [
+            {
+              "name": "saveClean",
+              "description": "save() minus per-session transient state (panel themes, column size overrides) \u2014 the portable shape to persist or export; made for spaday's Invoke action.",
+              "return": {
+                "type": {
+                  "text": "Promise<unknown>"
+                }
+              }
+            }
+          ]
         }
       ]
     }
