@@ -431,6 +431,32 @@ class PerspectivePanel extends HTMLElement {
     await this.#queue.catch(() => {});
     return this.#viewer?.saveWorkspace();
   }
+
+  /** `save()` minus per-session transient state — panel themes and column size overrides — so the
+   * result is portable across sessions and themes: the shape to persist or export. Made for
+   * spaday's `Invoke` action: `Invoke(by_id("workspace"), "saveClean", result="custom_layout")`. */
+  async saveClean(): Promise<unknown> {
+    const layout = (await this.save()) as {
+      panels?: Record<
+        string,
+        {
+          theme?: unknown;
+          plugin_config?: {
+            columns?: Record<string, { column_size_override?: unknown }>;
+          };
+        }
+      >;
+    } | null;
+    if (!layout) return layout;
+    const cleaned = structuredClone(layout);
+    for (const panel of Object.values(cleaned.panels ?? {})) {
+      delete panel.theme;
+      for (const column of Object.values(panel.plugin_config?.columns ?? {})) {
+        delete column.column_size_override;
+      }
+    }
+    return cleaned;
+  }
 }
 
 if (!customElements.get("perspective-panel")) {
