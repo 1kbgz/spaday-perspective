@@ -13,4 +13,18 @@ package = ComponentPackage(
     components=(PerspectivePanel,),
 )
 
-__all__ = ["PerspectivePanel", "package"]
+#: ``css()`` kwarg → (CSS custom property, what it controls), in the shape of
+#: :data:`spaday.theme.SHELL_TOKENS`.
+#:
+#: Deliberately empty. Perspective owns its own theming: the viewer ships named CSS themes
+#: (``"Pro Light"`` / ``"Pro Dark"``, plus any an application registers) and the panel selects one
+#: through its ``theme`` property, which is what spaday's page-mode binding drives::
+#:
+#:     PerspectivePanel(...).compute("theme", cond(field("dark"), "dark", "light"))
+#:
+#: Wrapping those in ``--spa-perspective-*`` tokens would only be able to express a fraction of
+#: what a Perspective theme controls, so this package does not pretend otherwise. An application
+#: with its own branding registers a Perspective theme and names it here.
+TOKENS: dict[str, tuple[str, str]] = {}
+
+__all__ = ["TOKENS", "PerspectivePanel", "package"]
