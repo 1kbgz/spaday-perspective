@@ -1,7 +1,7 @@
 <a href="https://github.com/1kbgz/spaday-perspective">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/1kbgz/spaday-perspective/raw/main/docs/img/logo-dark.png?raw=true">
-    <img alt="spaday-perspective logo, receding Perspective P letterforms inside a browser window" src="https://github.com/1kbgz/spaday-perspective/raw/main/docs/img/logo-light.png?raw=true" width="800">
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/1kbgz/spaday-perspective/raw/main/docs/img/logo-dark.webp?raw=true">
+    <img alt="spaday-perspective logo, receding Perspective P letterforms inside a browser window" src="https://github.com/1kbgz/spaday-perspective/raw/main/docs/img/logo-light.webp?raw=true" width="800">
   </picture>
 </a>
 
