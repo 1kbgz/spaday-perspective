@@ -64,7 +64,13 @@ from spaday import cond, field
 panel.compute("theme", cond(field("dark"), "dark", "light"))
 ```
 
-The aliases map to `Pro Dark` and `Pro Light`. A full Perspective theme name is also accepted.
+The aliases map to `Pro Dark` and `Pro Light` (`spaday_perspective.THEMES`). A full Perspective
+theme name is also accepted, so to use themes of your own, put their CSS on the page and compute
+their names instead:
+
+```python
+panel.compute("theme", cond(field("dark"), "Acme Dark", "Acme Light"))
+```
 
 ## Persist user-edited layouts
 

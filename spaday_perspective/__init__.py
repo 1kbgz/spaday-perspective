@@ -16,15 +16,19 @@ package = ComponentPackage(
 #: ``css()`` kwarg → (CSS custom property, what it controls), in the shape of
 #: :data:`spaday.theme.SHELL_TOKENS`.
 #:
-#: Deliberately empty. Perspective owns its own theming: the viewer ships named CSS themes
-#: (``"Pro Light"`` / ``"Pro Dark"``, plus any an application registers) and the panel selects one
-#: through its ``theme`` property, which is what spaday's page-mode binding drives::
-#:
-#:     PerspectivePanel(...).compute("theme", cond(field("dark"), "dark", "light"))
-#:
-#: Wrapping those in ``--spa-perspective-*`` tokens would only be able to express a fraction of
-#: what a Perspective theme controls, so this package does not pretend otherwise. An application
-#: with its own branding registers a Perspective theme and names it here.
+#: Deliberately empty. Perspective themes itself by name rather than by custom property, so what an
+#: application overrides is a theme name, not a token -- see :data:`THEMES`. Wrapping Perspective's
+#: themes in ``--spa-perspective-*`` tokens would only be able to express a fraction of what one
+#: controls, so this package does not pretend otherwise.
 TOKENS: dict[str, tuple[str, str]] = {}
 
-__all__ = ["TOKENS", "PerspectivePanel", "package"]
+#: Page mode → the Perspective theme ``<perspective-panel>`` applies for it: Perspective's answer to
+#: :data:`TOKENS`. A panel with no ``theme`` follows the nearest ``wa-dark`` / ``wa-light`` ancestor
+#: to one of these. ``theme`` and ``themes`` accept the keys as shorthands and pass any other name to
+#: Perspective unchanged, which is how an application selects a theme of its own once the page
+#: carries its CSS::
+#:
+#:     PerspectivePanel(...).compute("theme", cond(field("dark"), "Acme Dark", "Acme Light"))
+THEMES = {"light": "Pro Light", "dark": "Pro Dark"}
+
+__all__ = ["THEMES", "TOKENS", "PerspectivePanel", "package"]

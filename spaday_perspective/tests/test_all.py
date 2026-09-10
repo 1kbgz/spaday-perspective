@@ -1,11 +1,12 @@
 import ast
 import json
+import re
 from pathlib import Path
 
 from spaday import generate
 from spaday.bootstrap import bootstrap
 
-from spaday_perspective import PerspectivePanel, package
+from spaday_perspective import THEMES, PerspectivePanel, package
 
 
 def test_perspective_panel_serializes_config_and_theme():
@@ -19,6 +20,13 @@ def test_package_drives_bootstrap_asset_url():
     assert package.name == "perspective"
     assert [(schema.tag, schema.class_name) for schema in package.catalog] == [("perspective-panel", "PerspectivePanel")]
     assert 'src="/components/perspective/cdn/index.js"' in bootstrap(packages=[package])
+
+
+def test_themes_match_the_panel():
+    """THEMES is what a Python author discovers; the map in index.ts is what the panel applies."""
+    source = (Path(__file__).parent.parent.parent / "js" / "src" / "ts" / "index.ts").read_text(encoding="utf-8")
+    block = re.search(r"const THEMES: Record<string, string> = \{(.*?)\};", source, re.DOTALL).group(1)
+    assert dict(re.findall(r'(\w+): "([^"]+)"', block)) == THEMES
 
 
 def test_generated_component_is_current():
