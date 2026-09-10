@@ -66,11 +66,11 @@ imperative and query API (`getTable`, `getSelection`, `download`, `copy`, `addPa
 ## `THEMES` and `TOKENS`
 
 Perspective themes itself by name rather than by CSS custom property, so `spaday_perspective.TOKENS`
-is empty and `spaday_perspective.THEMES` carries the contract instead: `{"light": "Pro Light",
-"dark": "Pro Dark"}`, the Perspective theme a panel applies for each page mode. A panel with no
-`theme` follows the nearest `wa-dark` / `wa-light` ancestor to one of these. `theme` and `themes`
-accept the keys as shorthands and pass any other name to Perspective unchanged, so a theme an
-application registers is selected by its name.
+is empty and `spaday_perspective.THEMES` carries the contract instead:
+`{"light": "Pro Light", "dark": "Pro Dark"}`, the Perspective theme a panel applies for each page
+mode. A panel with no `theme` follows the nearest `wa-dark` / `wa-light` ancestor to one of these.
+`theme` and `themes` accept the keys as shorthands and pass any other name to Perspective unchanged,
+so a theme an application registers is selected by its name.
 
 ## `package`
 
