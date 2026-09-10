@@ -106,3 +106,34 @@ panel = PerspectivePanel(
 
 `index` and `limit` apply to the local copy. `default_architecture` flips the default for every
 plain entry.
+
+## Share Perspective with your own library
+
+Perspective registers global custom element names, so a second copy on the page throws from
+`customElements.define`. If your library uses Perspective, import it by its bare specifiers and leave
+those imports out of your bundle:
+
+```js
+// esbuild
+await esbuild.build({
+  entryPoints: ["src/index.js"],
+  bundle: true,
+  format: "esm",
+  external: [
+    "@perspective-dev/client",
+    "@perspective-dev/viewer",
+    "@perspective-dev/viewer-charts",
+    "@perspective-dev/viewer-datagrid",
+  ],
+});
+```
+
+Serve your bundle as a module next to `packages=["perspective"]`; the page's import map resolves those
+imports to the copy this package already loaded. Import `@perspective-dev/viewer` dynamically —
+`import("@perspective-dev/viewer")` — rather than statically: it instantiates its WASM with a
+top-level await, so a static import holds back your whole module, and any element it defines, until
+the binary has loaded, and spaday can mount the page before your element exists.
+
+To share the engine itself rather than just the modules, borrow it:
+`globalThis.__spadayPerspective.client(url)` returns the websocket client the panels use for that
+server, and `.worker()` the shared local engine.

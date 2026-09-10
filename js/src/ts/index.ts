@@ -1,15 +1,8 @@
 // the guard must execute before the upstream imports register their elements
-import { restoreDefine } from "./define-guard";
+import { restoreDefine } from "./define-guard.js";
 import perspective from "@perspective-dev/client";
-import perspectiveViewer from "@perspective-dev/viewer";
-import CLIENT_WASM from "@perspective-dev/viewer/dist/wasm/perspective-viewer.wasm";
-import SERVER_WASM from "@perspective-dev/server/dist/wasm/perspective-server.wasm";
 import PRO from "@perspective-dev/viewer/dist/css/pro.css";
 import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
-import "@perspective-dev/viewer-datagrid";
-import "@perspective-dev/viewer-charts";
-
-restoreDefine();
 
 export type PerspectiveArchitecture = "server" | "client-server";
 
@@ -40,9 +33,9 @@ type Mirror = { view: PspView; table: PspTable };
  * copy of any mirrored table. Before this, every panel opened its own client and its own worker, so
  * a workspace of four panels on one server paid for four connections and four engines.
  *
- * Sharing is also what lets another library on the page skip its own @perspective-dev imports (see
- * `__spadayPerspective` at the bottom of this file) -- skipping them is what avoids a second copy
- * registering the same custom element names. */
+ * Sharing reaches other libraries on the page too: their own @perspective-dev imports resolve to
+ * this copy through the package's import map, and `__spadayPerspective` (at the bottom of this file)
+ * lends them these same clients rather than new ones. */
 const remoteClients = new Map<string, Promise<PspClient>>();
 let localWorker: Promise<PspClient> | null = null;
 const sharedMirrors = new Map<
@@ -133,10 +126,21 @@ async function releaseMirror(key: string): Promise<void> {
   await mirror.table.delete({ lazy: true }).catch(() => {});
 }
 
-const ready = perspectiveViewer.init_client(CLIENT_WASM);
-// registration only — the engine binary is instantiated on the first `worker()` call
-// (a `client-server` table architecture), so `server`-only pages never pay for it
-perspective.init_server(SERVER_WASM);
+// Perspective's CDN builds initialize themselves from their own URLs. The viewer instantiates the
+// client binary with a top-level await and then defines `<perspective-viewer>`, which is where the
+// client looks for it; imported statically, that await would hold this module back until the binary
+// arrived, and the page would mount its tree before `<perspective-panel>` existed. So the viewer and
+// its plugins load dynamically, the panel's work waits on `ready`, and the define-guard stays up
+// until they have registered their elements. The client only registers the server binary; it is
+// fetched on the first `worker()` call (a `client-server` table architecture), so `server`-only
+// pages never pay for it.
+const ready = Promise.all([
+  import("@perspective-dev/viewer"),
+  import("@perspective-dev/viewer-datagrid"),
+  import("@perspective-dev/viewer-charts"),
+])
+  .finally(restoreDefine)
+  .then(() => customElements.whenDefined("perspective-viewer"));
 const THEMES: Record<string, string> = {
   light: "Pro Light",
   dark: "Pro Dark",

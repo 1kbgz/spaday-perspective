@@ -2,9 +2,9 @@
 
 The integration this exercises end to end:
 
-* the downstream library ships its own element built on Perspective, but imports none of it -- it
-  borrows the engine spaday-perspective publishes, so the page holds one copy rather than two that
-  cannot coexist;
+* the downstream library ships its own element built on Perspective, importing Perspective by the
+  bare specifiers spaday-perspective publishes in the page's import map and borrowing the engine it
+  lends, so the page holds one copy rather than two that cannot coexist;
 * it has no Python of its own, binding through spaday's package surface instead: a
   :class:`~spaday.Component` carrying a schema plus a :class:`~spaday.ComponentPackage` that serves
   its bundle, selected with ``packages=[...]`` exactly like a first-party package;
