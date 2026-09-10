@@ -12,6 +12,8 @@
 [![License](https://img.shields.io/github/license/1kbgz/spaday-perspective)](https://github.com/1kbgz/spaday-perspective)
 [![PyPI](https://img.shields.io/pypi/v/spaday-perspective.svg)](https://pypi.python.org/pypi/spaday-perspective)
 
+[![Preview of perspective component](https://raw.githubusercontent.com/1kbgz/spaday-perspective/main/docs/img/preview.webp)](./spaday_perspective/example.py)
+
 ## Overview
 
 `spaday-perspective` moves the existing `PerspectivePanel` integration out of spaday core. Its
