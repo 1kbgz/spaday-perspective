@@ -33,7 +33,7 @@ dependencies = [
     # the bundled JS client (js/package.json @perspective-dev/*) and the Python server speak a
     # version-locked wire protocol, stable within a minor — track the client's minor, upgrade together
     "perspective-python>=5.4,<5.5",
-    "spaday>=0.7.14,<1.0",
+    "spaday>=0.8.2,<1.0",
 ]
 
 [project.entry-points."spaday.component_packages"]

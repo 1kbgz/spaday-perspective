@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from spaday import ComponentPackage
@@ -5,6 +6,9 @@ from spaday import ComponentPackage
 from .components import PerspectivePanel
 
 __version__ = "0.7.0"
+
+# the exact version of each JS library the package serves, written by its JS build
+_VERSIONS = Path(__file__).parent / "extension" / "versions.json"
 
 package = ComponentPackage(
     name="perspective",
@@ -19,6 +23,7 @@ package = ComponentPackage(
         ("@perspective-dev/viewer-charts", "vendor/@perspective-dev/viewer-charts/dist/cdn/perspective-viewer-charts.js"),
         ("@perspective-dev/viewer-datagrid", "vendor/@perspective-dev/viewer-datagrid/dist/cdn/perspective-viewer-datagrid.js"),
     ),
+    provides=json.loads(_VERSIONS.read_text(encoding="utf-8")) if _VERSIONS.exists() else {},
 )
 
 #: ``css()`` kwarg → (CSS custom property, what it controls), in the shape of
