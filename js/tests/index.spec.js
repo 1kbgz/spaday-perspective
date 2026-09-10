@@ -436,12 +436,20 @@ test("survives another bundle registering shared engines first", async ({
   await page.goto("http://127.0.0.1:8015");
   const r = await page.evaluate(async () => {
     // simulate spaday-regular-layout / spaday-regular-table having won the registration
-    // race for the engines this bundle also registers
+    // race for the engines this bundle also registers; the rig carries the page's import map,
+    // which the bundle's own Perspective imports resolve through
     const rig = document.createElement("iframe");
-    document.body.appendChild(rig);
+    rig.srcdoc = document.querySelector('script[type="importmap"]').outerHTML;
+    await new Promise((resolve) => {
+      rig.onload = resolve;
+      document.body.appendChild(rig);
+    });
     const win = rig.contentWindow;
     const errors = [];
     win.addEventListener("error", (e) => errors.push(String(e.message)));
+    win.addEventListener("unhandledrejection", (e) =>
+      errors.push(String(e.reason)),
+    );
     for (const tag of [
       "regular-layout",
       "regular-layout-frame",
@@ -459,17 +467,27 @@ test("survives another bundle registering shared engines first", async ({
       imported = false;
       errors.push(String(error));
     }
+    const panelDefined = !!win.customElements.get("perspective-panel");
+    // the viewer and its plugins load after the bundle itself, and the guard stays up until they have
+    const restored = () =>
+      String(win.customElements.define).includes("native code");
+    const deadline = Date.now() + 30_000;
+    while (!restored() && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
     return {
       imported,
-      panelDefined: !!win.customElements.get("perspective-panel"),
-      defineRestored: String(win.customElements.define).includes("native code"),
+      panelDefined,
+      viewerDefined: !!win.customElements.get("perspective-viewer"),
+      defineRestored: restored(),
       errors,
     };
   });
   expect(r.errors).toEqual([]);
   expect(r.imported).toBe(true); // the bundle no longer dies on duplicate defines
-  expect(r.panelDefined).toBe(true);
-  expect(r.defineRestored).toBe(true); // the guard did not leak past the imports
+  expect(r.panelDefined).toBe(true); // defined without waiting on the engine
+  expect(r.viewerDefined).toBe(true); // and the engine's own modules survived the rivals too
+  expect(r.defineRestored).toBe(true); // the guard did not leak past the upstream modules
   expect(r.errors).toEqual([]);
 });
 

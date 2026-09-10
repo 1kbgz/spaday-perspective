@@ -11,6 +11,14 @@ package = ComponentPackage(
     assets_dir=Path(__file__).parent / "extension",
     assets=(("js", "cdn/index.js"),),
     components=(PerspectivePanel,),
+    # Perspective's modules under its own bare specifiers: a library on the page that imports
+    # Perspective resolves to this copy instead of registering the same elements a second time
+    imports=(
+        ("@perspective-dev/client", "vendor/@perspective-dev/client/dist/cdn/perspective.js"),
+        ("@perspective-dev/viewer", "vendor/@perspective-dev/viewer/dist/cdn/perspective-viewer.js"),
+        ("@perspective-dev/viewer-charts", "vendor/@perspective-dev/viewer-charts/dist/cdn/perspective-viewer-charts.js"),
+        ("@perspective-dev/viewer-datagrid", "vendor/@perspective-dev/viewer-datagrid/dist/cdn/perspective-viewer-datagrid.js"),
+    ),
 )
 
 #: ``css()`` kwarg → (CSS custom property, what it controls), in the shape of
