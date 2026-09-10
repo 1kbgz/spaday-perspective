@@ -26,8 +26,7 @@ from starlette.responses import PlainTextResponse
 from starlette.routing import Route, WebSocketRoute
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
-from spaday_perspective import PerspectivePanel
-from spaday_perspective import package as perspective_package
+from spaday_perspective import PerspectivePanel, package as perspective_package
 
 ROWS = [
     {"symbol": "AAPL", "quantity": 120, "price": 191.2},
