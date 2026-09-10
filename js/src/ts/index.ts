@@ -97,8 +97,10 @@ async function acquireMirror(
       limit: config.limit,
     });
     await view.on_update(
-      async (updated: { delta?: ArrayBuffer }) => {
-        if (updated?.delta) await table.update(updated.delta);
+      async (updated) => {
+        // the delta arrives as a Uint8Array, which update() accepts though its types list ArrayBuffer
+        if (updated.delta)
+          await table.update(updated.delta as unknown as ArrayBuffer);
       },
       { mode: "row" },
     );

@@ -154,12 +154,34 @@ test("mirrors client-server tables into a local worker with the configured index
       }
       throw new Error(`table never bound: ${last}`);
     };
-    return { mirrored: await size(mirrored), direct: await size(direct) };
+    const sizes = {
+      mirrored: await size(mirrored),
+      direct: await size(direct),
+    };
+    // the example appends a trade every 1.5s; each row delta the mirror forwards moves the local
+    // copy's highest id on
+    const lastId = async () => {
+      const view = await (
+        await mirrored.viewer.getTable({ wait: false })
+      ).view({ columns: ["id"] });
+      const { id } = await view.to_columns();
+      await view.delete();
+      return Math.max(...id);
+    };
+    const firstId = await lastId();
+    let laterId = firstId;
+    for (let i = 0; i < 20 && laterId === firstId; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      laterId = await lastId();
+    }
+    return { ...sizes, firstId, laterId };
   });
   // the local indexed copy won the name lookup: one row per symbol
   expect(r.mirrored).toBe(5);
   // the plain-server panel still sees every trade on the websocket table
   expect(r.direct).toBeGreaterThanOrEqual(80);
+  // and the local copy keeps following the server
+  expect(r.laterId).toBeGreaterThan(r.firstId);
 });
 
 test("the inner viewer fills the panel", async ({ page }) => {
