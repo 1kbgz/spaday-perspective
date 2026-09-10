@@ -300,7 +300,12 @@ not reconnect the table websocket.</p>
 <span class="n">panel</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="s2">"theme"</span><span class="p">,</span> <span class="n">cond</span><span class="p">(</span><span class="n">field</span><span class="p">(</span><span class="s2">"dark"</span><span class="p">),</span> <span class="s2">"dark"</span><span class="p">,</span> <span class="s2">"light"</span><span class="p">))</span>
 </pre></div>
 </div>
-<p>The aliases map to <code class="docutils literal notranslate"><span class="pre">Pro</span> <span class="pre">Dark</span></code> and <code class="docutils literal notranslate"><span class="pre">Pro</span> <span class="pre">Light</span></code>. A full Perspective theme name is also accepted.</p>
+<p>The aliases map to <code class="docutils literal notranslate"><span class="pre">Pro</span> <span class="pre">Dark</span></code> and <code class="docutils literal notranslate"><span class="pre">Pro</span> <span class="pre">Light</span></code> (<code class="docutils literal notranslate"><span class="pre">spaday_perspective.THEMES</span></code>). A full Perspective
+theme name is also accepted, so to use themes of your own, put their CSS on the page and compute
+their names instead:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">panel</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="s2">"theme"</span><span class="p">,</span> <span class="n">cond</span><span class="p">(</span><span class="n">field</span><span class="p">(</span><span class="s2">"dark"</span><span class="p">),</span> <span class="s2">"Acme Dark"</span><span class="p">,</span> <span class="s2">"Acme Light"</span><span class="p">))</span>
+</pre></div>
+</div>
 </section>
 <section id="persist-user-edited-layouts">
 <h2>Persist user-edited layouts<a class="headerlink" href="#persist-user-edited-layouts" title="Link to this heading">¶</a></h2>

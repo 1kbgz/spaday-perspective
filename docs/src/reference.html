@@ -357,6 +357,15 @@ config (<code class="docutils literal notranslate"><span class="pre">saveWorkspa
 imperative and query API (<code class="docutils literal notranslate"><span class="pre">getTable</span></code>, <code class="docutils literal notranslate"><span class="pre">getSelection</span></code>, <code class="docutils literal notranslate"><span class="pre">download</span></code>, <code class="docutils literal notranslate"><span class="pre">copy</span></code>, <code class="docutils literal notranslate"><span class="pre">addPanel</span></code>/<code class="docutils literal notranslate"><span class="pre">removePanel</span></code>,
 <code class="docutils literal notranslate"><span class="pre">setActivePanel</span></code>, the agent methods, …), typically from a <code class="docutils literal notranslate"><span class="pre">NamedJs</span></code> handler.</p>
 </section>
+<section id="themes-and-tokens">
+<h2><code class="docutils literal notranslate"><span class="pre">THEMES</span></code> and <code class="docutils literal notranslate"><span class="pre">TOKENS</span></code><a class="headerlink" href="#themes-and-tokens" title="Link to this heading">¶</a></h2>
+<p>Perspective themes itself by name rather than by CSS custom property, so <code class="docutils literal notranslate"><span class="pre">spaday_perspective.TOKENS</span></code>
+is empty and <code class="docutils literal notranslate"><span class="pre">spaday_perspective.THEMES</span></code> carries the contract instead:
+<code class="docutils literal notranslate"><span class="pre">{&quot;light&quot;:</span> <span class="pre">&quot;Pro</span> <span class="pre">Light&quot;,</span> <span class="pre">&quot;dark&quot;:</span> <span class="pre">&quot;Pro</span> <span class="pre">Dark&quot;}</span></code>, the Perspective theme a panel applies for each page
+mode. A panel with no <code class="docutils literal notranslate"><span class="pre">theme</span></code> follows the nearest <code class="docutils literal notranslate"><span class="pre">wa-dark</span></code> / <code class="docutils literal notranslate"><span class="pre">wa-light</span></code> ancestor to one of these.
+<code class="docutils literal notranslate"><span class="pre">theme</span></code> and <code class="docutils literal notranslate"><span class="pre">themes</span></code> accept the keys as shorthands and pass any other name to Perspective unchanged,
+so a theme an application registers is selected by its name.</p>
+</section>
 <section id="package">
 <h2><code class="docutils literal notranslate"><span class="pre">package</span></code><a class="headerlink" href="#package" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">spaday_perspective.package</span></code> is named <code class="docutils literal notranslate"><span class="pre">perspective</span></code>. Its browser asset defines <code class="docutils literal notranslate"><span class="pre">&lt;perspective-panel&gt;</span></code>
@@ -456,6 +465,7 @@ the page’s import map:</p>
 <li><a class="reference internal" href="#table-architectures">Table architectures</a></li>
 <li><a class="reference internal" href="#events">Events</a></li>
 <li><a class="reference internal" href="#methods">Methods</a></li>
+<li><a class="reference internal" href="#themes-and-tokens"><code class="docutils literal notranslate"><span class="pre">THEMES</span></code> and <code class="docutils literal notranslate"><span class="pre">TOKENS</span></code></a></li>
 <li><a class="reference internal" href="#package"><code class="docutils literal notranslate"><span class="pre">package</span></code></a></li>
 </ul>
 </li>
