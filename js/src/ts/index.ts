@@ -31,6 +31,108 @@ type PspClient = Awaited<ReturnType<typeof perspective.websocket>>;
 type PspTable = Awaited<ReturnType<PspClient["open_table"]>>;
 type PspView = Awaited<ReturnType<PspTable["view"]>>;
 
+declare const __PERSPECTIVE_VERSION__: string;
+
+type Mirror = { view: PspView; table: PspTable };
+
+/* Perspective cannot load twice on a page, so the copy this bundle owns is the page's copy and is
+ * shared rather than duplicated: one websocket client per server, one local worker, and one local
+ * copy of any mirrored table. Before this, every panel opened its own client and its own worker, so
+ * a workspace of four panels on one server paid for four connections and four engines.
+ *
+ * Sharing is also what lets another library on the page skip its own @perspective-dev imports (see
+ * `__spadayPerspective` at the bottom of this file) -- skipping them is what avoids a second copy
+ * registering the same custom element names. */
+const remoteClients = new Map<string, Promise<PspClient>>();
+let localWorker: Promise<PspClient> | null = null;
+const sharedMirrors = new Map<
+  string,
+  { mirror: Promise<Mirror>; refs: number }
+>();
+
+/* The promise is cached, not the resolved client, so concurrent callers share one connection.
+ * Both wait on `ready` first: the engine binary has to be instantiated before a client exists, and
+ * a caller that skips it gets `Missing perspective-client.wasm`. The panel always awaited it; a
+ * borrower reaching for a client directly has no way to, so the registry owns the wait. */
+function sharedClient(url: string): Promise<PspClient> {
+  const resolved = wsUrl(url);
+  const existing = remoteClients.get(resolved);
+  if (existing) return existing;
+  const created = ready.then(() => perspective.websocket(resolved));
+  remoteClients.set(resolved, created);
+  return created;
+}
+
+function sharedWorker(): Promise<PspClient> {
+  localWorker ??= ready.then(() => perspective.worker());
+  return localWorker;
+}
+
+function mirrorKey(url: string, table: PerspectiveTableConfig): string {
+  return JSON.stringify([
+    wsUrl(url),
+    table.name,
+    table.index ?? null,
+    table.limit ?? null,
+  ]);
+}
+
+/* A `client-server` table mirrored into the shared worker, refcounted by that key: two panels
+ * showing the same mirrored table share one local copy and one update subscription instead of
+ * racing to register the same table name in the one worker. Returns the key to release later. */
+async function acquireMirror(
+  url: string,
+  config: PerspectiveTableConfig,
+): Promise<string> {
+  const key = mirrorKey(url, config);
+  const existing = sharedMirrors.get(key);
+  if (existing) {
+    existing.refs += 1;
+    await existing.mirror;
+    return key;
+  }
+  const mirror = (async (): Promise<Mirror> => {
+    const [remote, local] = await Promise.all([
+      sharedClient(url),
+      sharedWorker(),
+    ]);
+    const serverTable = await remote.open_table(config.name);
+    const view = await serverTable.view();
+    const table = await local.table(await view.to_arrow(), {
+      name: config.name,
+      index: config.index,
+      limit: config.limit,
+    });
+    await view.on_update(
+      async (updated: { delta?: ArrayBuffer }) => {
+        if (updated?.delta) await table.update(updated.delta);
+      },
+      { mode: "row" },
+    );
+    return { view, table };
+  })();
+  sharedMirrors.set(key, { mirror, refs: 1 });
+  try {
+    await mirror;
+  } catch (error) {
+    sharedMirrors.delete(key); // a failed mirror must not be handed to the next caller
+    throw error;
+  }
+  return key;
+}
+
+async function releaseMirror(key: string): Promise<void> {
+  const entry = sharedMirrors.get(key);
+  if (!entry) return;
+  entry.refs -= 1;
+  if (entry.refs > 0) return;
+  sharedMirrors.delete(key);
+  const mirror = await entry.mirror.catch(() => null);
+  if (!mirror) return;
+  await mirror.view.delete().catch(() => {});
+  await mirror.table.delete({ lazy: true }).catch(() => {});
+}
+
 const ready = perspectiveViewer.init_client(CLIENT_WASM);
 // registration only — the engine binary is instantiated on the first `worker()` call
 // (a `client-server` table architecture), so `server`-only pages never pay for it
@@ -94,9 +196,8 @@ class PerspectivePanel extends HTMLElement {
   #connectedUrl: string | null = null;
   #lastLayout: string | null = null;
   #lastMirrored: string | null = null;
-  #local: PspClient | null = null;
   #localLoaded = false;
-  #mirrors: { view: PspView; table: PspTable }[] = [];
+  #mirrors: string[] = [];
   #loaded = false;
   #readyFired = false;
   #theme = "Pro Light";
@@ -316,10 +417,7 @@ class PerspectivePanel extends HTMLElement {
   }
 
   async #teardownMirrors(): Promise<void> {
-    for (const mirror of this.#mirrors.splice(0)) {
-      await mirror.view.delete().catch(() => {});
-      await mirror.table.delete({ lazy: true }).catch(() => {});
-    }
+    for (const key of this.#mirrors.splice(0)) await releaseMirror(key);
   }
 
   #apply(): void {
@@ -340,28 +438,15 @@ class PerspectivePanel extends HTMLElement {
             this.#connectedUrl = config.ws_url;
             this.#lastMirrored = mirroredKey;
             await this.#teardownMirrors();
-            const remote = await perspective.websocket(wsUrl(config.ws_url));
+            const remote = await sharedClient(config.ws_url);
             if (mirrored.length) {
-              this.#local ??= await perspective.worker();
+              const local = await sharedWorker();
               for (const t of mirrored) {
-                const serverTable = await remote.open_table(t.name);
-                const view = await serverTable.view();
-                const table = await this.#local.table(await view.to_arrow(), {
-                  name: t.name,
-                  index: t.index,
-                  limit: t.limit,
-                });
-                await view.on_update(
-                  async (updated: { delta?: ArrayBuffer }) => {
-                    if (updated?.delta) await table.update(updated.delta);
-                  },
-                  { mode: "row" },
-                );
-                this.#mirrors.push({ view, table });
+                this.#mirrors.push(await acquireMirror(config.ws_url, t));
               }
               if (!this.#localLoaded) {
                 this.#localLoaded = true;
-                await this.#viewer.load(this.#local);
+                await this.#viewer.load(local);
               }
             }
             await this.#viewer.load(remote);
@@ -462,5 +547,29 @@ class PerspectivePanel extends HTMLElement {
 if (!customElements.get("perspective-panel")) {
   customElements.define("perspective-panel", PerspectivePanel);
 }
+
+/* Lend the page's one Perspective engine to any other library on the page.
+ *
+ * Perspective registers global custom element names, so a second copy on the page throws from
+ * `customElements.define` and the two engines cannot coexist. A library that accepts an injected
+ * client can skip its own `@perspective-dev` imports entirely, which is what avoids the second copy
+ * -- but it needs a client to inject, and this bundle previously exported nothing to the page.
+ *
+ * `client(url)` hands back the same websocket client `<perspective-panel>` uses for that server and
+ * `worker()` the same local engine, not new ones. Both stay lazy, so a page using only the borrower
+ * never starts an engine it does not need, and neither does a page using only the panel.
+ *
+ * `version` is the Perspective version actually bundled here: a consumer resolving its own
+ * `^5.3.0` can end up a patch ahead, so it should compare and refuse rather than half-work. */
+Object.defineProperty(globalThis, "__spadayPerspective", {
+  value: Object.freeze({
+    version: __PERSPECTIVE_VERSION__,
+    client: (url: string): Promise<PspClient> => sharedClient(url),
+    worker: (): Promise<PspClient> => sharedWorker(),
+  }),
+  configurable: true,
+  enumerable: false,
+  writable: false,
+});
 
 export { PerspectivePanel };

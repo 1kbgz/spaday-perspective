@@ -508,3 +508,83 @@ test("saveClean strips per-session transient state from the workspace config", a
   expect(r.overrides.every((present) => present === false)).toBe(true);
   expect(r.originalUntouched).toBe(true);
 });
+
+test("two panels on one server share a single websocket connection", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  // each panel used to open its own client, so a workspace of N panels on one server paid for N
+  // connections and N engines
+  const sockets = [];
+  page.on("websocket", (ws) => sockets.push(ws.url()));
+  await page.goto("/dist/index.html");
+  await page.evaluate(() => {
+    for (const id of ["one", "two"]) {
+      const panel = document.createElement("perspective-panel");
+      panel.id = id;
+      panel.style.cssText = "display:block;width:400px;height:200px";
+      panel.config = {
+        ws_url: "ws://127.0.0.1:8015/perspective",
+        tables: ["trades"],
+        layout: {
+          layout: { type: "tab-layout", tabs: ["t"] },
+          panels: { t: { table: "trades", plugin: "Datagrid" } },
+        },
+      };
+      document.body.appendChild(panel);
+    }
+  });
+  await expect(page.locator("perspective-viewer-datagrid")).toHaveCount(2, {
+    timeout: 60000,
+  });
+  expect(sockets.filter((url) => url.includes("/perspective"))).toHaveLength(1);
+});
+
+test("lends the same client and worker the panel itself uses", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto("/dist/index.html");
+  const r = await page.evaluate(async () => {
+    const url = "ws://127.0.0.1:8015/perspective";
+    const lent = await globalThis.__spadayPerspective.client(url);
+    const again = await globalThis.__spadayPerspective.client(url);
+    const worker = await globalThis.__spadayPerspective.worker();
+    const workerAgain = await globalThis.__spadayPerspective.worker();
+
+    // a panel connecting to the same server must reuse that client, not open a second one
+    const panel = document.createElement("perspective-panel");
+    panel.style.cssText = "display:block;width:400px;height:200px";
+    panel.config = { ws_url: url, tables: ["trades"] };
+    document.body.appendChild(panel);
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    const afterPanel = await globalThis.__spadayPerspective.client(url);
+
+    return {
+      sameClient: lent === again,
+      sameWorker: worker === workerAgain,
+      panelSharesIt: lent === afterPanel,
+      version: globalThis.__spadayPerspective.version,
+      // the borrower can actually use it
+      tables: await lent.get_hosted_table_names(),
+    };
+  });
+  expect(r.sameClient).toBe(true);
+  expect(r.sameWorker).toBe(true);
+  expect(r.panelSharesIt).toBe(true);
+  expect(r.version).toMatch(/^\d+\.\d+\.\d+/);
+  expect(r.tables).toContain("trades");
+});
+
+test("starts no engine until something asks for one", async ({ page }) => {
+  // a page using only the borrower must not pay for an engine it never touches, and neither must a
+  // page that only loads the bundle
+  const sockets = [];
+  page.on("websocket", (ws) => sockets.push(ws.url()));
+  await page.goto("/dist/index.html");
+  const exposed = await page.evaluate(
+    () => typeof globalThis.__spadayPerspective?.client === "function",
+  );
+  expect(exposed).toBe(true);
+  expect(sockets.filter((url) => url.includes("/perspective"))).toHaveLength(0);
+});

@@ -5,16 +5,24 @@ import { node_modules_external } from "./tools/externals.mjs";
 import fs from "fs";
 import cpy from "cpy";
 
+// The version actually bundled, read from the resolved dependency rather than the declared range,
+// so a page holding a second copy of Perspective can compare and refuse rather than half-work.
+const PERSPECTIVE_VERSION = JSON.parse(
+  fs.readFileSync("node_modules/@perspective-dev/client/package.json", "utf8"),
+).version;
+
 const BUNDLES = [
   {
     entryPoints: ["src/ts/index.ts"],
     plugins: [node_modules_external()],
     outfile: "dist/esm/index.js",
+    define: { __PERSPECTIVE_VERSION__: JSON.stringify(PERSPECTIVE_VERSION) },
   },
   {
     entryPoints: ["src/ts/index.ts"],
     outfile: "dist/cdn/index.js",
     loader: { ".wasm": "binary" },
+    define: { __PERSPECTIVE_VERSION__: JSON.stringify(PERSPECTIVE_VERSION) },
   },
 ];
 

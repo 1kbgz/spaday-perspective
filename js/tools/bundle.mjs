@@ -39,6 +39,7 @@ export const bundle = async (config) => {
     ...DEFAULT_BUILD,
     ...config,
     loader: { ...COMMON_LOADER, ...config.loader },
+    define: { ...COMMON_DEFINE, ...config.define },
   });
 
   if (result.metafile) {
