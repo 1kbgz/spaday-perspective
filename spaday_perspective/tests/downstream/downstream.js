@@ -1,14 +1,22 @@
 /* A stand-in for a downstream component library.
  *
- * It builds its own component on top of Perspective, but imports NOTHING from `@perspective-dev`:
- * it borrows the page's one engine through `globalThis.__spadayPerspective` and uses the
- * `<perspective-viewer>` element spaday-perspective already registered. Not importing is the whole
- * point -- a second copy of Perspective on the page throws from `customElements.define` and the two
- * cannot coexist.
+ * It builds its own component on top of Perspective and imports the parts it uses the way a library
+ * built on Perspective does, by Perspective's own bare specifiers, left as imports in its bundle.
+ * spaday-perspective publishes its copy under those specifiers in the page's import map, so they
+ * resolve to the modules that already registered `<perspective-viewer>` -- a second copy would throw
+ * from `customElements.define` and the two could not coexist. It also borrows the page's one engine
+ * through `globalThis.__spadayPerspective` rather than starting another.
  *
  * Its data comes from rows handed to it in the page, not from a server, which is the case that
  * genuinely differs from `<perspective-panel>` and the reason an application would want both.
  */
+
+import "@perspective-dev/viewer-datagrid";
+
+// The viewer instantiates its engine binary with a top-level await. Imported statically, it would
+// hold this module -- and the definition of `<demo-rows-grid>` below -- back until the binary had
+// loaded, and the page could mount its tree before the element existed.
+const viewerLoaded = import("@perspective-dev/viewer");
 
 let tableSeq = 0;
 
@@ -49,6 +57,7 @@ class DemoRowsGrid extends HTMLElement {
     this.#queue = this.#queue
       .catch(() => {})
       .then(async () => {
+        await viewerLoaded;
         const client = await this.borrowedWorker();
         this.dataset.engineVersion = globalThis.__spadayPerspective.version;
         if (!this.#table) {

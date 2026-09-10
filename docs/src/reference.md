@@ -65,6 +65,19 @@ imperative and query API (`getTable`, `getSelection`, `download`, `copy`, `addPa
 
 ## `package`
 
-`spaday_perspective.package` is named `perspective`. Its self-contained browser asset includes the
-Perspective client, viewer, workspace, datagrid plugin, themes, and viewer WASM. Its `components`
-collection contains `PerspectivePanel`; `catalog` returns the wrapper's property, event, and slot schema.
+`spaday_perspective.package` is named `perspective`. Its browser asset defines `<perspective-panel>`
+and the Perspective themes, and loads Perspective's own client, viewer, datagrid and charts modules,
+which the package serves under `vendor/` beside their WASM binaries. Its `components` collection
+contains `PerspectivePanel`; `catalog` returns the wrapper's property, event, and slot schema.
+
+`package.imports` publishes those modules under Perspective's bare specifiers, which spaday emits as
+the page's import map:
+
+| Specifier                          | Served from                                                                       |
+| ---------------------------------- | --------------------------------------------------------------------------------- |
+| `@perspective-dev/client`          | `vendor/@perspective-dev/client/dist/cdn/perspective.js`                          |
+| `@perspective-dev/viewer`          | `vendor/@perspective-dev/viewer/dist/cdn/perspective-viewer.js`                   |
+| `@perspective-dev/viewer-charts`   | `vendor/@perspective-dev/viewer-charts/dist/cdn/perspective-viewer-charts.js`     |
+| `@perspective-dev/viewer-datagrid` | `vendor/@perspective-dev/viewer-datagrid/dist/cdn/perspective-viewer-datagrid.js` |
+
+Any other module on the page that imports them gets the same copy.

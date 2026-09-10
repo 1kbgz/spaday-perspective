@@ -2,8 +2,9 @@ import { expect, test } from "@playwright/test";
 
 /* A downstream component library on the same page as `<perspective-panel>`.
  *
- * The library ships its own element built on Perspective but imports none of it, borrowing the
- * engine spaday-perspective publishes; and it has no Python of its own, binding through spaday's
+ * The library ships its own element built on Perspective, importing Perspective by the bare
+ * specifiers spaday-perspective publishes in the page's import map and borrowing the engine it
+ * lends; and it has no Python of its own, binding through spaday's
  * package surface. These check that the whole arrangement works in a browser, not just that each
  * half does on its own. See spaday_perspective/tests/integration.py.
  */
@@ -31,6 +32,25 @@ test("both libraries render on one page with no collision", async ({
   expect(errors).toEqual([]);
   // and the downstream element records any failure of its own rather than rendering nothing
   expect(await page.locator("#grid").getAttribute("data-error")).toBeNull();
+});
+
+test("the downstream library's Perspective imports resolve to the page's copy", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto(PAGE);
+  await expect(page.locator("#grid perspective-viewer")).toBeAttached({
+    timeout: 60000,
+  });
+  const same = await page.evaluate(async () => {
+    const datagrid = await import("@perspective-dev/viewer-datagrid");
+    return (
+      customElements.get("perspective-viewer-datagrid") ===
+      datagrid.HTMLPerspectiveViewerDatagridPluginElement
+    );
+  });
+  // the module a library gets by name is the one that registered the element, not a second copy
+  expect(same).toBe(true);
 });
 
 test("the downstream grid borrows the engine rather than loading its own", async ({

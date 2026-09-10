@@ -21,6 +21,22 @@ def test_package_drives_bootstrap_asset_url():
     assert 'src="/components/perspective/cdn/index.js"' in bootstrap(packages=[package])
 
 
+def test_package_publishes_perspective_under_its_own_specifiers():
+    html = bootstrap(packages=[package])
+    assert '"@perspective-dev/viewer": "/components/perspective/vendor/@perspective-dev/viewer/dist/cdn/perspective-viewer.js"' in html
+    # the bundle's own imports resolve through the map, so it must come first
+    assert html.index('type="importmap"') < html.index('src="/components/perspective/cdn/index.js"')
+
+
+def test_published_imports_are_served():
+    for specifier, path in package.imports:
+        assert (package.assets_dir / path).is_file(), f"{specifier} maps to {path}, which the build did not produce"
+    # the CDN builds find their engine binaries beside them, laid out as in node_modules
+    vendor = package.assets_dir / "vendor" / "@perspective-dev"
+    assert (vendor / "viewer" / "dist" / "wasm" / "perspective-viewer.wasm").is_file()
+    assert (vendor / "server" / "dist" / "wasm" / "perspective-server.wasm").is_file()
+
+
 def test_generated_component_is_current():
     root = Path(__file__).parent.parent
     fresh = generate(str(root / "components.cem.json"))
@@ -28,7 +44,7 @@ def test_generated_component_is_current():
 
 
 def test_perspective_python_pin_matches_the_bundled_js_client():
-    # the frontend bundle inlines @perspective-dev/* at an exact version, and Perspective's
+    # the frontend serves @perspective-dev/* at an exact version, and Perspective's
     # websocket wire protocol is version-locked but stable within a minor — the Python server
     # requirement must track the bundled client's minor
     root = Path(__file__).parent.parent.parent
