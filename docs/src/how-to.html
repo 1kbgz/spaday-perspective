@@ -333,6 +333,34 @@ architecture — reads (scrolls, sorts, filters) stop round-tripping to Python:<
 <p><code class="docutils literal notranslate"><span class="pre">index</span></code> and <code class="docutils literal notranslate"><span class="pre">limit</span></code> apply to the local copy. <code class="docutils literal notranslate"><span class="pre">default_architecture</span></code> flips the default for every
 plain entry.</p>
 </section>
+<section id="share-perspective-with-your-own-library">
+<h2>Share Perspective with your own library<a class="headerlink" href="#share-perspective-with-your-own-library" title="Link to this heading">¶</a></h2>
+<p>Perspective registers global custom element names, so a second copy on the page throws from
+<code class="docutils literal notranslate"><span class="pre">customElements.define</span></code>. If your library uses Perspective, import it by its bare specifiers and leave
+those imports out of your bundle:</p>
+<div class="highlight-js notranslate"><div class="highlight"><pre><span></span><span class="c1">// esbuild</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">esbuild</span><span class="p">.</span><span class="nx">build</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">entryPoints</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"src/index.js"</span><span class="p">],</span>
+<span class="w">  </span><span class="nx">bundle</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">format</span><span class="o">:</span><span class="w"> </span><span class="s2">"esm"</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">external</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">"@perspective-dev/client"</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">"@perspective-dev/viewer"</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">"@perspective-dev/viewer-charts"</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">"@perspective-dev/viewer-datagrid"</span><span class="p">,</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+<p>Serve your bundle as a module next to <code class="docutils literal notranslate"><span class="pre">packages=[&quot;perspective&quot;]</span></code>; the page’s import map resolves those
+imports to the copy this package already loaded. Import <code class="docutils literal notranslate"><span class="pre">&#64;perspective-dev/viewer</span></code> dynamically —
+<code class="docutils literal notranslate"><span class="pre">import(&quot;&#64;perspective-dev/viewer&quot;)</span></code> — rather than statically: it instantiates its WASM with a
+top-level await, so a static import holds back your whole module, and any element it defines, until
+the binary has loaded, and spaday can mount the page before your element exists.</p>
+<p>To share the engine itself rather than just the modules, borrow it:
+<code class="docutils literal notranslate"><span class="pre">globalThis.__spadayPerspective.client(url)</span></code> returns the websocket client the panels use for that
+server, and <code class="docutils literal notranslate"><span class="pre">.worker()</span></code> the shared local engine.</p>
+</section>
 </section>
 
         </article>
@@ -396,6 +424,7 @@ plain entry.</p>
 <li><a class="reference internal" href="#map-a-page-theme">Map a page theme</a></li>
 <li><a class="reference internal" href="#persist-user-edited-layouts">Persist user-edited layouts</a></li>
 <li><a class="reference internal" href="#mirror-a-table-into-a-local-worker">Mirror a table into a local worker</a></li>
+<li><a class="reference internal" href="#share-perspective-with-your-own-library">Share Perspective with your own library</a></li>
 </ul>
 </li>
 </ul>
