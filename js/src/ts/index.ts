@@ -15,6 +15,7 @@ export interface PerspectiveTableConfig {
 
 export interface PerspectiveConfig {
   ws_url?: string;
+  local?: boolean;
   tables?: (string | PerspectiveTableConfig)[];
   default_architecture?: PerspectiveArchitecture;
   layout?: unknown;
@@ -464,7 +465,12 @@ class PerspectivePanel extends HTMLElement {
             await this.#viewer.load(remote);
             this.#loaded = true;
           }
-          if (this.#connectedUrl && config.layout) {
+          if (config.local && !this.#localLoaded) {
+            this.#localLoaded = true;
+            await this.#viewer.load(await sharedWorker());
+            this.#loaded = true;
+          }
+          if (this.#loaded && config.layout) {
             const layout = JSON.stringify(config.layout);
             if (layout !== this.#lastLayout) {
               this.#lastLayout = layout;

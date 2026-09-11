@@ -1,17 +1,22 @@
 import asyncio
 import logging
+import sys
 from datetime import UTC, datetime
 
-import perspective
 import transports
-import uvicorn
-from perspective.handlers.starlette import PerspectiveStarletteHandler
 from pydantic import BaseModel
 from spaday import CallEndpoint, SetField, ToggleField, cond, element, eq, field, obj
 from spaday.backends.starlette import serve
 from starlette.responses import JSONResponse
-from starlette.routing import Route, WebSocketRoute
-from starlette.websockets import WebSocket, WebSocketDisconnect
+from starlette.routing import Route
+
+IS_PYODIDE = sys.platform == "emscripten"
+
+if not IS_PYODIDE:
+    import perspective
+    from perspective.handlers.starlette import PerspectiveStarletteHandler
+    from starlette.routing import WebSocketRoute
+    from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from spaday_perspective import PerspectivePanel, package
 
@@ -30,29 +35,35 @@ session = transports.Session()
 session.host(feed)
 transport_server = transports.Server(session)
 
-perspective_server = perspective.Server()
-perspective_client = perspective_server.new_local_client()
-trades = perspective_client.table(
-    {
-        "id": "integer",
-        "time": "string",
-        "symbol": "string",
-        "side": "string",
-        "quantity": "integer",
-        "price": "float",
-        "venue": "string",
-    },
-    limit=1_000,
-    name="trades",
-)
+if IS_PYODIDE:
+    perspective_server = None
+    trades = None
+else:
+    perspective_server = perspective.Server()
+    perspective_client = perspective_server.new_local_client()
+    trades = perspective_client.table(
+        {
+            "id": "integer",
+            "time": "string",
+            "symbol": "string",
+            "side": "string",
+            "quantity": "integer",
+            "price": "float",
+            "venue": "string",
+        },
+        limit=1_000,
+        name="trades",
+    )
 
 symbols = ("AAPL", "MSFT", "NVDA", "AMZN", "META")
 venues = ("XNAS", "XNYS", "ARCX", "BATS")
 row_count = 0
 total_notional = 0.0
+browser_updates: list[dict] = []
+initial_trades: list[dict] = []
 
 
-def append_trade(*, symbol: str, side: str, quantity: int, price: float) -> dict:
+def append_trade(*, symbol: str, side: str, quantity: int, price: float, publish: bool = True) -> dict:
     global row_count, total_notional
     row_count += 1
     total_notional += quantity * price
@@ -65,7 +76,10 @@ def append_trade(*, symbol: str, side: str, quantity: int, price: float) -> dict
         "price": round(price, 2),
         "venue": venues[row_count % len(venues)],
     }
-    trades.update([trade])
+    if trades is not None:
+        trades.update([trade])
+    elif publish:
+        browser_updates.append(trade)
     feed.row_count = f"{row_count:,}"
     feed.last_trade = f"${price:,.2f}"
     feed.notional = f"${total_notional:,.0f}"
@@ -74,11 +88,14 @@ def append_trade(*, symbol: str, side: str, quantity: int, price: float) -> dict
 
 
 for index in range(80):
-    append_trade(
-        symbol=symbols[index % len(symbols)],
-        side="Buy" if index % 3 else "Sell",
-        quantity=25 + (index * 17) % 450,
-        price=round(118 + index * 0.73 + (index % 7) * 1.21, 2),
+    initial_trades.append(
+        append_trade(
+            symbol=symbols[index % len(symbols)],
+            side="Buy" if index % 3 else "Sell",
+            quantity=25 + (index * 17) % 450,
+            price=round(118 + index * 0.73 + (index % 7) * 1.21, 2),
+            publish=False,
+        )
     )
 
 
@@ -106,11 +123,13 @@ async def submit_trade(request):
     return JSONResponse({"message": f"Added {quantity} {symbol} shares at ${price:,.2f}"})
 
 
-async def perspective_socket(websocket: WebSocket) -> None:
-    try:
-        await PerspectiveStarletteHandler(perspective_server=perspective_server, websocket=websocket).run()
-    except WebSocketDisconnect:
-        pass
+if not IS_PYODIDE:
+
+    async def perspective_socket(websocket: WebSocket) -> None:
+        try:
+            await PerspectiveStarletteHandler(perspective_server=perspective_server, websocket=websocket).run()
+        except WebSocketDisconnect:
+            pass
 
 
 def layout(*, grouped: bool = False) -> dict:
@@ -145,7 +164,7 @@ panel = (
         "config",
         obj(
             {
-                "ws_url": "/perspective",
+                **({"local": True} if IS_PYODIDE else {"ws_url": "/perspective"}),
                 "tables": ["trades"],
                 "layout": cond(eq(field("view"), "grouped"), layout(grouped=True), layout()),
             }
@@ -161,7 +180,7 @@ page = element(
             "div",
             element("p", class_="eyebrow").text("LIVE ANALYTICS WORKSPACE"),
             element("h1").text("Perspective market monitor"),
-            element("p", class_="lede").text("Native columnar streaming with server-authoritative orders and reactive controls."),
+            element("p", class_="lede").text("Native columnar analytics with interactive orders and reactive controls."),
         ),
         element("button", class_="theme-button").text("Toggle theme").on("click", ToggleField("dark")),
         class_="page-header",
@@ -184,7 +203,11 @@ page = element(
         element(
             "div",
             element("h2").text("Trades workspace"),
-            element("p").text("Rows stream over Perspective's websocket; only summary state uses transports."),
+            element("p").text(
+                "Rows and analytics stay in this browser's Perspective worker."
+                if IS_PYODIDE
+                else "Rows stream over Perspective's websocket; only summary state uses transports."
+            ),
         ),
         element(
             "div",
@@ -281,20 +304,27 @@ styles = """
 </style>
 """
 
+routes = [Route("/api/trades", submit_trade, methods=["POST"])]
+if not IS_PYODIDE:
+    routes[:0] = [
+        WebSocketRoute("/ws", transports.ws_endpoint(transport_server)),
+        WebSocketRoute("/perspective", perspective_socket),
+    ]
+
+initial_store = {"view": "blotter", "dark": False, "symbol": "AAPL", "side": "Buy", "quantity": 100}
+
 app = serve(
     page,
     packages=[package],
     wire="transports",
-    routes=[
-        WebSocketRoute("/ws", transports.ws_endpoint(transport_server)),
-        WebSocketRoute("/perspective", perspective_socket),
-        Route("/api/trades", submit_trade, methods=["POST"]),
-    ],
+    routes=routes,
     background=[transports.autosync(transport_server), stream_trades()],
-    store={"view": "blotter", "dark": False, "symbol": "AAPL", "side": "Buy", "quantity": 100},
+    store=initial_store,
     head=styles,
     title="spaday-perspective example",
 )
 
 if __name__ == "__main__":
+    import uvicorn
+
     uvicorn.run(app, host="127.0.0.1", port=8015)

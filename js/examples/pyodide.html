@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>spaday-perspective in Pyodide</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "@perspective-dev/client": "./components/perspective/vendor/@perspective-dev/client/dist/cdn/perspective.js",
+          "@perspective-dev/viewer": "./components/perspective/vendor/@perspective-dev/viewer/dist/cdn/perspective-viewer.js",
+          "@perspective-dev/viewer-charts": "./components/perspective/vendor/@perspective-dev/viewer-charts/dist/cdn/perspective-viewer-charts.js",
+          "@perspective-dev/viewer-datagrid": "./components/perspective/vendor/@perspective-dev/viewer-datagrid/dist/cdn/perspective-viewer-datagrid.js"
+        }
+      }
+    </script>
+    <style>
+      #pyodide-status {
+        position: sticky;
+        z-index: 10000;
+        top: 0;
+        box-sizing: border-box;
+        min-height: 3rem;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #cbd5e1;
+        color: #475569;
+        background: #fffffff2;
+        font:
+          14px/1.4 system-ui,
+          sans-serif;
+        backdrop-filter: blur(12px);
+      }
+      #pyodide-error {
+        margin: 1rem;
+        color: #b91c1c;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="pyodide-status">
+      Loading Python and Perspective in the browser…
+    </div>
+    <div id="example-root"></div>
+    <pre id="pyodide-error" hidden></pre>
+    <script type="module">
+      import {
+        connectStore,
+        init,
+        mount,
+        Store,
+      } from "./runtime/spaday/cdn/index.js";
+      import "./components/perspective/cdn/index.js";
+      import * as transports from "./runtime/spaday/transports/cdn/index.js";
+
+      const status = document.querySelector("#pyodide-status");
+      const pendingEndpoints = new Map();
+      let nextEndpointId = 0;
+      let receiveWires = () => {};
+      let trades;
+
+      function fail(error) {
+        status.textContent = "Unable to start";
+        const output = document.querySelector("#pyodide-error");
+        output.hidden = false;
+        output.textContent = String(error);
+      }
+
+      async function applyUpdates({ rows = [], wires = [] }) {
+        if (rows.length) await trades.update(rows);
+        if (wires.length) receiveWires(wires);
+      }
+
+      try {
+        await Promise.all([
+          init({ module_or_path: "./runtime/spaday/pkg/spaday_bg.wasm" }),
+          transports.wasm.default({
+            module_or_path:
+              "./runtime/spaday/transports/pkg/transports_bg.wasm",
+          }),
+        ]);
+
+        const worker = new Worker("./pyodide-worker.js", { type: "module" });
+        const nativeFetch = globalThis.fetch.bind(globalThis);
+        globalThis.fetch = async (input, options = {}) => {
+          const url = new URL(
+            input instanceof Request ? input.url : input,
+            location.href,
+          );
+          if (url.pathname !== "/api/trades")
+            return nativeFetch(input, options);
+
+          const id = ++nextEndpointId;
+          const response = new Promise((resolve) => {
+            pendingEndpoints.set(id, resolve);
+          });
+          worker.postMessage({
+            type: "endpoint",
+            id,
+            body: options.body ? JSON.parse(String(options.body)) : null,
+          });
+          return response;
+        };
+
+        async function handleMessage(event) {
+          if (event.data.type === "status")
+            status.textContent = event.data.message;
+          if (event.data.type === "error") fail(event.data.message);
+          if (event.data.type === "wires") receiveWires(event.data.wires);
+          if (event.data.type === "updates") await applyUpdates(event.data);
+          if (event.data.type === "endpoint") {
+            await applyUpdates(event.data);
+            const resolve = pendingEndpoints.get(event.data.id);
+            if (resolve) {
+              pendingEndpoints.delete(event.data.id);
+              resolve(
+                new Response(JSON.stringify(event.data.body), {
+                  status: event.data.status,
+                  headers: { "content-type": "application/json" },
+                }),
+              );
+            }
+          }
+          if (event.data.type === "snapshot") {
+            const {
+              tree,
+              style,
+              store: initialStore,
+              rows,
+              wires,
+            } = event.data.payload;
+            document.head.insertAdjacentHTML("beforeend", style);
+
+            const perspective = await globalThis.__spadayPerspective.worker();
+            trades = await perspective.table(rows, {
+              name: "trades",
+              limit: 1000,
+            });
+
+            const store = new Store(initialStore);
+            const client = new transports.Client();
+            const link = connectStore(
+              store,
+              client,
+              (frame) => worker.postMessage({ type: "wire", frame }),
+              transports,
+            );
+            receiveWires = (frames) => {
+              for (const frame of frames) link.receive(frame);
+            };
+            receiveWires(wires);
+
+            const panelReady = new Promise((resolve, reject) => {
+              document.addEventListener("perspective-ready", resolve, {
+                once: true,
+              });
+              document.addEventListener(
+                "perspective-error",
+                (error) => reject(error.detail ?? error),
+                { once: true },
+              );
+            });
+            mount(document.querySelector("#example-root"), tree, store);
+            await panelReady;
+
+            window.setInterval(
+              () => worker.postMessage({ type: "flush" }),
+              100,
+            );
+            status.textContent =
+              "Ready · Python and Perspective running in this browser";
+            document.documentElement.dataset.ready = "true";
+          }
+        }
+
+        worker.addEventListener("message", (event) => {
+          void handleMessage(event).catch(fail);
+        });
+        worker.postMessage({ type: "start" });
+      } catch (error) {
+        fail(error);
+      }
+    </script>
+  </body>
+</html>

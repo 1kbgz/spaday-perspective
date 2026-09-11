@@ -16,3 +16,5 @@ layout preset or summary metrics.
 Sending every row through spaday would duplicate storage and serialization work before Perspective could
 process the same data again. Keeping the native channel also means existing Perspective server code can be
 used unchanged. The wrapper only adapts lifecycle, theme, and workspace configuration to spaday.
+
+The standalone Pyodide example has no Python server to connect to. It creates the same named table in Perspective's browser worker, transfers initial rows from Python once, and sends incremental rows directly to that worker. This preserves Perspective's columnar execution model without emulating a websocket server in the page.

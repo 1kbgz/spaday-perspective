@@ -16,6 +16,11 @@ def test_perspective_panel_serializes_config_and_theme():
     assert node["props"]["theme"] == {"Str": "dark"}
 
 
+def test_perspective_panel_serializes_local_worker_mode():
+    node = PerspectivePanel(config={"local": True, "tables": ["trades"]}).to_node()
+    assert node["props"]["config"]["Map"]["local"] == {"Bool": True}
+
+
 def test_package_drives_bootstrap_asset_url():
     assert package.name == "perspective"
     assert [(schema.tag, schema.class_name) for schema in package.catalog] == [("perspective-panel", "PerspectivePanel")]
