@@ -14,7 +14,7 @@ requirements-py:  ## install prerequisite python build requirements
 	uv pip install -r pyproject.toml --extra develop
 
 requirements-js:  ## install prerequisite javascript build requirements
-	cd js; pnpm install && npx playwright install
+	cd js; pnpm install && pnpm exec playwright install --with-deps chromium webkit
 
 requirements: requirements-js requirements-py  ## setup project for development
 
