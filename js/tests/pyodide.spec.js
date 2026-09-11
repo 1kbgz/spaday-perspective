@@ -3,6 +3,21 @@ import { expect, test } from "@playwright/test";
 
 const built = fs.existsSync("dist/lite/index.html");
 
+async function scrollState(page) {
+  return page.evaluate(() => {
+    const findTable = (root) => {
+      for (const element of root.querySelectorAll("*")) {
+        if (element.localName === "regular-table") return element;
+        if (element.shadowRoot) {
+          const found = findTable(element.shadowRoot);
+          if (found) return found;
+        }
+      }
+    };
+    return { page: scrollY, table: findTable(document).scrollTop };
+  });
+}
+
 test("runs the complete example in Pyodide with a local Perspective engine", async ({
   page,
 }) => {
@@ -24,6 +39,37 @@ test("runs the complete example in Pyodide with a local Perspective engine", asy
   await expect(page.locator("perspective-panel")).toBeVisible();
   await expect(page.locator("perspective-viewer-datagrid")).toBeAttached();
   expect(sockets).toEqual([]);
+
+  const panelBox = await page.locator("perspective-panel").boundingBox();
+  await page.mouse.move(panelBox.x + panelBox.width / 2, panelBox.y + 120);
+  await page.mouse.wheel(0, 400);
+  const pageFirst = await scrollState(page);
+  expect(pageFirst.page).toBeGreaterThan(0);
+  expect(pageFirst.table).toBe(0);
+
+  await page.mouse.wheel(0, 400);
+  await expect
+    .poll(async () => (await scrollState(page)).table)
+    .toBeGreaterThan(0);
+
+  await page.evaluate(() => {
+    const findTable = (root) => {
+      for (const element of root.querySelectorAll("*")) {
+        if (element.localName === "regular-table") return element;
+        if (element.shadowRoot) {
+          const found = findTable(element.shadowRoot);
+          if (found) return found;
+        }
+      }
+    };
+    scrollTo(0, document.documentElement.scrollHeight);
+    findTable(document).scrollTop = 0;
+  });
+  const pageBottom = (await scrollState(page)).page;
+  await page.mouse.wheel(0, -200);
+  await expect
+    .poll(() => page.evaluate(() => scrollY))
+    .toBeLessThan(pageBottom);
 
   const initialSize = await page.evaluate(async () => {
     const panel = document.querySelector("perspective-panel");
