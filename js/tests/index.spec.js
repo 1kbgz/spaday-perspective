@@ -21,6 +21,43 @@ test("registers a themed Perspective viewer without connecting eagerly", async (
   ).toBeAttached();
 });
 
+test("loads named tables from the shared in-browser worker", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto("/dist/index.html");
+  const size = await page.evaluate(async () => {
+    const worker = await globalThis.__spadayPerspective.worker();
+    await worker.table([{ symbol: "NVDA", price: 181.46 }], {
+      name: "browser-trades",
+    });
+    const panel = document.createElement("perspective-panel");
+    panel.style.cssText = "display:block;width:600px;height:300px";
+    panel.config = {
+      local: true,
+      layout: {
+        layout: { type: "tab-layout", tabs: ["browser"] },
+        panels: {
+          browser: {
+            table: "browser-trades",
+            plugin: "Datagrid",
+            columns: ["symbol", "price"],
+          },
+        },
+      },
+    };
+    document.body.appendChild(panel);
+    await new Promise((resolve, reject) => {
+      panel.addEventListener("perspective-ready", resolve, { once: true });
+      panel.addEventListener("perspective-error", reject, { once: true });
+    });
+    return (await panel.viewer.getTable({ wait: false })).size();
+  });
+
+  expect(size).toBe(1);
+  await expect(page.locator("perspective-panel")).toContainText("NVDA");
+});
+
 test("an unthemed panel follows the wa-dark page mode until themed explicitly", async ({
   page,
 }) => {

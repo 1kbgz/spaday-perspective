@@ -58,6 +58,15 @@ jobs:
       - name: Test
         run: make coverage
 
+      - name: Build and test browser example
+        run: make test-pyodide-example
+
+      - name: Upload browser example
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: pyodide-example
+          path: dist/lite
+
       - name: Upload test results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
