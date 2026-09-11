@@ -141,7 +141,13 @@ const ready = Promise.all([
   import("@perspective-dev/viewer-datagrid"),
   import("@perspective-dev/viewer-charts"),
 ])
-  .finally(restoreDefine)
+  .finally(() =>
+    restoreDefine(`@perspective-dev/client ${__PERSPECTIVE_VERSION__}`, [
+      "perspective-viewer",
+      "perspective-viewer-datagrid",
+      "perspective-viewer-datagrid-toolbar",
+    ]),
+  )
   .then(() => customElements.whenDefined("perspective-viewer"));
 const THEMES: Record<string, string> = {
   light: "Pro Light",

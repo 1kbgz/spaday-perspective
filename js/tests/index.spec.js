@@ -628,3 +628,23 @@ test("starts no engine until something asks for one", async ({ page }) => {
   expect(exposed).toBe(true);
   expect(sockets.filter((url) => url.includes("/perspective"))).toHaveLength(0);
 });
+
+test("warns, naming what it serves, when another copy registered its elements first", async ({
+  page,
+}) => {
+  // the page keeps the first registration, so the loser says which elements are not its own
+  const warnings = [];
+  page.on("console", (message) => {
+    if (message.type() === "warning") warnings.push(message.text());
+  });
+  await page.addInitScript(() => {
+    customElements.define("perspective-viewer", class extends HTMLElement {});
+  });
+  await page.goto("/dist/index.html");
+  await expect
+    .poll(() => warnings.find((text) => text.includes("<perspective-viewer>")))
+    .toMatch(/ \d+\.\d+\.\d+\S*: another copy on the page already registered /);
+  expect(
+    warnings.find((text) => text.includes("<perspective-viewer>")),
+  ).toContain("@perspective-dev/client ");
+});
