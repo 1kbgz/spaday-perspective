@@ -42,11 +42,15 @@ test("runs the complete example in Pyodide with a local Perspective engine", asy
 
   const panelBox = await page.locator("perspective-panel").boundingBox();
   await page.mouse.move(panelBox.x + panelBox.width / 2, panelBox.y + 120);
-  await page.mouse.wheel(0, 400);
+  for (const delta of [40, 40, 40]) {
+    await page.mouse.wheel(0, delta);
+    await page.waitForTimeout(30);
+  }
   const pageFirst = await scrollState(page);
   expect(pageFirst.page).toBeGreaterThan(0);
   expect(pageFirst.table).toBe(0);
 
+  await page.waitForTimeout(180);
   await page.mouse.wheel(0, 400);
   await expect
     .poll(async () => (await scrollState(page)).table)
@@ -65,11 +69,13 @@ test("runs the complete example in Pyodide with a local Perspective engine", asy
     scrollTo(0, document.documentElement.scrollHeight);
     findTable(document).scrollTop = 0;
   });
+  await page.waitForTimeout(180);
   const pageBottom = (await scrollState(page)).page;
   await page.mouse.wheel(0, -200);
   await expect
     .poll(() => page.evaluate(() => scrollY))
     .toBeLessThan(pageBottom);
+  expect((await scrollState(page)).table).toBe(0);
 
   const initialSize = await page.evaluate(async () => {
     const panel = document.querySelector("perspective-panel");
