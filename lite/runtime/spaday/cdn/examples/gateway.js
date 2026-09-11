@@ -1,0 +1,2 @@
+import{registerHandler as i}from"/js/dist/esm/index.js";i("clear-blotter",async()=>{await fetch("/api/clear",{method:"POST"});let t=document.querySelector("perspective-panel perspective-workspace");if(!t)return;for(let s of t.querySelectorAll("perspective-viewer")){let e=s;for(let o=0;o<60&&await(await e.getView()).num_rows()>0;o++)await new Promise(a=>setTimeout(a,50));await e.restore(await e.save())}let r=document.getElementById("status");r&&(r.textContent="cleared")});
+//# sourceMappingURL=gateway.js.map

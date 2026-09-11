@@ -253,7 +253,7 @@
 <a class="reference external" href="https://codecov.io/gh/1kbgz/spaday-perspective"><img alt="codecov" src="https://codecov.io/gh/1kbgz/spaday-perspective/branch/main/graph/badge.svg" /></a>
 <a class="reference external" href="https://github.com/1kbgz/spaday-perspective"><img alt="License" src="https://img.shields.io/github/license/1kbgz/spaday-perspective" /></a>
 <a class="reference external" href="https://pypi.python.org/pypi/spaday-perspective"><img alt="PyPI" src="https://img.shields.io/pypi/v/spaday-perspective.svg" /></a></p>
-<p><a class="reference download internal" download="" href="_downloads/cc8b1e2c9f76cedf238a34523d69aeb3/example.py"><span class="xref download myst"><img alt="Preview of perspective component" src="https://raw.githubusercontent.com/1kbgz/spaday-perspective/main/docs/img/preview.webp" /></span></a></p>
+<p><a class="reference external" href="https://1kbgz.github.io/spaday-perspective/lite/"><img alt="Preview of the spaday-perspective example" src="https://raw.githubusercontent.com/1kbgz/spaday-perspective/main/docs/img/preview.webp" /></a></p>
 <section id="overview">
 <h1>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h1>
 <p><code class="docutils literal notranslate"><span class="pre">spaday-perspective</span></code> moves the existing <code class="docutils literal notranslate"><span class="pre">PerspectivePanel</span></code> integration out of spaday core. Its
@@ -375,8 +375,12 @@ changes and restores changed layouts; <code class="docutils literal notranslate"
 <p>Installing this project registers the <code class="docutils literal notranslate"><span class="pre">perspective</span></code> entry point with spaday. The equivalent explicit
 forms are <code class="docutils literal notranslate"><span class="pre">packages=[spaday_perspective.package]</span></code> and <code class="docutils literal notranslate"><span class="pre">packages=[&quot;spaday_perspective:package&quot;]</span></code>.</p>
 </section>
-<section id="run-the-local-example">
-<h1>Run the local example<a class="headerlink" href="#run-the-local-example" title="Link to this heading">¶</a></h1>
+<section id="browser-example">
+<h1>Browser example<a class="headerlink" href="#browser-example" title="Link to this heading">¶</a></h1>
+<p><a class="reference external" href="https://1kbgz.github.io/spaday-perspective/lite/">Run the complete example in your browser</a> — Python runs through Pyodide and Perspective uses its in-browser worker, so no install, server, or websocket is required.</p>
+</section>
+<section id="run-the-example-locally">
+<h1>Run the example locally<a class="headerlink" href="#run-the-example-locally" title="Link to this heading">¶</a></h1>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">".[examples]"</span>
 python<span class="w"> </span>-m<span class="w"> </span>spaday_perspective.example
 </pre></div>

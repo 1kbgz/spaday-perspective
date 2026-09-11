@@ -308,15 +308,19 @@
 <td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
 <td><p>Perspective websocket URL; relative URLs use the current host.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tables</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">local</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<td><p>Load the shared in-browser Perspective worker instead of opening a websocket.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">tables</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">list</span></code></p></td>
 <td><p>Table names (<code class="docutils literal notranslate"><span class="pre">str</span></code>), or <code class="docutils literal notranslate"><span class="pre">{name,</span> <span class="pre">architecture,</span> <span class="pre">index,</span> <span class="pre">limit}</span></code> mappings for per-table architecture.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">default_architecture</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">default_architecture</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">server</span></code> (default) or <code class="docutils literal notranslate"><span class="pre">client-server</span></code>, applied to <code class="docutils literal notranslate"><span class="pre">tables</span></code> entries without their own <code class="docutils literal notranslate"><span class="pre">architecture</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">layout</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">layout</span></code></p></td>
 <td><p>mapping</p></td>
 <td><p>Value accepted by <code class="docutils literal notranslate"><span class="pre">&lt;perspective-viewer&gt;.restore()</span></code> — the whole-element config (<code class="docutils literal notranslate"><span class="pre">layout</span></code> tree + <code class="docutils literal notranslate"><span class="pre">panels</span></code>).</p></td>
 </tr>
@@ -325,6 +329,7 @@
 </div>
 <p>Changing <code class="docutils literal notranslate"><span class="pre">ws_url</span></code> opens a new client connection. Changing the serialized <code class="docutils literal notranslate"><span class="pre">layout</span></code> restores the viewer’s panels.
 The wrapper queues asynchronous changes in assignment order.</p>
+<p><code class="docutils literal notranslate"><span class="pre">local=True</span></code> expects named tables to be created through <code class="docutils literal notranslate"><span class="pre">globalThis.__spadayPerspective.worker()</span></code> before the panel loads. It is intended for browser-only hosts such as the bundled Pyodide example; normal Python deployments should keep bulk data on Perspective’s websocket.</p>
 </section>
 <section id="table-architectures">
 <h2>Table architectures<a class="headerlink" href="#table-architectures" title="Link to this heading">¶</a></h2>

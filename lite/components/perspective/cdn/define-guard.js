@@ -1,0 +1,2 @@
+var s=customElements.define.bind(customElements),i=customElements.get.bind(customElements),r=new Set;customElements.define=(t,o,e)=>{i(t)||(s(t,o,e),r.add(t))};function l(t,o=[]){customElements.define=s;let e=o.filter(n=>i(n)&&!r.has(n));if(!e.length)return;let c=e.slice(0,3).map(n=>`<${n}>`).join(", "),m=e.length>3?` and ${e.length-3} more`:"";console.warn(`${t}: another copy on the page already registered ${c}${m}; the page keeps that copy's elements, which may not match this version`)}export{l as restoreDefine};
+//# sourceMappingURL=define-guard.js.map

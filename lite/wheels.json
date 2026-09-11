@@ -1,0 +1,5 @@
+{
+  "perspective": "pypi/spaday_perspective-0.7.0-py3-none-any.whl",
+  "spaday": "pypi/spaday-0.8.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+  "transports": "pypi/transports-0.8.0-cp314-cp314-pyemscripten_2026_0_wasm32.whl"
+}

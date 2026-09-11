@@ -31,7 +31,7 @@ docs/src/explanation.md
 [![License](https://img.shields.io/github/license/1kbgz/spaday-perspective)](https://github.com/1kbgz/spaday-perspective)
 [![PyPI](https://img.shields.io/pypi/v/spaday-perspective.svg)](https://pypi.python.org/pypi/spaday-perspective)
 
-[![Preview of perspective component](https://raw.githubusercontent.com/1kbgz/spaday-perspective/main/docs/img/preview.webp)](./spaday_perspective/example.py)
+[![Preview of the spaday-perspective example](https://raw.githubusercontent.com/1kbgz/spaday-perspective/main/docs/img/preview.webp)](https://1kbgz.github.io/spaday-perspective/lite/)
 
 ## Overview
 
@@ -156,7 +156,11 @@ changes and restores changed layouts; `theme` accepts `light`, `dark`, or a Pers
 Installing this project registers the `perspective` entry point with spaday. The equivalent explicit
 forms are `packages=[spaday_perspective.package]` and `packages=["spaday_perspective:package"]`.
 
-## Run the local example
+## Browser example
+
+[Run the complete example in your browser](https://1kbgz.github.io/spaday-perspective/lite/) — Python runs through Pyodide and Perspective uses its in-browser worker, so no install, server, or websocket is required.
+
+## Run the example locally
 
 ```bash
 python -m pip install -e ".[examples]"

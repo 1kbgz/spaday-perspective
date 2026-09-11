@@ -24,12 +24,15 @@ Tag: `<perspective-panel>`.
 | Key                    | Type    | Description                                                                                               |
 | ---------------------- | ------- | --------------------------------------------------------------------------------------------------------- |
 | `ws_url`               | `str`   | Perspective websocket URL; relative URLs use the current host.                                            |
+| `local`                | `bool`  | Load the shared in-browser Perspective worker instead of opening a websocket.                             |
 | `tables`               | `list`  | Table names (`str`), or `{name, architecture, index, limit}` mappings for per-table architecture.         |
 | `default_architecture` | `str`   | `server` (default) or `client-server`, applied to `tables` entries without their own `architecture`.      |
 | `layout`               | mapping | Value accepted by `<perspective-viewer>.restore()` — the whole-element config (`layout` tree + `panels`). |
 
 Changing `ws_url` opens a new client connection. Changing the serialized `layout` restores the viewer's panels.
 The wrapper queues asynchronous changes in assignment order.
+
+`local=True` expects named tables to be created through `globalThis.__spadayPerspective.worker()` before the panel loads. It is intended for browser-only hosts such as the bundled Pyodide example; normal Python deployments should keep bulk data on Perspective's websocket.
 
 ## Table architectures
 
