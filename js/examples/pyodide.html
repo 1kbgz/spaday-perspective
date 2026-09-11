@@ -84,6 +84,30 @@
       function handOffPageScroll(panel) {
         const table = findRegularTable(panel);
         if (!table) return;
+        let destination;
+        let gestureTimer;
+        let pendingPageDelta = 0;
+        let frame;
+
+        function chooseDestination(event) {
+          const page = document.scrollingElement;
+          const panelRect = panel.getBoundingClientRect();
+          const statusBottom = status.getBoundingClientRect().bottom;
+          const down = event.deltaY > 0;
+          const pageCanScroll = down
+            ? page.scrollTop + page.clientHeight < page.scrollHeight - 1
+            : page.scrollTop > 0;
+          const panelNeedsReveal = down
+            ? panelRect.bottom > innerHeight
+            : panelRect.top < statusBottom;
+          const tableAtEdge = down
+            ? table.scrollTop + table.clientHeight >= table.scrollHeight - 1
+            : table.scrollTop <= 1;
+          return pageCanScroll && (panelNeedsReveal || tableAtEdge)
+            ? "page"
+            : "table";
+        }
+
         panel.addEventListener(
           "wheel",
           (event) => {
@@ -93,20 +117,12 @@
               Math.abs(event.deltaX) > Math.abs(event.deltaY)
             )
               return;
-            const page = document.scrollingElement;
-            const panelRect = panel.getBoundingClientRect();
-            const statusBottom = status.getBoundingClientRect().bottom;
-            const down = event.deltaY > 0;
-            const pageCanScroll = down
-              ? page.scrollTop + page.clientHeight < page.scrollHeight - 1
-              : page.scrollTop > 0;
-            const panelNeedsReveal = down
-              ? panelRect.bottom > innerHeight
-              : panelRect.top < statusBottom;
-            const tableAtEdge = down
-              ? table.scrollTop + table.clientHeight >= table.scrollHeight - 1
-              : table.scrollTop <= 1;
-            if (!pageCanScroll || (!panelNeedsReveal && !tableAtEdge)) return;
+            destination ??= chooseDestination(event);
+            clearTimeout(gestureTimer);
+            gestureTimer = setTimeout(() => {
+              destination = undefined;
+            }, 140);
+            if (destination !== "page") return;
 
             event.preventDefault();
             event.stopImmediatePropagation();
@@ -116,7 +132,14 @@
                 : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
                   ? innerHeight
                   : 1;
-            page.scrollTop += event.deltaY * scale;
+            pendingPageDelta += event.deltaY * scale;
+            if (!frame) {
+              frame = requestAnimationFrame(() => {
+                document.scrollingElement.scrollTop += pendingPageDelta;
+                pendingPageDelta = 0;
+                frame = undefined;
+              });
+            }
           },
           { capture: true, passive: false },
         );

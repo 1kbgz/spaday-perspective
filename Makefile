@@ -115,7 +115,7 @@ pyodide-example: build  ## build the standalone Pyodide example into dist/lite
 	python js/examples/build_pyodide_example.py dist/lite "$(firstword $(wildcard dist/spaday_perspective-*.whl))" dist/pyodide-deps
 	cp js/examples/pyodide.html dist/lite/index.html
 	cp js/examples/pyodide-worker.js dist/lite/
-test-pyodide-example: pyodide-example  ## run the standalone Pyodide example in Chromium
+test-pyodide-example: pyodide-example  ## run the standalone Pyodide example in Chromium and WebKit
 	rm -rf js/dist/lite
 	cp -r dist/lite js/dist/lite
 	cd js; SPADAY_PERSPECTIVE_PYODIDE_ONLY=1 pnpm exec playwright test tests/pyodide.spec.js
