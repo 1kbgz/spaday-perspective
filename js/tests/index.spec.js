@@ -58,6 +58,48 @@ test("loads named tables from the shared in-browser worker", async ({
   await expect(page.locator("perspective-panel")).toContainText("NVDA");
 });
 
+test("wait_for_table leaves a panel pending until its table is created", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto("/dist/index.html");
+  const r = await page.evaluate(async () => {
+    const config = (name, wait_for_table) => ({
+      local: true,
+      wait_for_table,
+      layout: {
+        layout: { type: "tab-layout", tabs: ["late"] },
+        panels: {
+          late: { table: name, plugin: "Datagrid", columns: ["symbol"] },
+        },
+      },
+    });
+    const mount = (id, cfg) => {
+      const panel = document.createElement("perspective-panel");
+      panel.id = id;
+      panel.style.cssText = "display:block;width:600px;height:300px";
+      panel.config = cfg;
+      const settled = new Promise((resolve) => {
+        panel.addEventListener("perspective-ready", () => resolve("ready"), {
+          once: true,
+        });
+        panel.addEventListener("perspective-error", () => resolve("error"), {
+          once: true,
+        });
+      });
+      document.body.appendChild(panel);
+      return settled;
+    };
+    const strict = await mount("strict", config("never-created", false));
+    const waited = await mount("waited", config("late-trades", true));
+    const worker = await globalThis.__spadayPerspective.worker();
+    await worker.table([{ symbol: "NVDA" }], { name: "late-trades" });
+    return { strict, waited };
+  });
+  expect(r).toEqual({ strict: "error", waited: "ready" });
+  await expect(page.locator("#waited")).toContainText("NVDA");
+});
+
 test("an unthemed panel follows the wa-dark page mode until themed explicitly", async ({
   page,
 }) => {

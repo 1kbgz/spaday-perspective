@@ -19,6 +19,7 @@ export interface PerspectiveConfig {
   tables?: (string | PerspectiveTableConfig)[];
   default_architecture?: PerspectiveArchitecture;
   layout?: unknown;
+  wait_for_table?: boolean;
 }
 
 type PspClient = Awaited<ReturnType<typeof perspective.websocket>>;
@@ -193,7 +194,10 @@ function wsUrl(url: string): string {
 type Viewer = HTMLElement & {
   load(client: unknown): Promise<void>;
   restore(config: unknown, options?: { panel?: string }): Promise<void>;
-  restoreWorkspace(config: unknown): Promise<void>;
+  restoreWorkspace(
+    config: unknown,
+    options?: { wait_for_table?: boolean },
+  ): Promise<void>;
   saveWorkspace(): Promise<unknown>;
   flush(): Promise<unknown>;
   resetThemes(themes?: string[] | null): Promise<unknown>;
@@ -474,8 +478,11 @@ class PerspectivePanel extends HTMLElement {
             const layout = JSON.stringify(config.layout);
             if (layout !== this.#lastLayout) {
               this.#lastLayout = layout;
+              // Perspective 5.5 errors on a `table` no loaded client hosts; `wait_for_table`
+              // restores the earlier behavior, a pending panel that fills once it is created
               await this.#viewer.restoreWorkspace(
                 this.#themedLayout(config.layout),
+                { wait_for_table: !!config.wait_for_table },
               );
               // Perspective 5.2: restoring a layout with no `active` (sidebar closed)
               // onto an already-closed element force-toggles settings as a no-op but
