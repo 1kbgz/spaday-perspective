@@ -21,13 +21,14 @@ Tag: `<perspective-panel>`.
 
 ## Configuration
 
-| Key                    | Type    | Description                                                                                               |
-| ---------------------- | ------- | --------------------------------------------------------------------------------------------------------- |
-| `ws_url`               | `str`   | Perspective websocket URL; relative URLs use the current host.                                            |
-| `local`                | `bool`  | Load the shared in-browser Perspective worker instead of opening a websocket.                             |
-| `tables`               | `list`  | Table names (`str`), or `{name, architecture, index, limit}` mappings for per-table architecture.         |
-| `default_architecture` | `str`   | `server` (default) or `client-server`, applied to `tables` entries without their own `architecture`.      |
-| `layout`               | mapping | Value accepted by `<perspective-viewer>.restore()` — the whole-element config (`layout` tree + `panels`). |
+| Key                    | Type    | Description                                                                                                                      |
+| ---------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `ws_url`               | `str`   | Perspective websocket URL; relative URLs use the current host.                                                                   |
+| `local`                | `bool`  | Load the shared in-browser Perspective worker instead of opening a websocket.                                                    |
+| `tables`               | `list`  | Table names (`str`), or `{name, architecture, index, limit}` mappings for per-table architecture.                                |
+| `default_architecture` | `str`   | `server` (default) or `client-server`, applied to `tables` entries without their own `architecture`.                             |
+| `layout`               | mapping | Value accepted by `<perspective-viewer>.restore()` — the whole-element config (`layout` tree + `panels`).                        |
+| `wait_for_table`       | `bool`  | Leave a panel whose `table` no loaded client hosts yet empty and pending until it is created, instead of erroring (the default). |
 
 Changing `ws_url` opens a new client connection. Changing the serialized `layout` restores the viewer's panels.
 The wrapper queues asynchronous changes in assignment order.

@@ -9,20 +9,20 @@ importers:
   .:
     dependencies:
       '@perspective-dev/client':
-        specifier: 5.4.0
-        version: 5.4.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
+        specifier: 5.5.0
+        version: 5.5.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
       '@perspective-dev/server':
-        specifier: 5.4.0
-        version: 5.4.0
+        specifier: 5.5.0
+        version: 5.5.0
       '@perspective-dev/viewer':
-        specifier: 5.4.0
-        version: 5.4.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
+        specifier: 5.5.0
+        version: 5.5.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
       '@perspective-dev/viewer-charts':
-        specifier: 5.4.0
-        version: 5.4.0
+        specifier: 5.5.0
+        version: 5.5.0
       '@perspective-dev/viewer-datagrid':
-        specifier: 5.4.0
-        version: 5.4.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
+        specifier: 5.5.0
+        version: 5.5.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
     devDependencies:
       '@playwright/test':
         specifier: ^1.62.1
@@ -472,20 +472,20 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@perspective-dev/client@5.4.0':
-    resolution: {integrity: sha512-Rc/hm/GqtCtkOuvZuHFBKBg6YOb4HwX8Mqql9wSysYldQfaUF/UPZgoYtVsO18SupbsIUcN2JI/q+ZpsPdbvQQ==}
+  '@perspective-dev/client@5.5.0':
+    resolution: {integrity: sha512-c6nN671nxKphyL2U9cjzTNnZm6+mwnTECXsCtaL+HWixPBeE5KMd9LTXsigiXMinC7gYrvpGZsvaJlRecv2jKQ==}
 
-  '@perspective-dev/server@5.4.0':
-    resolution: {integrity: sha512-HmUop3f0SfqbjCnojRy8gD/VIOeSgk91Oc5MafptBlJByaCSx8dbKZmCzLDc4p8MuClYe2PrYFMjJJchdl8ZRg==}
+  '@perspective-dev/server@5.5.0':
+    resolution: {integrity: sha512-4wVCiabrrCpe7kvZu5Kx8BNJEjTGj2An7nJJiqZ9CvBZ8bObke6rqFNgTj3o1oGDmai+eTNFpg5LrFH4dZlPEw==}
 
-  '@perspective-dev/viewer-charts@5.4.0':
-    resolution: {integrity: sha512-f2IegDhLGuvNU8Wq7DVyghXfqx7lGVRiUk6quRDyWFDejVyhnlZmM0tV9OVwHDhsNTxvO1rAX/gWfyroC7Ys2w==}
+  '@perspective-dev/viewer-charts@5.5.0':
+    resolution: {integrity: sha512-OLbGKlLqF9l4OCdXDzAi6by/1M9qNTky03EbMHr2CifjZl+BlKWoahARPrICZFUE481+HYgT6M0McNprNzL0QA==}
 
-  '@perspective-dev/viewer-datagrid@5.4.0':
-    resolution: {integrity: sha512-jXzVIfaa41KsQg4kFbhoorwgtubGXhxbwtRHJLOVZXyCd+OcA1Zfy7JGeuUzz+ir/1rKFEnIj8Z0JfVS2UQSxg==}
+  '@perspective-dev/viewer-datagrid@5.5.0':
+    resolution: {integrity: sha512-/xsE336Eycj60Je3QZj8owPk6YHM2GPsS10o+Zv9uQh7WXsWZQldhX9zuPa6hS6QolPyvc7G3T1/8EXuZ+pU1g==}
 
-  '@perspective-dev/viewer@5.4.0':
-    resolution: {integrity: sha512-dfWVJDknnq2zQlWGC4gr4B0nnoP92odKGmo5+GGrfYuGLGFjopFPLzZfdKyqzBRq5WdJwrNBNcTXrbVeOsZaxA==}
+  '@perspective-dev/viewer@5.5.0':
+    resolution: {integrity: sha512-B6/Xd7Ptr6xgkFY5uh5fH0SYLl9rTLjZsDlLLVOcipF+ZojYU26wnLKSyRL+8l7fr3nZtNA6LbsUvPeY94IiAA==}
 
   '@playwright/test@1.62.1':
     resolution: {integrity: sha512-DTcUc8qii+cpHvtOwggMtBRMjKZHXYWdw8syRYu2vtzuq4Wxphqq4NfCs5Zt44L6mA8rfDfj+PHnxFc/FeK6mQ==}
@@ -1821,9 +1821,9 @@ snapshots:
   '@oxlint/binding-win32-x64-msvc@1.81.0':
     optional: true
 
-  '@perspective-dev/client@5.4.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)':
+  '@perspective-dev/client@5.5.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)':
     dependencies:
-      '@perspective-dev/server': 5.4.0
+      '@perspective-dev/server': 5.5.0
       pro_self_extracting_wasm: 0.0.9(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
       stoppable: 1.1.0
       ws: 8.21.1
@@ -1833,14 +1833,14 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@perspective-dev/server@5.4.0': {}
+  '@perspective-dev/server@5.5.0': {}
 
-  '@perspective-dev/viewer-charts@5.4.0': {}
+  '@perspective-dev/viewer-charts@5.5.0': {}
 
-  '@perspective-dev/viewer-datagrid@5.4.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)':
+  '@perspective-dev/viewer-datagrid@5.5.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)':
     dependencies:
-      '@perspective-dev/client': 5.4.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
-      '@perspective-dev/viewer': 5.4.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
+      '@perspective-dev/client': 5.5.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
+      '@perspective-dev/viewer': 5.5.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
       regular-table: 0.9.1
     transitivePeerDependencies:
       - bufferutil
@@ -1848,9 +1848,9 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@perspective-dev/viewer@5.4.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)':
+  '@perspective-dev/viewer@5.5.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)':
     dependencies:
-      '@perspective-dev/client': 5.4.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
+      '@perspective-dev/client': 5.5.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
       pro_self_extracting_wasm: 0.0.9(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
       regular-layout: 0.6.1
     transitivePeerDependencies:
