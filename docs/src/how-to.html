@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="API reference" href="reference.html"><link rel="prev" title="Build a live market workspace" href="tutorial.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>How to stream data and change layouts - spaday-perspective v0.7.0</title>
+        <title>How to stream data and change layouts - spaday-perspective v0.7.1</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
@@ -168,7 +168,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.7.0</code></div></a>
+      <a href="../../index.html"><div class="brand">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.7.1</code></div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -189,7 +189,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
-  <span class="sidebar-brand-text">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.7.0</code></span>
+  <span class="sidebar-brand-text">spaday-perspective <code style='font-size: var(--font-size--small--4);color: var(--sd-color-primary);'>v0.7.1</code></span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -242,6 +242,46 @@
         <article role="main" id="furo-main-content">
           <section class="tex2jax_ignore mathjax_ignore" id="how-to-stream-data-and-change-layouts">
 <h1>How to stream data and change layouts<a class="headerlink" href="#how-to-stream-data-and-change-layouts" title="Link to this heading">¶</a></h1>
+<section id="open-close-and-save-channels">
+<h2>Open, close, and save channels<a class="headerlink" href="#open-close-and-save-channels" title="Link to this heading">¶</a></h2>
+<p>Configure channels by table name and enable the optional toolbar:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">panel</span> <span class="o">=</span> <span class="n">PerspectivePanel</span><span class="p">(</span>
+    <span class="nb">id</span><span class="o">=</span><span class="s2">"workspace"</span><span class="p">,</span>
+    <span class="n">toolbar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">"ws_url"</span><span class="p">:</span> <span class="s2">"/perspective"</span><span class="p">,</span>
+        <span class="s2">"channels"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"trades"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"title"</span><span class="p">:</span> <span class="s2">"Trades"</span><span class="p">,</span> <span class="s2">"plugin"</span><span class="p">:</span> <span class="s2">"Datagrid"</span><span class="p">,</span> <span class="s2">"columns"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"symbol"</span><span class="p">,</span> <span class="s2">"price"</span><span class="p">]},</span>
+            <span class="s2">"orders"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"title"</span><span class="p">:</span> <span class="s2">"Orders"</span><span class="p">,</span> <span class="s2">"plugin"</span><span class="p">:</span> <span class="s2">"Datagrid"</span><span class="p">},</span>
+        <span class="p">},</span>
+        <span class="s2">"single_tab"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s2">"layout"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"layout"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"tab-layout"</span><span class="p">,</span> <span class="s2">"tabs"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"trades"</span><span class="p">]},</span>
+            <span class="s2">"panels"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"trades"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"table"</span><span class="p">:</span> <span class="s2">"trades"</span><span class="p">,</span> <span class="s2">"plugin"</span><span class="p">:</span> <span class="s2">"Datagrid"</span><span class="p">}},</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Host both tables on the Perspective server. Selecting <strong>Orders</strong> replaces the selected detail tab;
+reopening <strong>Trades</strong> restores its columns, filters, sorting, and title. Omit <code class="docutils literal notranslate"><span class="pre">single_tab</span></code> to keep
+multiple tabs. To use your own design-kit buttons, omit <code class="docutils literal notranslate"><span class="pre">toolbar</span></code> and attach these actions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday</span><span class="w"> </span><span class="kn">import</span> <span class="n">Invoke</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">SetStorage</span><span class="p">,</span> <span class="n">by_id</span><span class="p">,</span> <span class="n">field</span>
+
+<span class="n">open_orders</span> <span class="o">=</span> <span class="n">Invoke</span><span class="p">(</span><span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"openChannel"</span><span class="p">,</span> <span class="s2">"orders"</span><span class="p">)</span>
+<span class="n">close_orders</span> <span class="o">=</span> <span class="n">Invoke</span><span class="p">(</span><span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"closeChannel"</span><span class="p">,</span> <span class="s2">"orders"</span><span class="p">)</span>
+<span class="n">save_layout</span> <span class="o">=</span> <span class="n">Sequence</span><span class="p">(</span>
+    <span class="n">Invoke</span><span class="p">(</span><span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"saveClean"</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="s2">"saved_layout"</span><span class="p">),</span>
+    <span class="n">SetStorage</span><span class="p">(</span><span class="s2">"workspace-layout"</span><span class="p">,</span> <span class="n">field</span><span class="p">(</span><span class="s2">"saved_layout"</span><span class="p">)),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Assign a saved or imported token to <code class="docutils literal notranslate"><span class="pre">config.layout</span></code> to restore it. Keep its <code class="docutils literal notranslate"><span class="pre">closed_channels</span></code> field:
+<code class="docutils literal notranslate"><span class="pre">saveClean()</span></code> includes configurations for channels closed through either the wrapper or native tabs.
+Use the same result with Spaday’s <code class="docutils literal notranslate"><span class="pre">Download</span></code> action when exporting a layout.</p>
+<p>Saved panel themes follow the current application theme when restored. For a filter sidebar that
+must use its own theme, set <code class="docutils literal notranslate"><span class="pre">config.master_theme</span></code> and list its panel ID in the layout’s <code class="docutils literal notranslate"><span class="pre">masters</span></code>.</p>
+</section>
 <section id="stream-rows-from-python">
 <h2>Stream rows from Python<a class="headerlink" href="#stream-rows-from-python" title="Link to this heading">¶</a></h2>
 <p>Keep the table returned by <code class="docutils literal notranslate"><span class="pre">client.table()</span></code>, then update it whenever application data changes:</p>
@@ -424,6 +464,7 @@ server, and <code class="docutils literal notranslate"><span class="pre">.worker
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">How to stream data and change layouts</a><ul>
+<li><a class="reference internal" href="#open-close-and-save-channels">Open, close, and save channels</a></li>
 <li><a class="reference internal" href="#stream-rows-from-python">Stream rows from Python</a></li>
 <li><a class="reference internal" href="#switch-between-saved-layouts">Switch between saved layouts</a></li>
 <li><a class="reference internal" href="#map-a-page-theme">Map a page theme</a></li>
@@ -441,7 +482,7 @@ server, and <code class="docutils literal notranslate"><span class="pre">.worker
       
     </aside>
   </div>
-</div><script src="../../_static/documentation_options.js?v=fe7df9b0"></script>
+</div><script src="../../_static/documentation_options.js?v=5a057da9"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>

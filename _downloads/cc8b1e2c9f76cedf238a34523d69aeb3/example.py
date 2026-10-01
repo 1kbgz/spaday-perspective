@@ -158,7 +158,7 @@ def layout(*, grouped: bool = False) -> dict:
 
 
 panel = (
-    PerspectivePanel(id="market-grid")
+    PerspectivePanel(id="market-grid", toolbar=True)
     .compute("theme", cond(field("dark"), "dark", "light"))
     .compute(
         "config",
@@ -166,6 +166,7 @@ panel = (
             {
                 **({"local": True} if IS_PYODIDE else {"ws_url": "/perspective"}),
                 "tables": ["trades"],
+                "channels": {"trades": layout()["panels"]["market"]},
                 "layout": cond(eq(field("view"), "grouped"), layout(grouped=True), layout()),
             }
         ),

@@ -13,6 +13,7 @@ Tag: `<perspective-panel>`.
 | `autopause` | `bool`      | Pause rendering while not visible (on by default).                       |
 | `throttle`  | `int`       | Render throttle in milliseconds; unset restores adaptive throttling.     |
 | `settings`  | `bool`      | Whether the settings sidebar is open.                                    |
+| `toolbar`   | `bool`      | Show the channel picker and close button (default `False`).              |
 
 ```{eval-rst}
 .. autoclass:: spaday_perspective.PerspectivePanel
@@ -21,17 +22,28 @@ Tag: `<perspective-panel>`.
 
 ## Configuration
 
-| Key                    | Type    | Description                                                                                                                      |
-| ---------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `ws_url`               | `str`   | Perspective websocket URL; relative URLs use the current host.                                                                   |
-| `local`                | `bool`  | Load the shared in-browser Perspective worker instead of opening a websocket.                                                    |
-| `tables`               | `list`  | Table names (`str`), or `{name, architecture, index, limit}` mappings for per-table architecture.                                |
-| `default_architecture` | `str`   | `server` (default) or `client-server`, applied to `tables` entries without their own `architecture`.                             |
-| `layout`               | mapping | Value accepted by `<perspective-viewer>.restore()` — the whole-element config (`layout` tree + `panels`).                        |
-| `wait_for_table`       | `bool`  | Leave a panel whose `table` no loaded client hosts yet empty and pending until it is created, instead of erroring (the default). |
+| Key                    | Type    | Description                                                                                                                                                               |
+| ---------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ws_url`               | `str`   | Perspective websocket URL; relative URLs use the current host.                                                                                                            |
+| `local`                | `bool`  | Load the shared in-browser Perspective worker instead of opening a websocket.                                                                                             |
+| `tables`               | `list`  | Table names (`str`), or `{name, architecture, index, limit}` mappings for per-table architecture.                                                                         |
+| `default_architecture` | `str`   | `server` (default) or `client-server`, applied to `tables` entries without their own `architecture`.                                                                      |
+| `layout`               | mapping | Workspace config accepted by `<perspective-viewer>.restoreWorkspace()`, plus optional `closed_channels`.                                                                  |
+| `wait_for_table`       | `bool`  | Leave a panel whose `table` no loaded client hosts yet empty and pending until it is created, instead of erroring (the default).                                          |
+| `master_theme`         | `str`   | Theme for filter-source panels listed in `masters`. Accepts `light`, `dark`, or a registered theme name. Defaults to the application theme.                               |
+| `channels`             | mapping | Table name to default panel configuration, such as `{"trades": {"title": "Trades", "columns": ["price"]}}`. Supplies the channel picker and `openChannel`/`closeChannel`. |
+| `single_tab`           | `bool`  | Keep only the selected tab in each stack before restoring it. Hidden configured channels retain their settings for reopening. Default `False`.                            |
 
 Changing `ws_url` opens a new client connection. Changing the serialized `layout` restores the viewer's panels.
 The wrapper queues asynchronous changes in assignment order.
+
+The application theme overrides saved panel themes before restoration. `master_theme` overrides
+that choice for filter-source panels, including during live application theme changes. Input layouts
+are copied before preparation. Restoring a saved layout does not require a second theme restore.
+
+Changing `master_theme` or `single_tab` with an unchanged layout applies to the current workspace,
+preserving user edits. Turning `single_tab` off permits additional tabs; it does not reopen closed
+channels. Replacing `layout` starts a new workspace and replaces its retained channel configurations.
 
 `local=True` expects named tables to be created through `globalThis.__spadayPerspective.worker()` before the panel loads. It is intended for browser-only hosts such as the bundled Pyodide example; normal Python deployments should keep bulk data on Perspective's websocket.
 
@@ -62,6 +74,26 @@ the viewer directly for those.
 
 `save()` waits for pending connection and restore work, then returns the whole-element workspace
 config (`saveWorkspace()` under the hood — a `layout` tree plus per-panel viewer configs).
+
+When channels are configured, `save()` also includes `closed_channels`, a mapping from table name
+to its last panel configuration. `saveClean()` returns the same shape with themes and datagrid column
+size overrides removed from both open and closed channels. Both results can be assigned to
+`config.layout`. Storage and downloads remain application-owned.
+
+`openChannel(name)` opens a configured table, using its retained configuration or its defaults from
+`config.channels`. If already open, the first matching panel is selected. New channels join the
+first detail tab stack; with `single_tab=True`, they replace that stack's selected channel. Master
+stacks remain in place. `closeChannel(name)` closes panels for that table and retains their last
+configuration, including when closing the final panel. Both methods return promises and share the
+wrapper's lifecycle queue. Unknown channel names and calls before connection completes reject.
+
+Channels are identified by table name, with one retained configuration per table. Applications with
+multiple independent views of one table can continue using ordinary workspace panels; channel close
+acts on all views of its table. Native tab-close actions also retain the last edited configuration.
+
+The optional toolbar uses these same methods. Its container has class `perspective-panel-titlebar`
+and inherits `--spa-text` and `--spa-surface`. Custom design-kit controls can call the methods through
+Spaday `Invoke` without enabling the toolbar or accessing the viewer's shadow DOM.
 
 `viewer` returns the underlying `<perspective-viewer>` element — the escape hatch for its
 imperative and query API (`getTable`, `getSelection`, `download`, `copy`, `addPanel`/`removePanel`,
