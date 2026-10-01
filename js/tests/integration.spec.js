@@ -11,6 +11,48 @@ import { expect, test } from "@playwright/test";
 
 const PAGE = "http://127.0.0.1:8016";
 
+test("legacy workspace configs retain multiple tabs, sizing, and save shape", async ({
+  page,
+}) => {
+  await page.goto(PAGE);
+  const result = await page.locator("#panel").evaluate(async (panel) => {
+    panel.config = {
+      ...panel.config,
+      layout: {
+        layout: { type: "tab-layout", tabs: ["first", "second"], selected: 1 },
+        panels: {
+          first: { table: "positions", plugin: "Datagrid", title: "First" },
+          second: { table: "positions", plugin: "Datagrid", title: "Second" },
+        },
+      },
+    };
+    const saved = await panel.save();
+    const clean = await panel.saveClean();
+    return {
+      saved,
+      clean,
+      toolbar: panel.toolbar,
+      titlebars: panel.querySelectorAll(".perspective-panel-titlebar").length,
+      panelHeight: panel.clientHeight,
+      viewerHeight: panel.viewer.offsetHeight,
+    };
+  });
+  expect(result.toolbar).toBe(false);
+  expect(result.titlebars).toBe(0);
+  expect(result.viewerHeight).toBe(result.panelHeight);
+  expect(result.saved.layout.selected).toBe(1);
+  expect(
+    Object.values(result.saved.panels).map((panel) => panel.title),
+  ).toEqual(["First", "Second"]);
+  expect(Object.keys(result.clean).sort()).toEqual(
+    Object.keys(result.saved).sort(),
+  );
+  expect(result.clean).not.toHaveProperty("closed_channels");
+  expect(
+    Object.values(result.clean.panels).every((panel) => !("theme" in panel)),
+  ).toBe(true);
+});
+
 test("both libraries render on one page with no collision", async ({
   page,
 }) => {
