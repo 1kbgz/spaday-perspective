@@ -27,6 +27,11 @@ export default defineConfig({
       testMatch: /pyodide\.spec\.js/,
       use: { ...devices["Desktop Safari"] },
     },
+    {
+      name: "webkit-workspace",
+      testMatch: /workspace\.spec\.js/,
+      use: { ...devices["Desktop Safari"] },
+    },
   ],
   webServer: [
     {

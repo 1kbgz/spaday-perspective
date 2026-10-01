@@ -18,6 +18,13 @@ class PerspectivePanel(Component):
         class_name="PerspectivePanel",
         summary="Perspective workspace whose data connection and layout are configured by a serializable prop.",
         props=(
+            PropertySchema(
+                name="toolbar",
+                kind="boolean",
+                choices=(),
+                default=None,
+                description="Show the channel picker and close button. Channels are configured by table name in config.channels.",
+            ),
             PropertySchema(name="config", kind="json", choices=(), default=None, description=None),
             PropertySchema(name="theme", kind="string", choices=(), default=None, description=None),
             PropertySchema(
@@ -69,6 +76,7 @@ class PerspectivePanel(Component):
         self,
         *children: Child,
         key: str | None = None,
+        toolbar: bool | None = None,
         config: Any = None,
         theme: str | None = None,
         themes: Any = None,
@@ -82,6 +90,7 @@ class PerspectivePanel(Component):
             *children,
             key=key,
             props={
+                "toolbar": toolbar,
                 "config": config,
                 "theme": theme,
                 "themes": themes,

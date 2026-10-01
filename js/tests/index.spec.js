@@ -272,10 +272,15 @@ test("the inner viewer fills the panel", async ({ page }) => {
   const sizes = await page.evaluate(() => {
     const panel = document.querySelector("perspective-panel");
     const viewer = panel.querySelector("perspective-viewer");
-    return { panel: panel.clientHeight, viewer: viewer.offsetHeight };
+    const toolbar = panel.querySelector(".perspective-panel-titlebar");
+    return {
+      panel: panel.clientHeight,
+      viewer: viewer.offsetHeight,
+      toolbar: toolbar?.offsetHeight ?? 0,
+    };
   });
   expect(sizes.panel).toBeGreaterThan(0);
-  expect(sizes.viewer).toBe(sizes.panel);
+  expect(sizes.viewer + sizes.toolbar).toBe(sizes.panel);
 });
 
 test("a pre-load theme does not error the config-update dispatch", async ({

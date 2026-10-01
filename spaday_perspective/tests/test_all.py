@@ -77,3 +77,19 @@ def test_panel_serializes_viewer_options_and_declares_events():
     assert node["props"]["throttle"] == {"Int": 500}
     assert node["props"]["themes"]["List"] == [{"Str": "light"}, {"Str": "dark"}]
     assert "perspective-config-update" in PerspectivePanel.schema.events
+
+
+def test_panel_serializes_channel_controls_and_restore_options():
+    node = PerspectivePanel(
+        toolbar=True,
+        config={
+            "channels": {"trades": {"title": "Trades", "columns": ["price"]}},
+            "single_tab": True,
+            "master_theme": "light",
+        },
+    ).to_node()
+    assert node["props"]["toolbar"] == {"Bool": True}
+    config = node["props"]["config"]["Map"]
+    assert config["channels"]["Map"]["trades"]["Map"]["title"] == {"Str": "Trades"}
+    assert config["single_tab"] == {"Bool": True}
+    assert config["master_theme"] == {"Str": "light"}

@@ -3,6 +3,12 @@ import { restoreDefine } from "./define-guard.js";
 import perspective from "@perspective-dev/client";
 import PRO from "@perspective-dev/viewer/dist/css/pro.css";
 import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
+import {
+  pruneLayout,
+  tabStacks,
+  type PanelConfig,
+  type Workspace,
+} from "./workspace.js";
 
 export type PerspectiveArchitecture = "server" | "client-server";
 
@@ -20,6 +26,9 @@ export interface PerspectiveConfig {
   default_architecture?: PerspectiveArchitecture;
   layout?: unknown;
   wait_for_table?: boolean;
+  master_theme?: string;
+  channels?: Record<string, Partial<PanelConfig>>;
+  single_tab?: boolean;
 }
 
 type PspClient = Awaited<ReturnType<typeof perspective.websocket>>;
@@ -171,6 +180,10 @@ const REDISPATCH = [
 ];
 let stylesInjected = false;
 
+function hasOwn(object: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(object, key);
+}
+
 function injectStyles(): void {
   if (stylesInjected || typeof document === "undefined") return;
   stylesInjected = true;
@@ -212,6 +225,8 @@ class PerspectivePanel extends HTMLElement {
   #config: PerspectiveConfig = {};
   #connectedUrl: string | null = null;
   #lastLayout: string | null = null;
+  #lastMasterTheme: string | undefined;
+  #lastSingleTab = false;
   #lastMirrored: string | null = null;
   #localLoaded = false;
   #mirrors: string[] = [];
@@ -226,6 +241,10 @@ class PerspectivePanel extends HTMLElement {
   #throttle: number | null = null;
   #settings: boolean | null = null;
   #queue: Promise<unknown> = Promise.resolve();
+  #channelConfigs = new Map<string, PanelConfig>();
+  #toolbar = false;
+  #titlebar: HTMLElement | null = null;
+  #toolbarKey: string | null = null;
 
   connectedCallback(): void {
     injectStyles();
@@ -235,6 +254,16 @@ class PerspectivePanel extends HTMLElement {
       // the viewer has no intrinsic height; fill the panel, which the embedder sizes
       this.#viewer.style.height = "100%";
       this.appendChild(this.#viewer);
+      this.#viewer.addEventListener("perspective-config-update", (event) => {
+        if (!this.#config.channels) return;
+        // Perspective releases this callback after dispatch; read it synchronously.
+        const config = (
+          event as CustomEvent<{ getConfig?: () => PanelConfig }>
+        ).detail?.getConfig?.();
+        if (config && hasOwn(this.#config.channels ?? {}, config.table)) {
+          this.#channelConfigs.set(config.table, structuredClone(config));
+        }
+      });
       for (const name of REDISPATCH) {
         this.#viewer.addEventListener(name, (event) =>
           this.dispatchEvent(
@@ -248,6 +277,7 @@ class PerspectivePanel extends HTMLElement {
       }
     }
     this.#followPageMode();
+    this.#renderToolbar();
     this.#apply();
   }
 
@@ -311,6 +341,58 @@ class PerspectivePanel extends HTMLElement {
     return this.#config;
   }
 
+  set toolbar(visible: boolean) {
+    this.#toolbar = !!visible;
+    this.#renderToolbar();
+  }
+  get toolbar(): boolean {
+    return this.#toolbar;
+  }
+
+  #renderToolbar(): void {
+    if (!this.#viewer) return;
+    const key = JSON.stringify([this.#toolbar, this.#config.channels]);
+    if (key === this.#toolbarKey) return;
+    this.#toolbarKey = key;
+    this.#titlebar?.remove();
+    this.#titlebar = null;
+    this.#viewer.style.height = "100%";
+    if (!this.#toolbar) return;
+    const bar = document.createElement("div");
+    bar.className = "perspective-panel-titlebar";
+    bar.style.cssText =
+      "display:flex;align-items:center;gap:.5rem;height:2.5rem;box-sizing:border-box;padding:.25rem .5rem;color:var(--spa-text,inherit);background:var(--spa-surface,inherit)";
+    const select = document.createElement("select");
+    select.setAttribute("aria-label", "Open channel");
+    select.append(new Option("Open channel…", ""));
+    for (const [name, config] of Object.entries(this.#config.channels ?? {})) {
+      select.append(new Option(config.title ?? name, name));
+    }
+    const close = document.createElement("button");
+    close.type = "button";
+    close.textContent = "Close channel";
+    close.disabled = true;
+    select.addEventListener("change", () => {
+      close.disabled = !select.value;
+      if (select.value)
+        void this.openChannel(select.value).catch((error) =>
+          this.#reportError(error),
+        );
+    });
+    close.addEventListener("click", () => {
+      if (select.value)
+        void this.closeChannel(select.value).catch((error) =>
+          this.#reportError(error),
+        );
+      select.value = "";
+      close.disabled = true;
+    });
+    bar.append(select, close);
+    this.prepend(bar);
+    this.#titlebar = bar;
+    this.#viewer.style.height = "calc(100% - 2.5rem)";
+  }
+
   // Element-level options, each a serializable prop queued behind wasm init.
   set themes(names: string[] | null) {
     this.#themes = names?.map((name) => THEMES[name] ?? name) ?? null;
@@ -363,13 +445,15 @@ class PerspectivePanel extends HTMLElement {
     return this.#settings;
   }
 
-  #enqueue(step: () => unknown): void {
-    this.#queue = this.#queue
+  #enqueue<T>(step: () => T | Promise<T>): Promise<T> {
+    const queued = this.#queue
       .catch(() => {})
       .then(async () => {
         await ready;
-        await step();
+        return await step();
       });
+    this.#queue = queued;
+    return queued;
   }
 
   // Theme rides viewer config in 5.x; queue it behind wasm init and any
@@ -382,38 +466,171 @@ class PerspectivePanel extends HTMLElement {
     this.#enqueue(() => this.#restoreTheme());
   }
 
-  // Perspective 5 stamps a concrete theme per panel at creation and a bare
-  // restore({theme}) restyles only the ACTIVE panel, so background panels keep
-  // rendering their old theme. Restore the element chrome + active panel first,
-  // then stamp every panel by id — concurrently: each restore restyles that
-  // panel's plugin, so serial stamping lags with tab count (~300ms at 8 panels
-  // vs ~150ms concurrent). The restores touch disjoint panels and run inside
-  // the queue, so no layout replacement can interleave with them.
-  async #restoreTheme(): Promise<void> {
+  // Update each panel once, including inactive tabs and filter-source overrides.
+  async #restoreTheme(config = this.#config): Promise<void> {
     if (!this.#viewer) return;
     const viewer = this.#viewer;
-    await viewer.restore({ theme: this.#theme });
-    const ws = (await viewer.saveWorkspace()) as {
-      panels?: Record<string, unknown>;
-    };
+    const ws = (await viewer.saveWorkspace()) as Workspace;
+    const masters = ws.masters ?? [];
     await Promise.all(
       Object.keys(ws.panels ?? {}).map((id) =>
-        viewer.restore({ theme: this.#theme }, { panel: id }),
+        viewer.restore(
+          { theme: this.#panelTheme(masters.includes(id), config) },
+          { panel: id },
+        ),
       ),
     );
   }
 
-  // A workspace restore creates each panel with its config's theme (or the light
-  // registry default) — stamp the current theme into panels that carry none, the
-  // same fill-in the legacy csp-gateway UI applies before restoring.
-  #themedLayout(layout: unknown): unknown {
-    const cloned = JSON.parse(JSON.stringify(layout)) as {
-      panels?: Record<string, { theme?: string }>;
-    };
-    for (const panel of Object.values(cloned.panels ?? {})) {
-      panel.theme ||= this.#theme;
+  #panelTheme(master: boolean, config = this.#config): string {
+    const theme = master ? config.master_theme : undefined;
+    return theme ? (THEMES[theme] ?? theme) : this.#theme;
+  }
+
+  // Saved themes belong to the previous session. Resolve every panel before
+  // restoration so plugins never draw with a theme that needs correcting.
+  #themedLayout(layout: Workspace, config: PerspectiveConfig): Workspace {
+    const cloned = structuredClone(layout);
+    for (const [id, panel] of Object.entries(cloned.panels ?? {})) {
+      panel.theme = this.#panelTheme(
+        cloned.masters?.includes(id) ?? false,
+        config,
+      );
     }
     return cloned;
+  }
+
+  #rememberChannels(workspace: Workspace, config = this.#config): void {
+    for (const panel of Object.values(workspace.panels ?? {})) {
+      if (hasOwn(config.channels ?? {}, panel.table)) {
+        this.#channelConfigs.set(panel.table, structuredClone(panel));
+      }
+    }
+  }
+
+  async #restoreWorkspace(
+    workspace: Workspace,
+    config = this.#config,
+  ): Promise<void> {
+    if (!this.#viewer) return;
+    const prepared = this.#themedLayout(workspace, config);
+    for (const [name, cached] of Object.entries(
+      prepared.closed_channels ?? {},
+    )) {
+      if (hasOwn(config.channels ?? {}, name)) {
+        this.#channelConfigs.set(name, structuredClone(cached));
+      }
+    }
+    delete prepared.closed_channels;
+    this.#rememberChannels(prepared, config);
+    if (config.single_tab && prepared.panels) {
+      const keep = new Set<string>();
+      for (const stack of tabStacks(prepared.layout)) {
+        const selected = stack.tabs[stack.selected ?? 0] ?? stack.tabs[0];
+        if (selected) keep.add(selected);
+      }
+      prepared.layout = pruneLayout(prepared.layout, keep);
+      prepared.panels = Object.fromEntries(
+        Object.entries(prepared.panels).filter(([id]) => keep.has(id)),
+      );
+      if (prepared.masters)
+        prepared.masters = prepared.masters.filter((id) => keep.has(id));
+      if (prepared.active && !keep.has(prepared.active)) prepared.active = null;
+    }
+    await this.#viewer.restoreWorkspace(prepared, {
+      wait_for_table: !!config.wait_for_table,
+    });
+    if (
+      this.#settings !== true &&
+      !prepared.active &&
+      this.#viewer.hasAttribute("settings")
+    ) {
+      await this.#viewer.toggleConfig();
+    }
+  }
+
+  /** Open a named table using its last channel configuration or configured defaults. */
+  openChannel(name: string): Promise<void> {
+    return this.#enqueue(async () => {
+      if (!hasOwn(this.#config.channels ?? {}, name))
+        throw new Error(`Unknown channel: ${name}`);
+      if (!this.#loaded || !this.#viewer)
+        throw new Error("Perspective panel is not ready");
+      const workspace = (await this.#viewer.saveWorkspace()) as Workspace;
+      this.#rememberChannels(workspace);
+      const existing = Object.entries(workspace.panels ?? {}).find(
+        ([, panel]) => panel.table === name,
+      )?.[0];
+      if (existing) {
+        for (const stack of tabStacks(workspace.layout)) {
+          if (stack.tabs.includes(existing))
+            stack.selected = stack.tabs.indexOf(existing);
+        }
+        await this.#viewer.restoreWorkspace({ layout: workspace.layout });
+        return;
+      }
+      const panels = (workspace.panels ??= {});
+      let id = `channel:${name}`;
+      while (hasOwn(panels, id)) id += ":";
+      panels[id] = structuredClone(
+        this.#channelConfigs.get(name) ?? {
+          ...this.#config.channels![name],
+          table: name,
+        },
+      );
+      const stack = tabStacks(workspace.layout).find((tabs) =>
+        tabs.tabs.some((tab) => !workspace.masters?.includes(tab)),
+      );
+      if (stack) {
+        stack.tabs.push(id);
+        stack.selected = stack.tabs.length - 1;
+      } else if (workspace.layout) {
+        workspace.layout = {
+          type: "split-layout",
+          orientation: "horizontal",
+          sizes: [1, 3],
+          children: [workspace.layout, { type: "tab-layout", tabs: [id] }],
+        };
+      } else {
+        workspace.layout = { type: "tab-layout", tabs: [id] };
+      }
+      await this.#restoreWorkspace(workspace);
+    });
+  }
+
+  /** Close a channel, retaining its configuration for reopen and saveClean(). */
+  closeChannel(name: string): Promise<void> {
+    return this.#enqueue(async () => {
+      if (!hasOwn(this.#config.channels ?? {}, name))
+        throw new Error(`Unknown channel: ${name}`);
+      if (!this.#loaded || !this.#viewer)
+        throw new Error("Perspective panel is not ready");
+      const workspace = (await this.#viewer.saveWorkspace()) as Workspace;
+      this.#rememberChannels(workspace);
+      const panels = Object.fromEntries(
+        Object.entries(workspace.panels ?? {}).filter(
+          ([, panel]) => panel.table !== name,
+        ),
+      );
+      const keep = new Set(Object.keys(panels));
+      workspace.panels = panels;
+      workspace.layout = pruneLayout(workspace.layout, keep);
+      if (workspace.masters)
+        workspace.masters = workspace.masters.filter((id) => keep.has(id));
+      if (workspace.active && !keep.has(workspace.active))
+        workspace.active = null;
+      await this.#restoreWorkspace(workspace);
+    });
+  }
+
+  #reportError(error: unknown): void {
+    this.dispatchEvent(
+      new CustomEvent("perspective-error", {
+        detail: error,
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   // `client-server` tables mirror into a local worker: open the server table, take a
@@ -477,30 +694,24 @@ class PerspectivePanel extends HTMLElement {
           if (this.#loaded && config.layout) {
             const layout = JSON.stringify(config.layout);
             if (layout !== this.#lastLayout) {
-              this.#lastLayout = layout;
               // Perspective 5.5 errors on a `table` no loaded client hosts; `wait_for_table`
               // restores the earlier behavior, a pending panel that fills once it is created
-              await this.#viewer.restoreWorkspace(
-                this.#themedLayout(config.layout),
-                { wait_for_table: !!config.wait_for_table },
+              this.#channelConfigs.clear();
+              this.#lastLayout = null;
+              await this.#restoreWorkspace(config.layout as Workspace, config);
+              this.#lastLayout = layout;
+            } else if (!!config.single_tab !== this.#lastSingleTab) {
+              await this.#restoreWorkspace(
+                (await this.#viewer.saveWorkspace()) as Workspace,
+                config,
               );
-              // Perspective 5.2: restoring a layout with no `active` (sidebar closed)
-              // onto an already-closed element force-toggles settings as a no-op but
-              // still flips the persisted flag + host `settings` attribute — the
-              // datagrid then shows per-column Edit buttons and eats the next settings
-              // click. A bare toggleConfig() flips the stale flag back without opening.
-              if (
-                this.#settings !== true &&
-                !(config.layout as { active?: unknown }).active &&
-                this.#viewer.hasAttribute("settings")
-              ) {
-                await this.#viewer.toggleConfig();
-              }
+            } else if (config.master_theme !== this.#lastMasterTheme) {
+              await this.#restoreTheme(config);
             }
           }
-          if (this.#loaded) {
-            await this.#viewer.restore({ theme: this.#theme });
-          }
+          this.#lastMasterTheme = config.master_theme;
+          this.#lastSingleTab = !!config.single_tab;
+          this.#renderToolbar();
           // one-shot readiness: connected, tables loaded, and the initial workspace
           // config (when the config carries one) applied and rendered — the stable
           // signal a branded startup overlay can key off, unlike
@@ -539,27 +750,36 @@ class PerspectivePanel extends HTMLElement {
   /** The whole-element workspace config (layout tree + per-panel viewer configs). */
   async save(): Promise<unknown> {
     await this.#queue.catch(() => {});
-    return this.#viewer?.saveWorkspace();
+    const workspace = (await this.#viewer?.saveWorkspace()) as
+      | Workspace
+      | undefined;
+    if (!workspace) return workspace;
+    this.#rememberChannels(workspace);
+    const open = new Set(
+      Object.values(workspace.panels ?? {}).map((panel) => panel.table),
+    );
+    const closed = Object.fromEntries(
+      [...this.#channelConfigs].filter(
+        ([name]) =>
+          hasOwn(this.#config.channels ?? {}, name) && !open.has(name),
+      ),
+    );
+    if (Object.keys(closed).length)
+      workspace.closed_channels = structuredClone(closed);
+    return workspace;
   }
 
   /** `save()` minus per-session transient state — panel themes and column size overrides — so the
    * result is portable across sessions and themes: the shape to persist or export. Made for
    * spaday's `Invoke` action: `Invoke(by_id("workspace"), "saveClean", result="custom_layout")`. */
   async saveClean(): Promise<unknown> {
-    const layout = (await this.save()) as {
-      panels?: Record<
-        string,
-        {
-          theme?: unknown;
-          plugin_config?: {
-            columns?: Record<string, { column_size_override?: unknown }>;
-          };
-        }
-      >;
-    } | null;
+    const layout = (await this.save()) as Workspace | null;
     if (!layout) return layout;
     const cleaned = structuredClone(layout);
-    for (const panel of Object.values(cleaned.panels ?? {})) {
+    for (const panel of [
+      ...Object.values(cleaned.panels ?? {}),
+      ...Object.values(cleaned.closed_channels ?? {}),
+    ]) {
       delete panel.theme;
       for (const column of Object.values(panel.plugin_config?.columns ?? {})) {
         delete column.column_size_override;

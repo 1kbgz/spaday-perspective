@@ -1,5 +1,50 @@
 # How to stream data and change layouts
 
+## Open, close, and save channels
+
+Configure channels by table name and enable the optional toolbar:
+
+```python
+panel = PerspectivePanel(
+    id="workspace",
+    toolbar=True,
+    config={
+        "ws_url": "/perspective",
+        "channels": {
+            "trades": {"title": "Trades", "plugin": "Datagrid", "columns": ["symbol", "price"]},
+            "orders": {"title": "Orders", "plugin": "Datagrid"},
+        },
+        "single_tab": True,
+        "layout": {
+            "layout": {"type": "tab-layout", "tabs": ["trades"]},
+            "panels": {"trades": {"table": "trades", "plugin": "Datagrid"}},
+        },
+    },
+)
+```
+
+Host both tables on the Perspective server. Selecting **Orders** replaces the selected detail tab;
+reopening **Trades** restores its columns, filters, sorting, and title. Omit `single_tab` to keep
+multiple tabs. To use your own design-kit buttons, omit `toolbar` and attach these actions:
+
+```python
+from spaday import Invoke, Sequence, SetStorage, by_id, field
+
+open_orders = Invoke(by_id("workspace"), "openChannel", "orders")
+close_orders = Invoke(by_id("workspace"), "closeChannel", "orders")
+save_layout = Sequence(
+    Invoke(by_id("workspace"), "saveClean", result="saved_layout"),
+    SetStorage("workspace-layout", field("saved_layout")),
+)
+```
+
+Assign a saved or imported token to `config.layout` to restore it. Keep its `closed_channels` field:
+`saveClean()` includes configurations for channels closed through either the wrapper or native tabs.
+Use the same result with Spaday's `Download` action when exporting a layout.
+
+Saved panel themes follow the current application theme when restored. For a filter sidebar that
+must use its own theme, set `config.master_theme` and list its panel ID in the layout's `masters`.
+
 ## Stream rows from Python
 
 Keep the table returned by `client.table()`, then update it whenever application data changes:

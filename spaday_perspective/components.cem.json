@@ -12,6 +12,11 @@
           "summary": "Perspective workspace whose data connection and layout are configured by a serializable prop.",
           "attributes": [
             {
+              "name": "toolbar",
+              "type": { "text": "boolean" },
+              "description": "Show the channel picker and close button. Channels are configured by table name in config.channels."
+            },
+            {
               "name": "config",
               "type": {
                 "text": "unknown"
@@ -134,8 +139,20 @@
           "slots": [],
           "methods": [
             {
+              "name": "openChannel",
+              "description": "Open a configured channel by table name, reusing its last view configuration. Uses the wrapper's restore queue.",
+              "parameters": [{ "name": "name", "type": { "text": "string" } }],
+              "return": { "type": { "text": "Promise<void>" } }
+            },
+            {
+              "name": "closeChannel",
+              "description": "Close a configured channel by table name and retain its view configuration in saved workspace data.",
+              "parameters": [{ "name": "name", "type": { "text": "string" } }],
+              "return": { "type": { "text": "Promise<void>" } }
+            },
+            {
               "name": "saveClean",
-              "description": "save() minus per-session transient state (panel themes, column size overrides) \u2014 the portable shape to persist or export; made for spaday's Invoke action.",
+              "description": "Save open and closed channels without session themes or column size overrides. Use with spaday's Invoke action to persist or export the workspace.",
               "return": {
                 "type": {
                   "text": "Promise<unknown>"
