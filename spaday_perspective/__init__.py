@@ -5,7 +5,7 @@ from spaday import ComponentPackage
 
 from .components import PerspectivePanel
 
-__version__ = "0.7.0"
+__version__ = "0.7.1"
 
 # the exact version of each JS library the package serves, written by its JS build
 _VERSIONS = Path(__file__).parent / "extension" / "versions.json"
