@@ -49,10 +49,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
-<<<<<<< before updating
     "@types/react": "^19.3.0",
-=======
->>>>>>> after updating
     "cpy": "^13.2.3",
     "esbuild": "^0.28.2",
     "http-server": "^14.1.1",
