@@ -14,7 +14,7 @@
             {
               "name": "toolbar",
               "type": { "text": "boolean" },
-              "description": "Show the channel picker and close button. Channels are configured by table name in config.channels."
+              "description": "Show the channel picker, close button, and Copy selection button. Channels are configured by table name in config.channels."
             },
             {
               "name": "config",
@@ -134,10 +134,20 @@
                 "text": "CustomEvent"
               },
               "description": "A config apply failed (connection, mirror, or restore); detail carries the error."
+            },
+            {
+              "name": "perspective-copy-error",
+              "type": { "text": "CustomEvent" },
+              "description": "Selected-cell copying failed or the native Copy menu is unavailable over HTTP. Detail contains message and error; applications choose their notification UI."
             }
           ],
           "slots": [],
           "methods": [
+            {
+              "name": "copySelection",
+              "description": "Copy the focused grid's selected text. Call directly from a user gesture. Resolves true on success, false on cancellation, no selection, or failure.",
+              "return": { "type": { "text": "Promise<boolean>" } }
+            },
             {
               "name": "openChannel",
               "description": "Open a configured channel by table name, reusing its last view configuration. Uses the wrapper's restore queue.",

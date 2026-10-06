@@ -1,4 +1,15 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+
+const legacyLayouts = JSON.parse(
+  readFileSync(
+    new URL(
+      "../../spaday_perspective/tests/fixtures/legacy-layouts.json",
+      import.meta.url,
+    ),
+    "utf8",
+  ),
+);
 
 async function mountChannels(page, options = {}) {
   await page.goto("/dist/index.html");
@@ -263,6 +274,24 @@ test("master theme overrides survive restoration and live application theme chan
   expect((await check()).backgrounds.sort()).toEqual(
     ["rgb(255, 255, 255)", "rgb(36, 37, 38)"].sort(),
   );
+  await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    panel.autopause = true;
+    await panel.save();
+    panel.style.display = "none";
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    panel.theme = "light";
+    panel.theme = "dark";
+    await panel.save();
+    panel.style.display = "block";
+  });
+  expect(await check()).toMatchObject({
+    master: "Pro Light",
+    detail: "Pro Dark",
+  });
   await page.evaluate(() => {
     document.querySelector("#workspace").theme = "light";
   });
@@ -369,5 +398,165 @@ for (const theme of ["dark", "light"]) {
     expect(result.calls.filter((call) => call.method === "restore")).toEqual(
       [],
     );
+  });
+}
+
+test("hidden workspaces accept repeated theme changes with auto-pause enabled", async ({
+  page,
+}) => {
+  await mountChannels(page, { master_theme: "light" });
+  await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    panel.autopause = true;
+    await panel.save();
+    panel.style.display = "none";
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => {
+    const panel = document.querySelector("#workspace");
+    panel.theme = "light";
+    panel.theme = "dark";
+    window.hiddenThemeSave = panel.save().then(() => {
+      window.hiddenThemeSaved = true;
+    });
+  });
+  await expect
+    .poll(() => page.evaluate(() => window.hiddenThemeSaved))
+    .toBe(true);
+  await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    panel.style.display = "block";
+    await panel.viewer.flush();
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        [...document.querySelectorAll("perspective-viewer-datagrid")].map(
+          (grid) => getComputedStyle(grid).backgroundColor,
+        ),
+      ),
+    )
+    .toEqual(["rgb(36, 37, 38)", "rgb(36, 37, 38)"]);
+  await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    await panel.openChannel("quotes");
+    await panel.viewer.flush();
+  });
+  await expect(
+    page
+      .locator("perspective-viewer-datagrid regular-table")
+      .filter({ visible: true })
+      .first(),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(async () => {
+      const saved = await document.querySelector("#workspace").save();
+      return Object.values(saved.panels).map((panel) => panel.theme);
+    }),
+  ).toEqual(["Pro Dark", "Pro Dark"]);
+});
+
+test("auto-pause stops hidden grid rendering while table updates continue", async ({
+  page,
+}) => {
+  await mountChannels(page);
+  await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    panel.autopause = true;
+    await panel.save();
+    await panel.viewer.flush();
+    window.renderCalls = 0;
+    for (const grid of panel.querySelectorAll("perspective-viewer-datagrid")) {
+      for (const method of ["update", "draw"]) {
+        const original = grid[method].bind(grid);
+        grid[method] = (...args) => {
+          window.renderCalls++;
+          return original(...args);
+        };
+      }
+    }
+    window.streamingTable = await (
+      await globalThis.__spadayPerspective.worker()
+    ).open_table("orders");
+    await window.streamingTable.update([{ symbol: "MSFT", price: 450 }]);
+  });
+  await expect
+    .poll(() => page.evaluate(() => window.renderCalls))
+    .toBeGreaterThan(0);
+  await page.evaluate(() => {
+    document.querySelector("#workspace").style.display = "none";
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(async () => {
+    window.renderCalls = 0;
+    await window.streamingTable.update([{ symbol: "GOOG", price: 250 }]);
+  });
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => window.streamingTable.size())).toBe(4);
+  expect(await page.evaluate(() => window.renderCalls)).toBe(0);
+  await page.evaluate(() => {
+    document.querySelector("#workspace").style.display = "block";
+  });
+  await expect(
+    page
+      .locator("perspective-viewer-datagrid regular-table tbody td")
+      .filter({ hasText: "GOOG" }),
+  ).toBeVisible();
+});
+
+for (const fixture of legacyLayouts) {
+  test(`migrates ${fixture.name} through the real workspace`, async ({
+    page,
+  }) => {
+    await mountChannels(page, { layout: fixture.input });
+    const result = await page.evaluate(async (input) => {
+      const { migrateLayout } = await import("/dist/cdn/index.js");
+      const panel = document.querySelector("#workspace");
+      const converted = migrateLayout(input);
+      const saved = await panel.save();
+      panel.config = { ...panel.config, layout: saved };
+      return {
+        converted,
+        saved,
+        roundtrip: await panel.save(),
+        unchanged: migrateLayout(converted) === converted,
+      };
+    }, fixture.input);
+    expect(result.converted.layout).toEqual(fixture.layout);
+    expect(result.unchanged).toBe(true);
+    expect(result.converted.panels).toEqual(fixture.input.viewers);
+    expect(result.converted.masters ?? []).toEqual(fixture.masters);
+    expect(
+      Object.values(result.saved.panels)
+        .map((p) => p.table)
+        .sort(),
+    ).toEqual(
+      Object.values(fixture.input.viewers)
+        .map((p) => p.table)
+        .sort(),
+    );
+    expect(result.saved.masters ?? []).toHaveLength(fixture.masters.length);
+    const semanticLayout = (workspace) => {
+      const tree = (node) =>
+        node.type === "tab-layout"
+          ? { ...node, tabs: node.tabs.map((id) => workspace.panels[id]) }
+          : { ...node, children: node.children.map(tree) };
+      return {
+        layout: tree(workspace.layout),
+        masters: (workspace.masters ?? []).map((id) => workspace.panels[id]),
+      };
+    };
+    expect(semanticLayout(result.roundtrip)).toEqual(
+      semanticLayout(result.saved),
+    );
+    if (fixture.input.sizes?.length)
+      expect(result.saved.layout.sizes).toEqual(fixture.input.sizes);
+    if (fixture.name.startsWith("master-detail")) {
+      expect(result.saved.layout.children[1].selected).toBe(1);
+      expect(
+        Object.values(result.saved.panels).find((p) => p.title === "Second")
+          .columns,
+      ).toEqual(["symbol"]);
+    }
   });
 }

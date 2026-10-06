@@ -3,12 +3,16 @@ import { restoreDefine } from "./define-guard.js";
 import perspective from "@perspective-dev/client";
 import PRO from "@perspective-dev/viewer/dist/css/pro.css";
 import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
+import { installClipboard, type ClipboardViewer } from "./clipboard.js";
 import {
+  migrateLayout,
   pruneLayout,
   tabStacks,
   type PanelConfig,
   type Workspace,
 } from "./workspace.js";
+
+export { migrateLayout } from "./workspace.js";
 
 export type PerspectiveArchitecture = "server" | "client-server";
 
@@ -204,7 +208,7 @@ function wsUrl(url: string): string {
 // config (the single-panel `restore`/`save` are the per-panel forms). Theme is
 // viewer config now, not an attribute; the element auto-sizes, so no manual
 // resize plumbing.
-type Viewer = HTMLElement & {
+type Viewer = ClipboardViewer & {
   load(client: unknown): Promise<void>;
   restore(config: unknown, options?: { panel?: string }): Promise<void>;
   restoreWorkspace(
@@ -245,6 +249,7 @@ class PerspectivePanel extends HTMLElement {
   #toolbar = false;
   #titlebar: HTMLElement | null = null;
   #toolbarKey: string | null = null;
+  #clipboard: ReturnType<typeof installClipboard> | null = null;
 
   connectedCallback(): void {
     injectStyles();
@@ -276,6 +281,7 @@ class PerspectivePanel extends HTMLElement {
         );
       }
     }
+    this.#clipboard ??= installClipboard(this, this.#viewer);
     this.#followPageMode();
     this.#renderToolbar();
     this.#apply();
@@ -288,8 +294,15 @@ class PerspectivePanel extends HTMLElement {
   }
 
   disconnectedCallback(): void {
+    this.#clipboard?.dispose();
+    this.#clipboard = null;
     this.#modeObserver?.disconnect();
     this.#modeObserver = null;
+  }
+
+  /** Copy the focused grid selection. Call directly from a user gesture. */
+  copySelection(): Promise<boolean> {
+    return this.#clipboard?.copySelection() ?? Promise.resolve(false);
   }
 
   set theme(name: string) {
@@ -387,7 +400,11 @@ class PerspectivePanel extends HTMLElement {
       select.value = "";
       close.disabled = true;
     });
-    bar.append(select, close);
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.textContent = "Copy selection";
+    copy.addEventListener("click", () => void this.copySelection());
+    bar.append(select, close, copy);
     this.prepend(bar);
     this.#titlebar = bar;
     this.#viewer.style.height = "calc(100% - 2.5rem)";
@@ -513,7 +530,7 @@ class PerspectivePanel extends HTMLElement {
     config = this.#config,
   ): Promise<void> {
     if (!this.#viewer) return;
-    const prepared = this.#themedLayout(workspace, config);
+    const prepared = this.#themedLayout(migrateLayout(workspace), config);
     for (const [name, cached] of Object.entries(
       prepared.closed_channels ?? {},
     )) {

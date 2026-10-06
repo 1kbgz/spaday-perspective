@@ -1,0 +1,124 @@
+[
+  {
+    "name": "master-detail split with selected tabs",
+    "input": {
+      "viewers": {
+        "m": { "table": "quotes", "title": "Filter" },
+        "a": { "table": "orders", "title": "First" },
+        "b": { "table": "orders", "title": "Second", "columns": ["symbol"] }
+      },
+      "master": { "widgets": ["m"], "sizes": [1] },
+      "detail": {
+        "main": { "type": "tab-area", "widgets": ["a", "b"], "currentIndex": 1 }
+      },
+      "sizes": [0.2, 0.8]
+    },
+    "layout": {
+      "type": "split-layout",
+      "orientation": "horizontal",
+      "sizes": [0.2, 0.8],
+      "children": [
+        {
+          "type": "split-layout",
+          "orientation": "vertical",
+          "sizes": [1],
+          "children": [{ "type": "tab-layout", "tabs": ["m"], "selected": 0 }]
+        },
+        { "type": "tab-layout", "tabs": ["a", "b"], "selected": 1 }
+      ]
+    },
+    "masters": ["m"]
+  },
+  {
+    "name": "multiple masters without detail",
+    "input": {
+      "viewers": { "a": { "table": "quotes" }, "b": { "table": "orders" } },
+      "master": { "widgets": ["a", "b"], "sizes": [] }
+    },
+    "layout": {
+      "type": "split-layout",
+      "orientation": "vertical",
+      "sizes": [0.5, 0.5],
+      "children": [
+        { "type": "tab-layout", "tabs": ["a"], "selected": 0 },
+        { "type": "tab-layout", "tabs": ["b"], "selected": 0 }
+      ]
+    },
+    "masters": ["a", "b"]
+  },
+  {
+    "name": "detail split with missing sizes",
+    "input": {
+      "viewers": { "a": { "table": "quotes" }, "b": { "table": "orders" } },
+      "detail": {
+        "main": {
+          "type": "split-area",
+          "children": [
+            { "type": "tab-area", "widgets": ["a"] },
+            { "type": "tab-area", "widgets": ["b"] }
+          ]
+        }
+      }
+    },
+    "layout": {
+      "type": "split-layout",
+      "orientation": "horizontal",
+      "sizes": [0.5, 0.5],
+      "children": [
+        { "type": "tab-layout", "tabs": ["a"], "selected": 0 },
+        { "type": "tab-layout", "tabs": ["b"], "selected": 0 }
+      ]
+    },
+    "masters": []
+  },
+  {
+    "name": "multiple masters with empty detail and outer sizes",
+    "input": {
+      "viewers": {
+        "m1": { "table": "quotes" },
+        "m2": { "table": "orders" },
+        "d1": { "table": "quotes" },
+        "d2": { "table": "orders" }
+      },
+      "master": { "widgets": ["m1", "m2"], "sizes": [0.3, 0.7] },
+      "sizes": [],
+      "detail": {
+        "main": {
+          "type": "split-area",
+          "orientation": "vertical",
+          "sizes": [],
+          "children": [
+            { "type": "tab-area", "widgets": ["d1"] },
+            { "type": "tab-area", "widgets": ["d2"] }
+          ]
+        }
+      }
+    },
+    "layout": {
+      "type": "split-layout",
+      "orientation": "horizontal",
+      "sizes": [0.25, 0.75],
+      "children": [
+        {
+          "type": "split-layout",
+          "orientation": "vertical",
+          "sizes": [0.3, 0.7],
+          "children": [
+            { "type": "tab-layout", "tabs": ["m1"], "selected": 0 },
+            { "type": "tab-layout", "tabs": ["m2"], "selected": 0 }
+          ]
+        },
+        {
+          "type": "split-layout",
+          "orientation": "vertical",
+          "sizes": [0.5, 0.5],
+          "children": [
+            { "type": "tab-layout", "tabs": ["d1"], "selected": 0 },
+            { "type": "tab-layout", "tabs": ["d2"], "selected": 0 }
+          ]
+        }
+      ]
+    },
+    "masters": ["m1", "m2"]
+  }
+]
