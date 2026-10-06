@@ -23,7 +23,7 @@ class PerspectivePanel(Component):
                 kind="boolean",
                 choices=(),
                 default=None,
-                description="Show the channel picker and close button. Channels are configured by table name in config.channels.",
+                description="Show the channel picker, close button, and Copy selection button. Channels are configured by table name in config.channels.",
             ),
             PropertySchema(name="config", kind="json", choices=(), default=None, description=None),
             PropertySchema(name="theme", kind="string", choices=(), default=None, description=None),
@@ -68,6 +68,7 @@ class PerspectivePanel(Component):
             "perspective-table-delete",
             "perspective-ready",
             "perspective-error",
+            "perspective-copy-error",
         ),
         slots=(),
     )
