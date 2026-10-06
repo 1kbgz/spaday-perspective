@@ -284,7 +284,7 @@
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">toolbar</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
-<td><p>Show the channel picker and close button (default <code class="docutils literal notranslate"><span class="pre">False</span></code>).</p></td>
+<td><p>Show channel controls and Copy selection (default <code class="docutils literal notranslate"><span class="pre">False</span></code>).</p></td>
 </tr>
 </tbody>
 </table>
@@ -349,6 +349,13 @@
 </div>
 <p>Changing <code class="docutils literal notranslate"><span class="pre">ws_url</span></code> opens a new client connection. Changing the serialized <code class="docutils literal notranslate"><span class="pre">layout</span></code> restores the viewer’s panels.
 The wrapper queues asynchronous changes in assignment order.</p>
+<p>Perspective 4 workspace envelopes (<code class="docutils literal notranslate"><span class="pre">viewers</span></code>, <code class="docutils literal notranslate"><span class="pre">detail</span></code>, <code class="docutils literal notranslate"><span class="pre">master</span></code>) are migrated before restoration.
+Migration preserves panel configuration, selected tabs, master panels, and split proportions. Missing
+or empty split sizes use equal shares; a missing master/detail split uses 25/75. Version 5 layouts are
+unchanged by migration.</p>
+<p><code class="docutils literal notranslate"><span class="pre">spaday_perspective.migrate_layout(layout)</span></code> accepts a mapping or JSON string and returns the same
+representation without modifying the input. Existing v5 layouts and invalid JSON strings pass
+through unchanged. The browser bundle exports the mapping-only equivalent, <code class="docutils literal notranslate"><span class="pre">migrateLayout(layout)</span></code>.</p>
 <p>The application theme overrides saved panel themes before restoration. <code class="docutils literal notranslate"><span class="pre">master_theme</span></code> overrides
 that choice for filter-source panels, including during live application theme changes. Input layouts
 are copied before preparation. Restoring a saved layout does not require a second theme restore.</p>
@@ -382,6 +389,19 @@ the viewer directly for those.</p>
 </section>
 <section id="methods">
 <h2>Methods<a class="headerlink" href="#methods" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">copySelection()</span></code> copies the last focused grid’s selection using Perspective’s plugin text export.
+It must be called directly from a user gesture and resolves <code class="docutils literal notranslate"><span class="pre">true</span></code> on success, <code class="docutils literal notranslate"><span class="pre">false</span></code> for no selection,
+cancellation, or failure. Ctrl+C, Cmd+C, and the optional toolbar’s Copy selection button use this path.
+Inputs, editable content, and ordinary browser text selections retain native copying.</p>
+<p>The secure Clipboard API is invoked before asynchronous export completes. When unavailable or denied,
+a text-only copy-event fallback is attempted while user activation remains valid. Failure emits
+<code class="docutils literal notranslate"><span class="pre">perspective-copy-error</span></code> with <code class="docutils literal notranslate"><span class="pre">{message,</span> <span class="pre">error}</span></code>; the application owns notifications. Pending exports
+are cancelled by selection/config changes, focus changes, new gestures, or disconnects. A write already
+accepted by the operating system cannot be revoked.</p>
+<p>Perspective 5.5’s native Copy menu uses its own clipboard implementation. On insecure HTTP pages,
+the adapter blocks that menu’s copy action and emits <code class="docutils literal notranslate"><span class="pre">perspective-copy-error</span></code>. Copy selection and
+keyboard copying can still use the fallback where browser policy permits it; otherwise Export remains
+available. Secure-context native-menu writes are not intercepted by the adapter.</p>
 <p><code class="docutils literal notranslate"><span class="pre">save()</span></code> waits for pending connection and restore work, then returns the whole-element workspace
 config (<code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> under the hood — a <code class="docutils literal notranslate"><span class="pre">layout</span></code> tree plus per-panel viewer configs).</p>
 <p>When channels are configured, <code class="docutils literal notranslate"><span class="pre">save()</span></code> also includes <code class="docutils literal notranslate"><span class="pre">closed_channels</span></code>, a mapping from table name

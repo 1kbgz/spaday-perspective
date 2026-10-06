@@ -13,7 +13,7 @@ Tag: `<perspective-panel>`.
 | `autopause` | `bool`      | Pause rendering while not visible (on by default).                       |
 | `throttle`  | `int`       | Render throttle in milliseconds; unset restores adaptive throttling.     |
 | `settings`  | `bool`      | Whether the settings sidebar is open.                                    |
-| `toolbar`   | `bool`      | Show the channel picker and close button (default `False`).              |
+| `toolbar`   | `bool`      | Show channel controls and Copy selection (default `False`).              |
 
 ```{eval-rst}
 .. autoclass:: spaday_perspective.PerspectivePanel
@@ -36,6 +36,15 @@ Tag: `<perspective-panel>`.
 
 Changing `ws_url` opens a new client connection. Changing the serialized `layout` restores the viewer's panels.
 The wrapper queues asynchronous changes in assignment order.
+
+Perspective 4 workspace envelopes (`viewers`, `detail`, `master`) are migrated before restoration.
+Migration preserves panel configuration, selected tabs, master panels, and split proportions. Missing
+or empty split sizes use equal shares; a missing master/detail split uses 25/75. Version 5 layouts are
+unchanged by migration.
+
+`spaday_perspective.migrate_layout(layout)` accepts a mapping or JSON string and returns the same
+representation without modifying the input. Existing v5 layouts and invalid JSON strings pass
+through unchanged. The browser bundle exports the mapping-only equivalent, `migrateLayout(layout)`.
 
 The application theme overrides saved panel themes before restoration. `master_theme` overrides
 that choice for filter-source panels, including during live application theme changes. Input layouts
@@ -71,6 +80,22 @@ in `detail`, so a host can swap its loader for an error state. The cancelable `*
 the viewer directly for those.
 
 ## Methods
+
+`copySelection()` copies the last focused grid's selection using Perspective's plugin text export.
+It must be called directly from a user gesture and resolves `true` on success, `false` for no selection,
+cancellation, or failure. Ctrl+C, Cmd+C, and the optional toolbar's Copy selection button use this path.
+Inputs, editable content, and ordinary browser text selections retain native copying.
+
+The secure Clipboard API is invoked before asynchronous export completes. When unavailable or denied,
+a text-only copy-event fallback is attempted while user activation remains valid. Failure emits
+`perspective-copy-error` with `{message, error}`; the application owns notifications. Pending exports
+are cancelled by selection/config changes, focus changes, new gestures, or disconnects. A write already
+accepted by the operating system cannot be revoked.
+
+Perspective 5.5's native Copy menu uses its own clipboard implementation. On insecure HTTP pages,
+the adapter blocks that menu's copy action and emits `perspective-copy-error`. Copy selection and
+keyboard copying can still use the fallback where browser policy permits it; otherwise Export remains
+available. Secure-context native-menu writes are not intercepted by the adapter.
 
 `save()` waits for pending connection and restore work, then returns the whole-element workspace
 config (`saveWorkspace()` under the hood — a `layout` tree plus per-panel viewer configs).

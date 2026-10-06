@@ -261,7 +261,7 @@
                 <span class="n">kind</span><span class="o">=</span><span class="s2">"boolean"</span><span class="p">,</span>
                 <span class="n">choices</span><span class="o">=</span><span class="p">(),</span>
                 <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">description</span><span class="o">=</span><span class="s2">"Show the channel picker and close button. Channels are configured by table name in config.channels."</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Show the channel picker, close button, and Copy selection button. Channels are configured by table name in config.channels."</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="n">PropertySchema</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"config"</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"json"</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="kc">None</span><span class="p">),</span>
             <span class="n">PropertySchema</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"theme"</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"string"</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="kc">None</span><span class="p">),</span>
@@ -306,6 +306,7 @@
             <span class="s2">"perspective-table-delete"</span><span class="p">,</span>
             <span class="s2">"perspective-ready"</span><span class="p">,</span>
             <span class="s2">"perspective-error"</span><span class="p">,</span>
+            <span class="s2">"perspective-copy-error"</span><span class="p">,</span>
         <span class="p">),</span>
         <span class="n">slots</span><span class="o">=</span><span class="p">(),</span>
     <span class="p">)</span>
