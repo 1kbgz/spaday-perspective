@@ -2,6 +2,7 @@
 
 import json
 from copy import deepcopy
+from typing import overload
 
 
 def _migrate_node(node: dict) -> dict:
@@ -14,6 +15,14 @@ def _migrate_node(node: dict) -> dict:
         "sizes": node.get("sizes") or ([1 / len(children)] * len(children) if children else []),
         "children": children,
     }
+
+
+@overload
+def migrate_layout(layout: dict) -> dict: ...
+
+
+@overload
+def migrate_layout(layout: str) -> str: ...
 
 
 def migrate_layout(layout: dict | str) -> dict | str:
