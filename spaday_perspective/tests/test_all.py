@@ -30,7 +30,9 @@ def test_package_drives_bootstrap_asset_url():
 def test_themes_match_the_panel():
     """THEMES is what a Python author discovers; the map in index.ts is what the panel applies."""
     source = (Path(__file__).parent.parent.parent / "js" / "src" / "ts" / "index.ts").read_text(encoding="utf-8")
-    block = re.search(r"const THEMES: Record<string, string> = \{(.*?)\};", source, re.DOTALL).group(1)
+    match = re.search(r"const THEMES: Record<string, string> = \{(.*?)\};", source, re.DOTALL)
+    assert match is not None
+    block = match.group(1)
     assert dict(re.findall(r'(\w+): "([^"]+)"', block)) == THEMES
 
 
@@ -76,6 +78,7 @@ def test_panel_serializes_viewer_options_and_declares_events():
     assert node["props"]["autosize"] == {"Bool": False}
     assert node["props"]["throttle"] == {"Int": 500}
     assert node["props"]["themes"]["List"] == [{"Str": "light"}, {"Str": "dark"}]
+    assert PerspectivePanel.schema is not None
     assert "perspective-config-update" in PerspectivePanel.schema.events
 
 
