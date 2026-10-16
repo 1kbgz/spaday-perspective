@@ -19,6 +19,13 @@ class PerspectivePanel(Component):
         summary="Perspective workspace whose data connection and layout are configured by a serializable prop.",
         props=(
             PropertySchema(
+                name="rowActions",
+                kind="json",
+                choices=(),
+                default=None,
+                description="Optional table-name to indexed-column button descriptions: {table: {column: {action, label, text?}}}. Buttons emit perspective-row-action; applications own authorization and mutations. Grouped/split or unindexed rows are disabled.",
+            ),
+            PropertySchema(
                 name="toolbar",
                 kind="boolean",
                 choices=(),
@@ -58,6 +65,7 @@ class PerspectivePanel(Component):
             PropertySchema(name="settings", kind="boolean", choices=(), default=None, description="Whether the settings sidebar is open."),
         ),
         events=(
+            "perspective-row-action",
             "perspective-click",
             "perspective-select",
             "perspective-global-filter",
@@ -77,6 +85,7 @@ class PerspectivePanel(Component):
         self,
         *children: Child,
         key: str | None = None,
+        rowActions: Any = None,
         toolbar: bool | None = None,
         config: Any = None,
         theme: str | None = None,
@@ -91,6 +100,7 @@ class PerspectivePanel(Component):
             *children,
             key=key,
             props={
+                "rowActions": rowActions,
                 "toolbar": toolbar,
                 "config": config,
                 "theme": theme,

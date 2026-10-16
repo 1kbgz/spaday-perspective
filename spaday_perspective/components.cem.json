@@ -12,6 +12,11 @@
           "summary": "Perspective workspace whose data connection and layout are configured by a serializable prop.",
           "attributes": [
             {
+              "name": "rowActions",
+              "type": { "text": "unknown" },
+              "description": "Optional table-name to indexed-column button descriptions: {table: {column: {action, label, text?}}}. Buttons emit perspective-row-action; applications own authorization and mutations. Grouped/split or unindexed rows are disabled."
+            },
+            {
               "name": "toolbar",
               "type": { "text": "boolean" },
               "description": "Show the channel picker, close button, and Copy selection button. Channels are configured by table name in config.channels."
@@ -65,6 +70,11 @@
             }
           ],
           "events": [
+            {
+              "name": "perspective-row-action",
+              "type": { "text": "CustomEvent" },
+              "description": "A row button was activated. Detail contains action, panel, table, column, and typed record key. No data is mutated automatically."
+            },
             {
               "name": "perspective-click",
               "type": {

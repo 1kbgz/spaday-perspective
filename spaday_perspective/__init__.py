@@ -30,11 +30,12 @@ package = ComponentPackage(
 #: ``css()`` kwarg → (CSS custom property, what it controls), in the shape of
 #: :data:`spaday.theme.SHELL_TOKENS`.
 #:
-#: Deliberately empty. Perspective themes itself by name rather than by custom property, so what an
-#: application overrides is a theme name, not a token -- see :data:`THEMES`. Wrapping Perspective's
-#: themes in ``--spa-perspective-*`` tokens would only be able to express a fraction of what one
-#: controls, so this package does not pretend otherwise.
-TOKENS: dict[str, tuple[str, str]] = {}
+#: These style the wrapper's optional row buttons. The underlying grid uses named :data:`THEMES`.
+TOKENS: dict[str, tuple[str, str]] = {
+    "action_color": ("--spa-perspective-action-color", "Row action button text"),
+    "action_background": ("--spa-perspective-action-background", "Row action button background"),
+    "action_border": ("--spa-perspective-action-border", "Row action button border"),
+}
 
 #: Page mode → the Perspective theme ``<perspective-panel>`` applies for it: Perspective's answer to
 #: :data:`TOKENS`. A panel with no ``theme`` follows the nearest ``wa-dark`` / ``wa-light`` ancestor

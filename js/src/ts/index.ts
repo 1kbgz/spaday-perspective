@@ -4,6 +4,8 @@ import perspective from "@perspective-dev/client";
 import PRO from "@perspective-dev/viewer/dist/css/pro.css";
 import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
 import { installClipboard, type ClipboardViewer } from "./clipboard.js";
+import { installRowActions, type RowActions } from "./row-actions.js";
+export type { RowAction, RowActions } from "./row-actions.js";
 import {
   migrateLayout,
   pruneLayout,
@@ -41,7 +43,7 @@ type PspView = Awaited<ReturnType<PspTable["view"]>>;
 
 declare const __PERSPECTIVE_VERSION__: string;
 
-type Mirror = { view: PspView; table: PspTable };
+type Mirror = { view: PspView; table: PspTable; stop(): Promise<void> };
 
 /* Perspective cannot load twice on a page, so the copy this bundle owns is the page's copy and is
  * shared rather than duplicated: one websocket client per server, one local worker, and one local
@@ -106,20 +108,49 @@ async function acquireMirror(
     ]);
     const serverTable = await remote.open_table(config.name);
     const view = await serverTable.view();
-    const table = await local.table(await view.to_arrow(), {
+    const table = await local.table(await serverTable.schema(), {
       name: config.name,
       index: config.index,
       limit: config.limit,
     });
-    await view.on_update(
-      async (updated) => {
-        // the delta arrives as a Uint8Array, which update() accepts though its types list ArrayBuffer
-        if (updated.delta)
-          await table.update(updated.delta as unknown as ArrayBuffer);
-      },
-      { mode: "row" },
-    );
-    return { view, table };
+    let stopped = false;
+    let dirty = false;
+    let running: Promise<void> | undefined;
+    const report = (error: unknown) =>
+      console.error("perspective-panel: mirror refresh failed", error);
+    const refresh = (): Promise<void> => {
+      dirty = true;
+      running ??= (async () => {
+        dirty = false;
+        // Row deltas omit deleted keys. Replace from an authoritative snapshot, also
+        // covering clear/replace and unindexed sources without appending duplicates.
+        const snapshot = await view.to_arrow();
+        if (!stopped) await table.replace(snapshot);
+      })().finally(() => {
+        running = undefined;
+        // Ready means the first snapshot is loaded, not that a live source is idle.
+        if (dirty && !stopped) void refresh().catch(report);
+      });
+      return running;
+    };
+    // Subscribe before the initial snapshot so writes during initialization are not lost.
+    const subscription = await view.on_update(() => {
+      void refresh().catch(report);
+    });
+    const stop = async () => {
+      stopped = true;
+      await view.remove_update(subscription);
+      await running?.catch(() => {});
+    };
+    try {
+      await refresh();
+    } catch (error) {
+      await stop();
+      await view.delete();
+      await table.delete({ lazy: true });
+      throw error;
+    }
+    return { view, table, stop };
   })();
   sharedMirrors.set(key, { mirror, refs: 1 });
   try {
@@ -139,6 +170,7 @@ async function releaseMirror(key: string): Promise<void> {
   sharedMirrors.delete(key);
   const mirror = await entry.mirror.catch(() => null);
   if (!mirror) return;
+  await mirror.stop().catch(() => {});
   await mirror.view.delete().catch(() => {});
   await mirror.table.delete({ lazy: true }).catch(() => {});
 }
@@ -209,6 +241,13 @@ function wsUrl(url: string): string {
 // viewer config now, not an attribute; the element auto-sizes, so no manual
 // resize plumbing.
 type Viewer = ClipboardViewer & {
+  getViewConfig(options: {
+    panel: string;
+  }): Promise<{ group_by?: string[]; split_by?: string[] }>;
+  getTable(options: {
+    panel: string;
+    wait: boolean;
+  }): Promise<{ get_index(): Promise<string>; get_name(): Promise<string> }>;
   load(client: unknown): Promise<void>;
   restore(config: unknown, options?: { panel?: string }): Promise<void>;
   restoreWorkspace(
@@ -250,6 +289,8 @@ class PerspectivePanel extends HTMLElement {
   #titlebar: HTMLElement | null = null;
   #toolbarKey: string | null = null;
   #clipboard: ReturnType<typeof installClipboard> | null = null;
+  #rowActions: RowActions = {};
+  #rowActionAdapter: ReturnType<typeof installRowActions> | null = null;
 
   connectedCallback(): void {
     injectStyles();
@@ -282,6 +323,11 @@ class PerspectivePanel extends HTMLElement {
       }
     }
     this.#clipboard ??= installClipboard(this, this.#viewer);
+    this.#rowActionAdapter ??= installRowActions(
+      this,
+      this.#viewer,
+      () => this.#rowActions,
+    );
     this.#followPageMode();
     this.#renderToolbar();
     this.#apply();
@@ -294,10 +340,39 @@ class PerspectivePanel extends HTMLElement {
   }
 
   disconnectedCallback(): void {
+    this.#rowActionAdapter?.dispose();
+    this.#rowActionAdapter = null;
     this.#clipboard?.dispose();
     this.#clipboard = null;
     this.#modeObserver?.disconnect();
     this.#modeObserver = null;
+  }
+
+  get rowActions(): RowActions {
+    return this.#rowActions;
+  }
+  set rowActions(value: RowActions) {
+    if (value != null && (typeof value !== "object" || Array.isArray(value)))
+      throw new TypeError("rowActions requires a table-to-column mapping");
+    for (const columns of Object.values(value ?? {})) {
+      if (!columns || typeof columns !== "object" || Array.isArray(columns))
+        throw new TypeError("rowActions requires a table-to-column mapping");
+      for (const rule of Object.values(columns)) {
+        if (
+          !rule ||
+          typeof rule.action !== "string" ||
+          !rule.action ||
+          typeof rule.label !== "string" ||
+          !rule.label ||
+          (rule.text !== undefined && typeof rule.text !== "string")
+        )
+          throw new TypeError(
+            "rowActions requires action and label strings, and optional text",
+          );
+      }
+    }
+    this.#rowActions = structuredClone(value ?? {});
+    this.#rowActionAdapter?.refresh();
   }
 
   /** Copy the focused grid selection. Call directly from a user gesture. */
@@ -651,8 +726,8 @@ class PerspectivePanel extends HTMLElement {
   }
 
   // `client-server` tables mirror into a local worker: open the server table, take a
-  // view, seed a local table from its arrow (with the configured index/limit), and feed
-  // row deltas forward. `viewer.load` ACCUMULATES clients and resolves panel table names
+  // view, and refresh its local snapshot (with the configured index/limit) on changes.
+  // `viewer.load` ACCUMULATES clients and resolves panel table names
   // across all of them in load order, so the worker is loaded before the websocket
   // client — the local copies win the name lookup. `server` tables (the default) resolve
   // from the websocket client as before.

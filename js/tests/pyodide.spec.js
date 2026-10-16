@@ -90,6 +90,32 @@ test("runs the complete example in Pyodide with a local Perspective engine", asy
     "Added 75 NVDA shares",
   );
 
+  await page
+    .getByRole("button", { name: "Delete trade", exact: true })
+    .first()
+    .click();
+  await expect(page.locator(".order-status")).toContainText("Deleted trade ");
+  const deletedKey = Number(
+    (await page.locator(".order-status").textContent()).match(
+      /Deleted trade (\d+)/,
+    )[1],
+  );
+  await expect
+    .poll(() =>
+      page.evaluate(async (key) => {
+        const table = await document
+          .querySelector("perspective-panel")
+          .viewer.getTable({ wait: false });
+        const view = await table.view({ filter: [["id", "==", key]] });
+        try {
+          return await view.to_json();
+        } finally {
+          await view.delete();
+        }
+      }, deletedKey),
+    )
+    .toEqual([]);
+
   await page.getByRole("button", { name: "Group by symbol" }).click();
   await expect
     .poll(async () =>

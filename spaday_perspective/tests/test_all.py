@@ -6,7 +6,7 @@ from pathlib import Path
 from spaday import generate
 from spaday.bootstrap import bootstrap
 
-from spaday_perspective import THEMES, PerspectivePanel, package
+from spaday_perspective import THEMES, TOKENS, PerspectivePanel, package
 
 
 def test_perspective_panel_serializes_config_and_theme():
@@ -19,6 +19,53 @@ def test_perspective_panel_serializes_config_and_theme():
 def test_perspective_panel_serializes_local_worker_mode():
     node = PerspectivePanel(config={"local": True, "tables": ["trades"]}).to_node()
     assert node["props"]["config"]["Map"]["local"] == {"Bool": True}
+
+
+def test_row_actions_are_wrapper_props_and_declare_the_event():
+    node = PerspectivePanel(row_actions={"orders": {"id": {"action": "delete", "label": "Delete order"}}}).to_node()
+    rule = node["props"]["rowActions"]["Map"]["orders"]["Map"]["id"]["Map"]
+    assert rule["action"] == {"Str": "delete"}
+    assert rule["label"] == {"Str": "Delete order"}
+    assert PerspectivePanel.schema is not None
+    assert "perspective-row-action" in PerspectivePanel.schema.events
+
+
+def test_row_action_example_authors_an_endpoint_action():
+    from spaday_perspective.row_actions import page
+
+    serialized = json.dumps(page().to_node())
+    assert "perspective-row-action" in serialized
+    assert "/orders/delete" in serialized
+
+
+def test_row_action_tokens_match_the_adapter():
+    source = (Path(__file__).parent.parent.parent / "js" / "src" / "ts" / "row-actions.ts").read_text(encoding="utf-8")
+    assert {name for name, _ in TOKENS.values()} == set(re.findall(r"--spa-perspective-[\w-]+", source))
+
+
+def test_row_action_example_validates_requests_and_updates_the_table():
+    from starlette.testclient import TestClient
+
+    from spaday_perspective.row_actions import app, records, table
+
+    original = dict(records)
+    try:
+        with TestClient(app) as client:
+            with client.websocket_connect("/perspective"):
+                pass
+            for data in ({}, [], {"id": True}, {"id": "1"}):
+                assert client.post("/orders/delete", json=data).status_code == 422
+            assert client.post("/orders/delete", json={"id": 99}).status_code == 404
+            assert client.post("/orders/delete", json={"id": 3}).status_code == 403
+            assert table.size() == 3
+            assert client.post("/orders/delete", json={"id": 1}).json() == {"message": "Deleted order 1"}
+            assert table.size() == 2
+            assert 1 not in records
+            assert client.post("/orders/delete", json={"id": 1}).status_code == 404
+    finally:
+        records.clear()
+        records.update(original)
+        table.replace(list(original.values()))
 
 
 def test_package_drives_bootstrap_asset_url():
