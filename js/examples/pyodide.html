@@ -66,8 +66,9 @@
         output.textContent = String(error);
       }
 
-      async function applyUpdates({ rows = [], wires = [] }) {
+      async function applyUpdates({ rows = [], removed = [], wires = [] }) {
         if (rows.length) await trades.update(rows);
+        if (removed.length) await trades.remove(removed);
         if (wires.length) receiveWires(wires);
       }
 
@@ -161,7 +162,7 @@
             input instanceof Request ? input.url : input,
             location.href,
           );
-          if (url.pathname !== "/api/trades")
+          if (!["/api/trades", "/api/trades/delete"].includes(url.pathname))
             return nativeFetch(input, options);
 
           const id = ++nextEndpointId;
@@ -171,6 +172,7 @@
           worker.postMessage({
             type: "endpoint",
             id,
+            path: url.pathname,
             body: options.body ? JSON.parse(String(options.body)) : null,
           });
           return response;
@@ -208,7 +210,7 @@
             const perspective = await globalThis.__spadayPerspective.worker();
             trades = await perspective.table(rows, {
               name: "trades",
-              limit: 1000,
+              index: "id",
             });
 
             const store = new Store(initialStore);

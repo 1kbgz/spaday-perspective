@@ -48,8 +48,11 @@ def receive_wire(frame):
 def flush_updates():
     rows = list(example.browser_updates)
     example.browser_updates.clear()
+    removed = list(example.browser_removals)
+    example.browser_removals.clear()
     return json.dumps({
         "rows": rows,
+        "removed": removed,
         "wires": local_wires(server.flush()),
     })
 
@@ -60,8 +63,9 @@ class LocalRequest:
     async def json(self):
         return self._body
 
-async def call_endpoint(body_json):
-    response = await example.submit_trade(LocalRequest(json.loads(body_json)))
+async def call_endpoint(path, body_json):
+    handler = {"/api/trades": example.submit_trade, "/api/trades/delete": example.delete_trade}[path]
+    response = await handler(LocalRequest(json.loads(body_json)))
     updates = json.loads(flush_updates())
     return json.dumps({
         "status": response.status_code,
@@ -94,12 +98,15 @@ async function handle(message) {
     if (wires.length) self.postMessage({ type: "wires", wires });
   } else if (message.type === "flush") {
     const updates = JSON.parse(pyodide.runPython("flush_updates()"));
-    if (updates.rows.length || updates.wires.length)
+    if (updates.rows.length || updates.removed.length || updates.wires.length)
       self.postMessage({ type: "updates", ...updates });
   } else if (message.type === "endpoint") {
+    pyodide.globals.set("endpoint_path", message.path);
     pyodide.globals.set("body_json", JSON.stringify(message.body));
     const result = JSON.parse(
-      await pyodide.runPythonAsync("await call_endpoint(body_json)"),
+      await pyodide.runPythonAsync(
+        "await call_endpoint(endpoint_path, body_json)",
+      ),
     );
     self.postMessage({ type: "endpoint", id: message.id, ...result });
   }

@@ -24,6 +24,7 @@ workspace element since Perspective 5), datagrid, themes, and viewer WASM.
 
 - [Build a live market workspace](docs/src/tutorial.md) — guided first application.
 - [Stream data and change layouts](docs/src/how-to.md) — task-focused server and UI recipes.
+- [Add row buttons](docs/src/how-to.md) — indexed row events and server-side deletion.
 - [API reference](docs/src/reference.md) — component props, layout shape, and package descriptor.
 - [Why Perspective uses its own data channel](docs/src/explanation.md) — integration design and tradeoffs.
 
