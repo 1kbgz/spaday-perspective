@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 import transports
 from pydantic import BaseModel
-from spaday import CallEndpoint, SetField, ToggleField, cond, element, eq, field, obj
+from spaday import CallEndpoint, SetField, ToggleField, cond, element, eq, event_prop, field, obj
 from spaday.backends.starlette import serve
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -51,7 +51,7 @@ else:
             "price": "float",
             "venue": "string",
         },
-        limit=1_000,
+        index="id",
         name="trades",
     )
 
@@ -60,6 +60,8 @@ venues = ("XNAS", "XNYS", "ARCX", "BATS")
 row_count = 0
 total_notional = 0.0
 browser_updates: list[dict] = []
+browser_removals: list[int] = []
+records: dict[int, dict] = {}
 initial_trades: list[dict] = []
 
 
@@ -76,6 +78,10 @@ def append_trade(*, symbol: str, side: str, quantity: int, price: float, publish
         "price": round(price, 2),
         "venue": venues[row_count % len(venues)],
     }
+    records[row_count] = trade
+    if len(records) > 1_000:
+        oldest = next(iter(records))
+        remove_trade(oldest)
     if trades is not None:
         trades.update([trade])
     elif publish:
@@ -85,6 +91,14 @@ def append_trade(*, symbol: str, side: str, quantity: int, price: float, publish
     feed.notional = f"${total_notional:,.0f}"
     feed.stream_status = "Live"
     return trade
+
+
+def remove_trade(key: int) -> None:
+    if trades is not None:
+        trades.remove([key])
+    else:
+        browser_removals.append(key)
+    del records[key]
 
 
 for index in range(80):
@@ -123,6 +137,18 @@ async def submit_trade(request):
     return JSONResponse({"message": f"Added {quantity} {symbol} shares at ${price:,.2f}"})
 
 
+async def delete_trade(request):
+    payload = await request.json()
+    key = payload.get("id") if isinstance(payload, dict) else None
+    if type(key) is not int:
+        return JSONResponse({"message": "Expected an integer trade ID"}, status_code=422)
+    if key not in records:
+        return JSONResponse({"message": "Trade no longer exists"}, status_code=404)
+    # Demo data only. Production endpoints must check the authenticated user's access.
+    remove_trade(key)
+    return JSONResponse({"message": f"Deleted trade {key}"})
+
+
 if not IS_PYODIDE:
 
     async def perspective_socket(websocket: WebSocket) -> None:
@@ -137,7 +163,7 @@ def layout(*, grouped: bool = False) -> dict:
         "table": "trades",
         "plugin": "Datagrid",
         "title": "Live market activity",
-        "columns": ["time", "symbol", "side", "quantity", "price", "venue"],
+        "columns": ["id", "time", "symbol", "side", "quantity", "price", "venue"],
         "sort": [["id", "desc"]],
     }
     if grouped:
@@ -158,7 +184,15 @@ def layout(*, grouped: bool = False) -> dict:
 
 
 panel = (
-    PerspectivePanel(id="market-grid", toolbar=True)
+    PerspectivePanel(
+        id="market-grid",
+        toolbar=True,
+        row_actions={"trades": {"id": {"action": "delete", "label": "Delete trade"}}},
+    )
+    .on(
+        "perspective-row-action",
+        CallEndpoint("POST", "/api/trades/delete", obj({"id": event_prop("detail.key")}), result="trade_result"),
+    )
     .compute("theme", cond(field("dark"), "dark", "light"))
     .compute(
         "config",
@@ -209,6 +243,7 @@ page = element(
                 if IS_PYODIDE
                 else "Rows stream over Perspective's websocket; only summary state uses transports."
             ),
+            element("p").text("Click × in the live blotter to delete a trade. Summary totals count all trades received."),
         ),
         element(
             "div",
@@ -305,7 +340,7 @@ styles = """
 </style>
 """
 
-routes = [Route("/api/trades", submit_trade, methods=["POST"])]
+routes = [Route("/api/trades", submit_trade, methods=["POST"]), Route("/api/trades/delete", delete_trade, methods=["POST"])]
 if not IS_PYODIDE:
     routes[:0] = [
         WebSocketRoute("/ws", transports.ws_endpoint(transport_server)),

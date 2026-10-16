@@ -66,6 +66,44 @@ trades.update(
 Connected viewers receive the update through Perspective's websocket. Do not copy bulk rows into a
 spaday store.
 
+## Add a delete button to each row
+
+Create the source table with a unique index, include that column in the Datagrid, and annotate it:
+
+```python
+from spaday import CallEndpoint, event_prop, obj
+from spaday_perspective import PerspectivePanel
+
+orders = client.table(rows, name="orders", index="id")
+panel = PerspectivePanel(
+    config=config,
+    row_actions={"orders": {"id": {"action": "delete", "label": "Delete order"}}},
+).on(
+    "perspective-row-action",
+    CallEndpoint("POST", "/orders/delete", obj({"id": event_prop("detail.key")}), result="reply"),
+)
+```
+
+In the endpoint, validate the ID and the authenticated user's permission, then update authoritative
+storage and call `orders.remove([key])`. Use `reply` to show success or rejection. Do not delete by
+displayed row number or use a clicked group's filters as a bulk-delete predicate. If several actions
+share a handler, validate the requested action and table against an allowlist too.
+
+The main example (`python -m spaday_perspective.example`) and browser preview include delete buttons
+in the live blotter. Both call the same Python deletion handler. The table retains up to 1,000 rows;
+summary totals count all trades received, including deleted trades.
+
+Run the smaller example with a locked-record policy using:
+
+```sh
+python -m spaday_perspective.row_actions
+```
+
+Open <http://127.0.0.1:8017> in two windows. Deleting an unlocked order updates both; locked orders
+return an error. This local demo illustrates a record policy, not production authentication. Its
+Perspective socket is application-owned; production hosts must also restrict client-side table writes.
+For a mirrored table, configure its local `index` to match the authoritative index.
+
 ## Switch between saved layouts
 
 Build two workspace layouts and compute `config` from a small reactive field:
@@ -151,6 +189,9 @@ panel = PerspectivePanel(
 
 `index` and `limit` apply to the local copy. `default_architecture` flips the default for every
 plain entry.
+
+Mirrors resnapshot after source changes so deletions and replacements propagate correctly. Keep
+large, high-frequency tables on the default server architecture to avoid full-table transfer on refresh.
 
 ## Share Perspective with your own library
 

@@ -60,10 +60,43 @@ channels. Replacing `layout` starts a new workspace and replaces its retained ch
 
 A `server` table (the default) reads over the websocket: every scroll, sort, and filter round-trips
 to the Python server. A `client-server` table mirrors into a local Web Worker engine: the wrapper
-opens the server table, seeds a local copy (with the entry's `index` / `limit`) from an arrow
-snapshot, and feeds row deltas forward, loading the worker client before the websocket client so the
+opens the server table and replaces a local copy (with the entry's `index` / `limit`) from an Arrow
+snapshot after source changes, loading the worker client before the websocket client so the
 local copy wins the viewer's table-name lookup. Reads are then local; the server stays authoritative
 for writes. Set architectures in the initial `config` — changing the mirrored set later reconnects.
+
+Row deltas omit deleted keys. Snapshot replacement propagates removals, clear, and replace operations
+and avoids duplicate appends for unindexed mirrors. Refreshes are serialized and notifications during
+an in-flight refresh coalesce into another snapshot. This sends the full source table on refresh;
+server architecture avoids that cost for large or frequently changing tables.
+
+## Row actions
+
+`row_actions` (JavaScript `rowActions`) maps table names to indexed-column button descriptions:
+
+```python
+PerspectivePanel(row_actions={"orders": {"id": {"action": "delete", "label": "Delete order", "text": "×"}}})
+```
+
+`action` and accessible `label` are nonempty strings. `text` is optional and defaults to `×`.
+Labels and text are rendered as text, never HTML. Annotations apply to all Datagrid panels for that
+table and are separate from Perspective's saved layout and column configuration.
+
+Buttons replace the displayed index value without changing data. Only flat, unsplit views with a
+string or safe-integer key are enabled. Grouped views, non-index columns, and missing/unsupported
+keys disable the button. Split views may not display the annotated column. Other plugins are unchanged.
+
+Pointer or keyboard activation emits bubbling, composed `perspective-row-action` with
+`{action, panel, table, column, key}`. `key` retains its string/number type; `panel` is the current
+Perspective panel ID. Buttons do not select/edit cells or mutate data. The application owns
+authorization, confirmation, deletion, and error presentation. No optimistic removal occurs.
+
+The adapter uses the pinned Datagrid's `regular_table` style listeners and rendered cell metadata,
+not asynchronous row-position lookup. A pointer gesture is cancelled if its button/identity changes
+before click. Listeners and rendered buttons are removed when annotations or the wrapper are removed.
+
+Button colors inherit the active theme and accept `--spa-perspective-action-color`,
+`--spa-perspective-action-background`, and `--spa-perspective-action-border` overrides.
 
 ## Events
 
@@ -126,8 +159,9 @@ imperative and query API (`getTable`, `getSelection`, `download`, `copy`, `addPa
 
 ## `THEMES` and `TOKENS`
 
-Perspective themes itself by name rather than by CSS custom property, so `spaday_perspective.TOKENS`
-is empty and `spaday_perspective.THEMES` carries the contract instead:
+`spaday_perspective.TOKENS` lists `action_color`, `action_background`, and `action_border` for
+the optional row buttons. These do not replace Perspective's grid themes.
+Perspective themes itself by name; `spaday_perspective.THEMES` maps page modes to those names:
 `{"light": "Pro Light", "dark": "Pro Dark"}`, the Perspective theme a panel applies for each page
 mode. A panel with no `theme` follows the nearest `wa-dark` / `wa-light` ancestor to one of these.
 `theme` and `themes` accept the keys as shorthands and pass any other name to Perspective unchanged,

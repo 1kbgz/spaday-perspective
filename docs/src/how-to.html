@@ -301,6 +301,38 @@ must use its own theme, set <code class="docutils literal notranslate"><span cla
 <p>Connected viewers receive the update through Perspective’s websocket. Do not copy bulk rows into a
 spaday store.</p>
 </section>
+<section id="add-a-delete-button-to-each-row">
+<h2>Add a delete button to each row<a class="headerlink" href="#add-a-delete-button-to-each-row" title="Link to this heading">¶</a></h2>
+<p>Create the source table with a unique index, include that column in the Datagrid, and annotate it:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday</span><span class="w"> </span><span class="kn">import</span> <span class="n">CallEndpoint</span><span class="p">,</span> <span class="n">event_prop</span><span class="p">,</span> <span class="n">obj</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">spaday_perspective</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerspectivePanel</span>
+
+<span class="n">orders</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">table</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"orders"</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="s2">"id"</span><span class="p">)</span>
+<span class="n">panel</span> <span class="o">=</span> <span class="n">PerspectivePanel</span><span class="p">(</span>
+    <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
+    <span class="n">row_actions</span><span class="o">=</span><span class="p">{</span><span class="s2">"orders"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"action"</span><span class="p">:</span> <span class="s2">"delete"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Delete order"</span><span class="p">}}},</span>
+<span class="p">)</span><span class="o">.</span><span class="n">on</span><span class="p">(</span>
+    <span class="s2">"perspective-row-action"</span><span class="p">,</span>
+    <span class="n">CallEndpoint</span><span class="p">(</span><span class="s2">"POST"</span><span class="p">,</span> <span class="s2">"/orders/delete"</span><span class="p">,</span> <span class="n">obj</span><span class="p">({</span><span class="s2">"id"</span><span class="p">:</span> <span class="n">event_prop</span><span class="p">(</span><span class="s2">"detail.key"</span><span class="p">)}),</span> <span class="n">result</span><span class="o">=</span><span class="s2">"reply"</span><span class="p">),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>In the endpoint, validate the ID and the authenticated user’s permission, then update authoritative
+storage and call <code class="docutils literal notranslate"><span class="pre">orders.remove([key])</span></code>. Use <code class="docutils literal notranslate"><span class="pre">reply</span></code> to show success or rejection. Do not delete by
+displayed row number or use a clicked group’s filters as a bulk-delete predicate. If several actions
+share a handler, validate the requested action and table against an allowlist too.</p>
+<p>The main example (<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">spaday_perspective.example</span></code>) and browser preview include delete buttons
+in the live blotter. Both call the same Python deletion handler. The table retains up to 1,000 rows;
+summary totals count all trades received, including deleted trades.</p>
+<p>Run the smaller example with a locked-record policy using:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>spaday_perspective.row_actions
+</pre></div>
+</div>
+<p>Open <a class="reference external" href="http://127.0.0.1:8017">http://127.0.0.1:8017</a> in two windows. Deleting an unlocked order updates both; locked orders
+return an error. This local demo illustrates a record policy, not production authentication. Its
+Perspective socket is application-owned; production hosts must also restrict client-side table writes.
+For a mirrored table, configure its local <code class="docutils literal notranslate"><span class="pre">index</span></code> to match the authoritative index.</p>
+</section>
 <section id="switch-between-saved-layouts">
 <h2>Switch between saved layouts<a class="headerlink" href="#switch-between-saved-layouts" title="Link to this heading">¶</a></h2>
 <p>Build two workspace layouts and compute <code class="docutils literal notranslate"><span class="pre">config</span></code> from a small reactive field:</p>
@@ -377,6 +409,8 @@ architecture — reads (scrolls, sorts, filters) stop round-tripping to Python:<
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">index</span></code> and <code class="docutils literal notranslate"><span class="pre">limit</span></code> apply to the local copy. <code class="docutils literal notranslate"><span class="pre">default_architecture</span></code> flips the default for every
 plain entry.</p>
+<p>Mirrors resnapshot after source changes so deletions and replacements propagate correctly. Keep
+large, high-frequency tables on the default server architecture to avoid full-table transfer on refresh.</p>
 </section>
 <section id="share-perspective-with-your-own-library">
 <h2>Share Perspective with your own library<a class="headerlink" href="#share-perspective-with-your-own-library" title="Link to this heading">¶</a></h2>
@@ -466,6 +500,7 @@ server, and <code class="docutils literal notranslate"><span class="pre">.worker
 <li><a class="reference internal" href="#">How to stream data and change layouts</a><ul>
 <li><a class="reference internal" href="#open-close-and-save-channels">Open, close, and save channels</a></li>
 <li><a class="reference internal" href="#stream-rows-from-python">Stream rows from Python</a></li>
+<li><a class="reference internal" href="#add-a-delete-button-to-each-row">Add a delete button to each row</a></li>
 <li><a class="reference internal" href="#switch-between-saved-layouts">Switch between saved layouts</a></li>
 <li><a class="reference internal" href="#map-a-page-theme">Map a page theme</a></li>
 <li><a class="reference internal" href="#persist-user-edited-layouts">Persist user-edited layouts</a></li>

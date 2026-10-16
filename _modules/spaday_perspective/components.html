@@ -257,6 +257,13 @@
         <span class="n">summary</span><span class="o">=</span><span class="s2">"Perspective workspace whose data connection and layout are configured by a serializable prop."</span><span class="p">,</span>
         <span class="n">props</span><span class="o">=</span><span class="p">(</span>
             <span class="n">PropertySchema</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">"rowActions"</span><span class="p">,</span>
+                <span class="n">kind</span><span class="o">=</span><span class="s2">"json"</span><span class="p">,</span>
+                <span class="n">choices</span><span class="o">=</span><span class="p">(),</span>
+                <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">"Optional table-name to indexed-column button descriptions: {table: {column: {action, label, text?}}}. Buttons emit perspective-row-action; applications own authorization and mutations. Grouped/split or unindexed rows are disabled."</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="n">PropertySchema</span><span class="p">(</span>
                 <span class="n">name</span><span class="o">=</span><span class="s2">"toolbar"</span><span class="p">,</span>
                 <span class="n">kind</span><span class="o">=</span><span class="s2">"boolean"</span><span class="p">,</span>
                 <span class="n">choices</span><span class="o">=</span><span class="p">(),</span>
@@ -296,6 +303,7 @@
             <span class="n">PropertySchema</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"settings"</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"boolean"</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">"Whether the settings sidebar is open."</span><span class="p">),</span>
         <span class="p">),</span>
         <span class="n">events</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"perspective-row-action"</span><span class="p">,</span>
             <span class="s2">"perspective-click"</span><span class="p">,</span>
             <span class="s2">"perspective-select"</span><span class="p">,</span>
             <span class="s2">"perspective-global-filter"</span><span class="p">,</span>
@@ -315,6 +323,7 @@
         <span class="bp">self</span><span class="p">,</span>
         <span class="o">*</span><span class="n">children</span><span class="p">:</span> <span class="n">Child</span><span class="p">,</span>
         <span class="n">key</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">rowActions</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">toolbar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">config</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">theme</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -329,6 +338,7 @@
             <span class="o">*</span><span class="n">children</span><span class="p">,</span>
             <span class="n">key</span><span class="o">=</span><span class="n">key</span><span class="p">,</span>
             <span class="n">props</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">"rowActions"</span><span class="p">:</span> <span class="n">rowActions</span><span class="p">,</span>
                 <span class="s2">"toolbar"</span><span class="p">:</span> <span class="n">toolbar</span><span class="p">,</span>
                 <span class="s2">"config"</span><span class="p">:</span> <span class="n">config</span><span class="p">,</span>
                 <span class="s2">"theme"</span><span class="p">:</span> <span class="n">theme</span><span class="p">,</span>
