@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 import transports
 from pydantic import BaseModel
-from spaday import CallEndpoint, If, Sequence, SetField, ToggleField, cond, element, eq, event_prop, field, obj
+from spaday import CallEndpoint, If, Invoke, Sequence, SetField, ToggleField, by_id, cond, element, eq, event_prop, field, obj
 from spaday.backends.starlette import serve
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -218,7 +218,10 @@ panel = (
         "perspective-row-action",
         If(
             eq(event_prop("detail.action"), "delete"),
-            CallEndpoint("POST", "/api/trades/delete", obj({"id": event_prop("detail.key")}), result="trade_result"),
+            Sequence(
+                SetField("delete_trade_id", event_prop("detail.key")),
+                Invoke(by_id("delete-trade-dialog"), "showModal"),
+            ),
             If(
                 eq(event_prop("detail.action"), "copy"),
                 Sequence(
@@ -296,6 +299,28 @@ page = element(
         class_="workspace-heading",
     ),
     element("section", panel, class_="workspace-shell"),
+    element(
+        "dialog",
+        element("h2").text("Delete trade?"),
+        element("p", "Delete trade ", element("strong").bind("textContent", "delete_trade_id"), " and update the totals?"),
+        element(
+            "div",
+            element("button", type="button", autofocus=True).text("Cancel").on("click", Invoke(by_id("delete-trade-dialog"), "close")),
+            element("button", type="button")
+            .text("Delete trade")
+            .on(
+                "click",
+                Sequence(
+                    Invoke(by_id("delete-trade-dialog"), "close"),
+                    CallEndpoint("POST", "/api/trades/delete", obj({"id": field("delete_trade_id")}), result="trade_result"),
+                ),
+            ),
+            class_="dialog-actions",
+        ),
+        id="delete-trade-dialog",
+        class_="delete-dialog",
+        **{"aria-label": "Delete trade?"},
+    ),
     element(
         "section",
         element(
@@ -376,6 +401,11 @@ styles = """
   .submit-button { min-height: 2.55rem; border-color: #0891b2; background: #0891b2; color: #fff; }
   .submit-button:hover { background: #0e7490; color: #fff; }
   .order-status { grid-column: 1 / -1; min-height: 1.2rem; margin: 0; color: #0891b2; font-size: .82rem; }
+  .delete-dialog { max-width: min(28rem, calc(100vw - 4rem)); padding: 1.25rem; border: 1px solid #cbd5e1;
+    border-radius: .85rem; background: #fff; color: #172033; }
+  .dark .delete-dialog { border-color: #475569; background: #1e293b; color: #e5eefb; }
+  .delete-dialog::backdrop { background: #0f172a66; }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 1.25rem; }
   @media (max-width: 760px) { .dashboard { padding: 1rem; } .page-header, .workspace-heading { align-items: flex-start; flex-direction: column; }
     .metrics { grid-template-columns: repeat(2, 1fr); } .order-card { grid-template-columns: 1fr; } .order-fields { grid-template-columns: 1fr; }
     .segmented { flex-wrap: wrap; } }

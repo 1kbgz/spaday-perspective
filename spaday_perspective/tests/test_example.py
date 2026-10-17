@@ -24,6 +24,13 @@ def test_example_serves_dashboard_and_accepts_trades():
     assert example.feed.row_count == f"{len(example.records):,}"
 
 
+def test_row_delete_authors_confirmation_before_the_endpoint_call():
+    action = example.panel.to_node()["events"]["perspective-row-action"]["then"]
+    assert [step["kind"] for step in action["actions"]] == ["set-field", "invoke"]
+    assert action["actions"][0]["field"] == "delete_trade_id"
+    assert action["actions"][1]["method"] == "showModal"
+
+
 def test_example_deletes_by_index_and_validates_the_request():
     trade = example.append_trade(symbol="TEST", side="Buy", quantity=1, price=1)
     key = trade["id"]
