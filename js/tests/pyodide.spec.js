@@ -144,12 +144,52 @@ test("runs the complete example in Pyodide with a local Perspective engine", asy
     .getByRole("button", { name: "Delete trade", exact: true })
     .first()
     .click();
+  const confirmation = page.getByRole("dialog", {
+    name: "Delete trade?",
+    exact: true,
+  });
+  await expect(confirmation).toBeVisible();
+  const cancelledKey = Number(
+    await confirmation.locator("strong").textContent(),
+  );
+  await confirmation
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(confirmation).not.toBeVisible();
+  expect(
+    await page.evaluate(async (key) => {
+      const table = await document
+        .querySelector("perspective-panel")
+        .viewer.getTable({ wait: false });
+      const view = await table.view({ filter: [["id", "==", key]] });
+      try {
+        return (await view.to_json()).length;
+      } finally {
+        await view.delete();
+      }
+    }, cancelledKey),
+  ).toBe(1);
+  await expect(page.locator(".order-status")).toContainText(
+    "Added 75 NVDA shares",
+  );
+  await page
+    .getByRole("button", { name: "Delete trade", exact: true })
+    .first()
+    .click();
+  const confirmedKey = Number(
+    await confirmation.locator("strong").textContent(),
+  );
+  await confirmation
+    .getByRole("button", { name: "Delete trade", exact: true })
+    .click();
+  await expect(confirmation).not.toBeVisible();
   await expect(page.locator(".order-status")).toContainText("Deleted trade ");
   const deletedKey = Number(
     (await page.locator(".order-status").textContent()).match(
       /Deleted trade (\d+)/,
     )[1],
   );
+  expect(deletedKey).toBe(confirmedKey);
   await expect
     .poll(() =>
       page.evaluate(async (key) => {

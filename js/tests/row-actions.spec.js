@@ -87,9 +87,28 @@ test("main example deletes a trade through its Python endpoint", async ({
     .getByRole("button", { name: "Delete trade", exact: true })
     .first()
     .click();
+  const dialog = page.getByRole("dialog", {
+    name: "Delete trade?",
+    exact: true,
+  });
+  await expect(dialog).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "Cancel", exact: true }),
+  ).toBeFocused();
+  const selectedKey = Number(await dialog.locator("strong").textContent());
+  await page.evaluate(() =>
+    document
+      .querySelector("perspective-panel")
+      .viewer.restore({ sort: [["id", "asc"]] }),
+  );
+  await dialog
+    .getByRole("button", { name: "Delete trade", exact: true })
+    .click();
+  await expect(dialog).not.toBeVisible();
   const response = await deleted;
   expect(response.status()).toBe(200);
   const key = response.request().postDataJSON().id;
+  expect(key).toBe(selectedKey);
   await expect(page.locator(".order-status")).toHaveText(
     `Deleted trade ${key}`,
   );
@@ -139,6 +158,46 @@ test("main example deletes a trade through its Python endpoint", async ({
     )
     .toBe(true);
 });
+
+for (const dismiss of ["Cancel", "Escape"]) {
+  test(`${dismiss} dismisses row deletion without calling the endpoint`, async ({
+    page,
+  }) => {
+    await page.goto("http://127.0.0.1:8015");
+    const requests = [];
+    page.on("request", (request) => {
+      if (request.url().endsWith("/api/trades/delete")) requests.push(request);
+    });
+    await page
+      .getByRole("button", { name: "Delete trade", exact: true })
+      .first()
+      .click();
+    const dialog = page.getByRole("dialog", {
+      name: "Delete trade?",
+      exact: true,
+    });
+    await expect(dialog).toBeVisible();
+    const key = Number(await dialog.locator("strong").textContent());
+    if (dismiss === "Escape") await page.keyboard.press("Escape");
+    else
+      await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(dialog).not.toBeVisible();
+    const retained = await page.evaluate(async (key) => {
+      const table = await document
+        .querySelector("perspective-panel")
+        .viewer.getTable({ wait: false });
+      const view = await table.view({ filter: [["id", "==", key]] });
+      try {
+        return (await view.to_json()).length;
+      } finally {
+        await view.delete();
+      }
+    }, key);
+    expect(retained).toBe(1);
+    expect(requests).toEqual([]);
+    await expect(page.locator(".order-status")).toHaveText("");
+  });
+}
 
 test("Python row actions delete through the server and update two browsers", async ({
   page,
