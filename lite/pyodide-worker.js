@@ -64,7 +64,7 @@ class LocalRequest:
         return self._body
 
 async def call_endpoint(path, body_json):
-    handler = {"/api/trades": example.submit_trade, "/api/trades/delete": example.delete_trade}[path]
+    handler = {"/api/trades": example.submit_trade, "/api/trades/delete": example.delete_trade, "/api/trades/copy": example.copy_trade}[path]
     response = await handler(LocalRequest(json.loads(body_json)))
     updates = json.loads(flush_updates())
     return json.dumps({

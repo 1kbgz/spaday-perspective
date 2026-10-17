@@ -379,6 +379,37 @@ their names instead:</p>
 </pre></div>
 </div>
 </section>
+<section id="configure-selection-and-find-a-value">
+<h2>Configure selection and find a value<a class="headerlink" href="#configure-selection-and-find-a-value" title="Link to this heading">¶</a></h2>
+<p>Enable region selection, cell-aligned scrolling, and Find from Python:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday_perspective</span><span class="w"> </span><span class="kn">import</span> <span class="n">EditMode</span><span class="p">,</span> <span class="n">PerspectivePanel</span><span class="p">,</span> <span class="n">Theme</span>
+
+<span class="n">panel</span> <span class="o">=</span> <span class="n">PerspectivePanel</span><span class="p">(</span>
+    <span class="n">theme</span><span class="o">=</span><span class="n">Theme</span><span class="o">.</span><span class="n">DARK</span><span class="p">,</span>
+    <span class="n">toolbar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">find</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">"ws_url"</span><span class="p">:</span> <span class="s2">"/perspective"</span><span class="p">,</span>
+        <span class="s2">"layout"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"layout"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"tab-layout"</span><span class="p">,</span> <span class="s2">"tabs"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"trades"</span><span class="p">]},</span>
+            <span class="s2">"panels"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"trades"</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">"table"</span><span class="p">:</span> <span class="s2">"trades"</span><span class="p">,</span>
+                    <span class="s2">"plugin"</span><span class="p">:</span> <span class="s2">"Datagrid"</span><span class="p">,</span>
+                    <span class="s2">"plugin_config"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"edit_mode"</span><span class="p">:</span> <span class="n">EditMode</span><span class="o">.</span><span class="n">SELECT_REGION</span><span class="p">,</span> <span class="s2">"scroll_lock"</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+                <span class="p">},</span>
+            <span class="p">},</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Select cells and press Ctrl+C / Cmd+C to copy. Press Ctrl+F / Cmd+F while the grid is focused, or click
+Find, then choose a column and enter an exact value. Apply filter keeps existing filters. Use
+Perspective Settings to change or remove them. Cancel leaves the data view unchanged.</p>
+<p>The main Python example and browser preview include these controls. To use a custom Find button,
+call <code class="docutils literal notranslate"><span class="pre">Invoke(by_id(&quot;your-panel-id&quot;),</span> <span class="pre">&quot;openFind&quot;)</span></code> from its click action; keep <code class="docutils literal notranslate"><span class="pre">find=True</span></code> on the panel.</p>
+</section>
 <section id="persist-user-edited-layouts">
 <h2>Persist user-edited layouts<a class="headerlink" href="#persist-user-edited-layouts" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">perspective-config-update</span></code> re-dispatches from the panel whenever the user edits the workspace —
@@ -503,6 +534,7 @@ server, and <code class="docutils literal notranslate"><span class="pre">.worker
 <li><a class="reference internal" href="#add-a-delete-button-to-each-row">Add a delete button to each row</a></li>
 <li><a class="reference internal" href="#switch-between-saved-layouts">Switch between saved layouts</a></li>
 <li><a class="reference internal" href="#map-a-page-theme">Map a page theme</a></li>
+<li><a class="reference internal" href="#configure-selection-and-find-a-value">Configure selection and find a value</a></li>
 <li><a class="reference internal" href="#persist-user-edited-layouts">Persist user-edited layouts</a></li>
 <li><a class="reference internal" href="#mirror-a-table-into-a-local-worker">Mirror a table into a local worker</a></li>
 <li><a class="reference internal" href="#share-perspective-with-your-own-library">Share Perspective with your own library</a></li>

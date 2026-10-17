@@ -162,7 +162,11 @@
             input instanceof Request ? input.url : input,
             location.href,
           );
-          if (!["/api/trades", "/api/trades/delete"].includes(url.pathname))
+          if (
+            !["/api/trades", "/api/trades/delete", "/api/trades/copy"].includes(
+              url.pathname,
+            )
+          )
             return nativeFetch(input, options);
 
           const id = ++nextEndpointId;

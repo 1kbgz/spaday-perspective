@@ -4,16 +4,17 @@
 
 Tag: `<perspective-panel>`.
 
-| Prop        | Type        | Description                                                              |
-| ----------- | ----------- | ------------------------------------------------------------------------ |
-| `config`    | mapping     | Connection, table names, and workspace layout.                           |
-| `theme`     | `str`       | `light`, `dark`, or a Perspective theme name.                            |
-| `themes`    | `list[str]` | Theme names offered by the status-bar picker (same shorthands accepted). |
-| `autosize`  | `bool`      | Auto-size mode (on by default).                                          |
-| `autopause` | `bool`      | Pause rendering while not visible (on by default).                       |
-| `throttle`  | `int`       | Render throttle in milliseconds; unset restores adaptive throttling.     |
-| `settings`  | `bool`      | Whether the settings sidebar is open.                                    |
-| `toolbar`   | `bool`      | Show channel controls and Copy selection (default `False`).              |
+| Prop        | Type        | Description                                                                       |
+| ----------- | ----------- | --------------------------------------------------------------------------------- |
+| `config`    | mapping     | Connection, table names, and workspace layout.                                    |
+| `theme`     | `str`       | `light`, `dark`, or a Perspective theme name.                                     |
+| `themes`    | `list[str]` | Theme names offered by the status-bar picker (same shorthands accepted).          |
+| `autosize`  | `bool`      | Auto-size mode (on by default).                                                   |
+| `autopause` | `bool`      | Pause rendering while not visible (on by default).                                |
+| `throttle`  | `int`       | Render throttle in milliseconds; unset restores adaptive throttling.              |
+| `settings`  | `bool`      | Whether the settings sidebar is open.                                             |
+| `toolbar`   | `bool`      | Show channel controls and Copy selection (default `False`).                       |
+| `find`      | `bool`      | Enable focused-grid Ctrl+F / Cmd+F and the toolbar Find button (default `False`). |
 
 ```{eval-rst}
 .. autoclass:: spaday_perspective.PerspectivePanel
@@ -36,6 +37,36 @@ Tag: `<perspective-panel>`.
 
 Changing `ws_url` opens a new client connection. Changing the serialized `layout` restores the viewer's panels.
 The wrapper queues asynchronous changes in assignment order.
+
+### Validation and enums
+
+The public `spaday_perspective.PerspectivePanel` validates literal configuration when serialized
+with `to_node()` (including through `serve()` or a widget). This includes `.prop("config", ...)`
+updates. `validate_config(config)` performs the same check explicitly and raises `ValueError`
+with a path such as `config.layout.panels.trades.plugin_config.edit_mode`. Browser property setters
+validate reactive config updates before accepting them. Computed expressions are checked when
+their result reaches the browser, not while authoring the expression.
+
+Validation covers wrapper flags, table descriptors, panel/channel mappings, theme-name types, and
+the pinned Datagrid's plugin settings. Unknown Datagrid settings are rejected. Custom plugins,
+per-column style payloads, and table-dependent filter/expression validity remain upstream-owned.
+Unknown wrapper/workspace extension fields are preserved. This is not a complete validator for
+every Perspective plugin or layout tree.
+
+The shared Datagrid contract is checked against the installed plugin's live settings schema and
+TypeScript enum declarations. An upstream field, type, or enum change fails those tests. Positive
+finite font sizes and row heights are accepted, including values outside the settings UI's slider
+ranges; `zebra_rows` accepts nonnegative finite numbers, which Perspective rounds down.
+
+Python string enums are exported for configuration:
+
+- `EditMode`: `EDIT`, `READ_ONLY`, `SELECT_ROW`, `SELECT_COLUMN`, `SELECT_REGION`, `SELECT_ROW_TREE`.
+- `Alignment`: `TOP_LEFT`, `TOP`, `TOP_RIGHT`, `LEFT`, `CENTER`, `RIGHT`, `BOTTOM_LEFT`, `BOTTOM`, `BOTTOM_RIGHT`.
+- `Theme`: `LIGHT`, `DARK`, `PRO_LIGHT`, `PRO_DARK`.
+
+Enum members serialize to Perspective's string values. Plain strings remain accepted. Theme names
+must be nonempty strings; application-defined names remain valid. The scroll setting is
+`plugin_config.scroll_lock`, a boolean, not an enum.
 
 Perspective 4 workspace envelopes (`viewers`, `detail`, `master`) are migrated before restoration.
 Migration preserves panel configuration, selected tabs, master panels, and split proportions. Missing
@@ -78,6 +109,19 @@ server architecture avoids that cost for large or frequently changing tables.
 PerspectivePanel(row_actions={"orders": {"id": {"action": "delete", "label": "Delete order", "text": "×"}}})
 ```
 
+A column accepts one description or a list, rendered in order in the same cell:
+
+```python
+PerspectivePanel(row_actions={"orders": {"id": [
+    {"action": "delete", "label": "Delete order"},
+    {"action": "copy", "label": "Copy order to form", "text": "⧉"},
+]}})
+```
+
+An empty list removes the column's buttons. The market example routes delete and copy actions to
+Python endpoints; copy fills the existing order form without inserting a row. Its summary totals
+cover all retained trades, including rows hidden by filters, and update when rows are deleted or expire.
+
 `action` and accessible `label` are nonempty strings. `text` is optional and defaults to `×`.
 Labels and text are rendered as text, never HTML. Annotations apply to all Datagrid panels for that
 table and are separate from Perspective's saved layout and column configuration.
@@ -113,6 +157,21 @@ in `detail`, so a host can swap its loader for an error state. The cancelable `*
 the viewer directly for those.
 
 ## Methods
+
+`openFind()` opens the column/value prompt for the active panel when `find=True`. With the toolbar
+enabled, Find invokes this method. Ctrl+F / Cmd+F instead targets the Datagrid receiving the key event.
+Other page content, editable inputs, and wrappers with Find disabled keep browser find behavior.
+
+Find lists source-table columns and uses `==`, converting the entered value to the column's type.
+Dates use UTC midnight; datetime input uses browser-local time. Computed columns and null-value
+search are not offered. A selected column is preselected when its position maps unambiguously to
+the source schema. Applying adds a filter without replacing existing filters or adding an identical
+duplicate. Configurations reporting OR-combined filters are refused instead of changing their meaning.
+Zero matches leave an empty filtered view. Filters can be edited or removed in Perspective Settings.
+
+Find reads schema metadata and applies the filter through Perspective's public API; it does not
+export or search rows in the browser. Filtering may still scan data in the engine. Cancellation,
+disabling Find, or disconnecting closes the prompt; it does not undo a filter already submitted.
 
 `copySelection()` copies the last focused grid's selection using Perspective's plugin text export.
 It must be called directly from a user gesture and resolves `true` on success, `false` for no selection,
