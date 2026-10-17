@@ -6,18 +6,74 @@ test("row action configuration rejects malformed mappings", async ({
   await page.goto("/dist/index.html");
   const errors = await page.evaluate(() => {
     const panel = document.createElement("perspective-panel");
-    return [[], 42, { rows: [] }, { rows: null }, { rows: { id: {} } }].map(
-      (value) => {
-        try {
-          panel.rowActions = value;
-          return null;
-        } catch (error) {
-          return error.name;
-        }
-      },
-    );
+    return [
+      [],
+      42,
+      { rows: [] },
+      { rows: null },
+      { rows: { id: {} } },
+      { rows: { id: [null] } },
+      { rows: { id: [{ action: "copy" }] } },
+    ].map((value) => {
+      try {
+        panel.rowActions = value;
+        return null;
+      } catch (error) {
+        return error.name;
+      }
+    });
   });
-  expect(errors).toEqual(Array(5).fill("TypeError"));
+  expect(errors).toEqual(Array(7).fill("TypeError"));
+});
+
+test("copying a trade fills the form without submitting it", async ({
+  page,
+}) => {
+  await page.goto("http://127.0.0.1:8015");
+  const submissions = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/trades")) submissions.push(request);
+  });
+  const copied = page.waitForResponse((response) =>
+    response.url().endsWith("/api/trades/copy"),
+  );
+  await page
+    .getByRole("button", { name: "Copy trade to form", exact: true })
+    .first()
+    .click();
+  const response = await copied;
+  expect(response.status()).toBe(200);
+  const trade = await response.json();
+  await expect(page.getByLabel("Symbol", { exact: true })).toHaveValue(
+    trade.symbol,
+  );
+  await expect(
+    page.getByRole("combobox", { name: "Side", exact: true }),
+  ).toHaveValue(trade.side);
+  await expect(page.getByLabel("Quantity", { exact: true })).toHaveValue(
+    String(trade.quantity),
+  );
+  await expect(page.locator(".order-status")).toHaveText(trade.message);
+  expect(submissions).toEqual([]);
+  await page.route("**/api/trades/copy", (route) =>
+    route.fulfill({ status: 404, json: { message: "Trade no longer exists" } }),
+  );
+  await page
+    .getByRole("button", { name: "Copy trade to form", exact: true })
+    .first()
+    .click();
+  await expect(page.locator(".order-status")).toHaveText(
+    "Trade no longer exists",
+  );
+  await expect(page.getByLabel("Symbol", { exact: true })).toHaveValue(
+    trade.symbol,
+  );
+  await expect(
+    page.getByRole("combobox", { name: "Side", exact: true }),
+  ).toHaveValue(trade.side);
+  await expect(page.getByLabel("Quantity", { exact: true })).toHaveValue(
+    String(trade.quantity),
+  );
 });
 
 test("main example deletes a trade through its Python endpoint", async ({
@@ -51,6 +107,37 @@ test("main example deletes a trade through its Python endpoint", async ({
       }, key),
     )
     .toEqual([]);
+  await expect
+    .poll(() =>
+      page.evaluate(async () => {
+        const table = await document
+          .querySelector("perspective-panel")
+          .viewer.getTable({ wait: false });
+        const view = await table.view({ sort: [["id", "desc"]] });
+        try {
+          const rows = await view.to_json();
+          const metrics = [...document.querySelectorAll(".metrics strong")].map(
+            (node) => node.textContent,
+          );
+          const notional = rows.reduce(
+            (sum, row) => sum + row.quantity * row.price,
+            0,
+          );
+          return (
+            Number(metrics[0].replaceAll(",", "")) === rows.length &&
+            metrics[1] ===
+              (rows[0]?.price ?? 0).toLocaleString("en-US", {
+                style: "currency",
+                currency: "USD",
+              }) &&
+            Math.abs(Number(metrics[2].replace(/[$,]/g, "")) - notional) <= 0.51
+          );
+        } finally {
+          await view.delete();
+        }
+      }),
+    )
+    .toBe(true);
 });
 
 test("Python row actions delete through the server and update two browsers", async ({
@@ -183,6 +270,82 @@ test("row actions retain typed keys after sorting and do not mutate data or sele
   await expect
     .poll(() => page.evaluate(() => window.rowTest.events.map((e) => e.key)))
     .toEqual(["c", "b", "a"]);
+});
+
+test("multiple row buttons preserve keys, focus, and cleanup", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    window.rowTest.panel.rowActions = {
+      rows: {
+        id: [
+          { action: "inspect", label: "Inspect row" },
+          { action: "copy", label: "Copy row", text: "⧉" },
+        ],
+      },
+    };
+  });
+  const copy = page.getByRole("button", { name: "Copy row", exact: true });
+  await expect(copy).toHaveCount(3);
+  await copy.first().focus();
+  await page.evaluate(() =>
+    window.rowTest.table.update([{ id: "a", value: 10 }]),
+  );
+  await expect(copy.first()).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.rowTest.events.map(({ action, key }) => [action, key]),
+      ),
+    )
+    .toEqual([["copy", "a"]]);
+  await page.evaluate(() =>
+    window.rowTest.panel.viewer.restore({ sort: [["value", "desc"]] }),
+  );
+  await copy.last().click();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.rowTest.events.map(({ action, key }) => [action, key]),
+      ),
+    )
+    .toEqual([
+      ["copy", "a"],
+      ["copy", "b"],
+    ]);
+  await page.evaluate(() => {
+    window.rowTest.panel.rowActions = { rows: { id: [] } };
+  });
+  await expect(page.locator("button[data-perspective-row-action]")).toHaveCount(
+    0,
+  );
+  await expect(page.locator("regular-table tbody td").first()).toHaveText("a");
+  await page.evaluate(() => {
+    window.rowTest.panel.rowActions = {
+      rows: {
+        id: [
+          { action: "x", label: "X" },
+          { action: "y", label: "Y" },
+        ],
+      },
+    };
+  });
+  await expect(page.locator("button[data-perspective-row-action]")).toHaveCount(
+    6,
+  );
+  await page.evaluate(() => {
+    window.rowTest.panel.remove();
+  });
+  expect(
+    await page.evaluate(
+      () =>
+        window.rowTest.panel.querySelectorAll(
+          "button[data-perspective-row-action]",
+        ).length,
+    ),
+  ).toBe(0);
 });
 
 test("grouped actions are disabled and removing annotations restores cells", async ({

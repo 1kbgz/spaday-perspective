@@ -40,10 +40,29 @@ test("runs the complete example in Pyodide with a local Perspective engine", asy
   await expect(page.locator("perspective-viewer-datagrid")).toBeAttached();
   expect(sockets).toEqual([]);
 
+  await page.getByRole("button", { name: "Find", exact: true }).click();
+  const find = page.getByRole("dialog", { name: "Find in column" });
+  await find.getByLabel("Column").selectOption("symbol");
+  await find.getByLabel("Equals").fill("AAPL");
+  await find.getByRole("button", { name: "Apply filter" }).click();
+  await expect(find).toHaveCount(0);
+  expect(
+    await page.evaluate(async () =>
+      document.querySelector("perspective-panel").viewer.getViewConfig(),
+    ),
+  ).toMatchObject({ filter: [["symbol", "==", "AAPL"]] });
+  await page.evaluate(() =>
+    document.querySelector("perspective-panel").viewer.restore({ filter: [] }),
+  );
+
   const panelBox = await page.locator("perspective-panel").boundingBox();
   await page.mouse.move(panelBox.x + panelBox.width / 2, panelBox.y + 120);
-  for (const delta of [40, 40, 40]) {
-    await page.mouse.wheel(0, delta);
+  const revealDelta = Math.max(
+    120,
+    panelBox.y + panelBox.height - page.viewportSize().height + 1,
+  );
+  for (let step = 0; step < 3; step++) {
+    await page.mouse.wheel(0, Math.ceil(revealDelta / 3));
     await page.waitForTimeout(30);
   }
   const pageFirst = await scrollState(page);
@@ -82,6 +101,37 @@ test("runs the complete example in Pyodide with a local Perspective engine", asy
     return (await panel.viewer.getTable({ wait: false })).size();
   });
   expect(initialSize).toBeGreaterThanOrEqual(80);
+
+  await page
+    .getByRole("button", { name: "Copy trade to form", exact: true })
+    .first()
+    .click();
+  await expect(page.locator(".order-status")).toContainText("Copied trade ");
+  const copiedKey = Number(
+    (await page.locator(".order-status").textContent()).match(
+      /Copied trade (\d+)/,
+    )[1],
+  );
+  const copiedTrade = await page.evaluate(async (key) => {
+    const table = await document
+      .querySelector("perspective-panel")
+      .viewer.getTable({ wait: false });
+    const view = await table.view({ filter: [["id", "==", key]] });
+    try {
+      return (await view.to_json())[0];
+    } finally {
+      await view.delete();
+    }
+  }, copiedKey);
+  await expect(page.getByLabel("Symbol", { exact: true })).toHaveValue(
+    copiedTrade.symbol,
+  );
+  await expect(
+    page.getByRole("combobox", { name: "Side", exact: true }),
+  ).toHaveValue(copiedTrade.side);
+  await expect(page.getByLabel("Quantity", { exact: true })).toHaveValue(
+    String(copiedTrade.quantity),
+  );
 
   await page.getByLabel("Symbol").fill("NVDA");
   await page.getByLabel("Quantity").fill("75");

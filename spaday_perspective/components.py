@@ -19,11 +19,18 @@ class PerspectivePanel(Component):
         summary="Perspective workspace whose data connection and layout are configured by a serializable prop.",
         props=(
             PropertySchema(
+                name="find",
+                kind="boolean",
+                choices=(),
+                default=None,
+                description="Enable a column/value filter prompt for Ctrl+F or Cmd+F in the focused Datagrid, and a Find toolbar button. Disabled by default.",
+            ),
+            PropertySchema(
                 name="rowActions",
                 kind="json",
                 choices=(),
                 default=None,
-                description="Optional table-name to indexed-column button descriptions: {table: {column: {action, label, text?}}}. Buttons emit perspective-row-action; applications own authorization and mutations. Grouped/split or unindexed rows are disabled.",
+                description="Optional table-name to indexed-column button descriptions: {table: {column: {action, label, text?}}}. Each column also accepts a list of descriptions for multiple buttons. Buttons emit perspective-row-action; applications own authorization and mutations. Grouped/split or unindexed rows are disabled.",
             ),
             PropertySchema(
                 name="toolbar",
@@ -85,6 +92,7 @@ class PerspectivePanel(Component):
         self,
         *children: Child,
         key: str | None = None,
+        find: bool | None = None,
         rowActions: Any = None,
         toolbar: bool | None = None,
         config: Any = None,
@@ -100,6 +108,7 @@ class PerspectivePanel(Component):
             *children,
             key=key,
             props={
+                "find": find,
                 "rowActions": rowActions,
                 "toolbar": toolbar,
                 "config": config,

@@ -155,6 +155,40 @@ their names instead:
 panel.compute("theme", cond(field("dark"), "Acme Dark", "Acme Light"))
 ```
 
+## Configure selection and find a value
+
+Enable region selection, cell-aligned scrolling, and Find from Python:
+
+```python
+from spaday_perspective import EditMode, PerspectivePanel, Theme
+
+panel = PerspectivePanel(
+    theme=Theme.DARK,
+    toolbar=True,
+    find=True,
+    config={
+        "ws_url": "/perspective",
+        "layout": {
+            "layout": {"type": "tab-layout", "tabs": ["trades"]},
+            "panels": {
+                "trades": {
+                    "table": "trades",
+                    "plugin": "Datagrid",
+                    "plugin_config": {"edit_mode": EditMode.SELECT_REGION, "scroll_lock": True},
+                },
+            },
+        },
+    },
+)
+```
+
+Select cells and press Ctrl+C / Cmd+C to copy. Press Ctrl+F / Cmd+F while the grid is focused, or click
+Find, then choose a column and enter an exact value. Apply filter keeps existing filters. Use
+Perspective Settings to change or remove them. Cancel leaves the data view unchanged.
+
+The main Python example and browser preview include these controls. To use a custom Find button,
+call `Invoke(by_id("your-panel-id"), "openFind")` from its click action; keep `find=True` on the panel.
+
 ## Persist user-edited layouts
 
 `perspective-config-update` re-dispatches from the panel whenever the user edits the workspace —

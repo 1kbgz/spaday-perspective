@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 import transports
 from pydantic import BaseModel
-from spaday import CallEndpoint, SetField, ToggleField, cond, element, eq, event_prop, field, obj
+from spaday import CallEndpoint, If, Sequence, SetField, ToggleField, cond, element, eq, event_prop, field, obj
 from spaday.backends.starlette import serve
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -18,7 +18,7 @@ if not IS_PYODIDE:
     from starlette.routing import WebSocketRoute
     from starlette.websockets import WebSocket, WebSocketDisconnect
 
-from spaday_perspective import PerspectivePanel, package
+from spaday_perspective import EditMode, PerspectivePanel, package
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -58,7 +58,6 @@ else:
 symbols = ("AAPL", "MSFT", "NVDA", "AMZN", "META")
 venues = ("XNAS", "XNYS", "ARCX", "BATS")
 row_count = 0
-total_notional = 0.0
 browser_updates: list[dict] = []
 browser_removals: list[int] = []
 records: dict[int, dict] = {}
@@ -66,9 +65,8 @@ initial_trades: list[dict] = []
 
 
 def append_trade(*, symbol: str, side: str, quantity: int, price: float, publish: bool = True) -> dict:
-    global row_count, total_notional
+    global row_count
     row_count += 1
-    total_notional += quantity * price
     trade = {
         "id": row_count,
         "time": datetime.now(UTC).strftime("%H:%M:%S"),
@@ -86,11 +84,16 @@ def append_trade(*, symbol: str, side: str, quantity: int, price: float, publish
         trades.update([trade])
     elif publish:
         browser_updates.append(trade)
-    feed.row_count = f"{row_count:,}"
-    feed.last_trade = f"${price:,.2f}"
-    feed.notional = f"${total_notional:,.0f}"
+    refresh_metrics()
     feed.stream_status = "Live"
     return trade
+
+
+def refresh_metrics() -> None:
+    feed.row_count = f"{len(records):,}"
+    latest = next(reversed(records.values()), None)
+    feed.last_trade = f"${latest['price']:,.2f}" if latest else "$0.00"
+    feed.notional = f"${sum(trade['quantity'] * trade['price'] for trade in records.values()):,.0f}"
 
 
 def remove_trade(key: int) -> None:
@@ -99,6 +102,7 @@ def remove_trade(key: int) -> None:
     else:
         browser_removals.append(key)
     del records[key]
+    refresh_metrics()
 
 
 for index in range(80):
@@ -149,6 +153,18 @@ async def delete_trade(request):
     return JSONResponse({"message": f"Deleted trade {key}"})
 
 
+async def copy_trade(request):
+    payload = await request.json()
+    key = payload.get("id") if isinstance(payload, dict) else None
+    if type(key) is not int:
+        return JSONResponse({"message": "Expected an integer trade ID"}, status_code=422)
+    if key not in records:
+        return JSONResponse({"message": "Trade no longer exists"}, status_code=404)
+    # Demo data only. Production endpoints must check the authenticated user's access.
+    trade = records[key]
+    return JSONResponse({"message": f"Copied trade {key} to form", **{name: trade[name] for name in ("symbol", "side", "quantity")}})
+
+
 if not IS_PYODIDE:
 
     async def perspective_socket(websocket: WebSocket) -> None:
@@ -165,6 +181,7 @@ def layout(*, grouped: bool = False) -> dict:
         "title": "Live market activity",
         "columns": ["id", "time", "symbol", "side", "quantity", "price", "venue"],
         "sort": [["id", "desc"]],
+        "plugin_config": {"edit_mode": EditMode.SELECT_REGION, "scroll_lock": True},
     }
     if grouped:
         viewer.update(
@@ -187,11 +204,33 @@ panel = (
     PerspectivePanel(
         id="market-grid",
         toolbar=True,
-        row_actions={"trades": {"id": {"action": "delete", "label": "Delete trade"}}},
+        find=True,
+        row_actions={
+            "trades": {
+                "id": [
+                    {"action": "delete", "label": "Delete trade"},
+                    {"action": "copy", "label": "Copy trade to form", "text": "⧉"},
+                ]
+            }
+        },
     )
     .on(
         "perspective-row-action",
-        CallEndpoint("POST", "/api/trades/delete", obj({"id": event_prop("detail.key")}), result="trade_result"),
+        If(
+            eq(event_prop("detail.action"), "delete"),
+            CallEndpoint("POST", "/api/trades/delete", obj({"id": event_prop("detail.key")}), result="trade_result"),
+            If(
+                eq(event_prop("detail.action"), "copy"),
+                Sequence(
+                    CallEndpoint("POST", "/api/trades/copy", obj({"id": event_prop("detail.key")}), result="copy_result"),
+                    SetField("trade_result", field("copy_result")),
+                    If(
+                        field("copy_result.ok"),
+                        Sequence(*(SetField(name, field(f"copy_result.body.{name}")) for name in ("symbol", "side", "quantity"))),
+                    ),
+                ),
+            ),
+        ),
     )
     .compute("theme", cond(field("dark"), "dark", "light"))
     .compute(
@@ -222,7 +261,7 @@ page = element(
     ),
     element(
         "section",
-        element("article", element("span").text("Rows received"), element("strong").bind("textContent", "row_count")),
+        element("article", element("span").text("Current trades"), element("strong").bind("textContent", "row_count")),
         element("article", element("span").text("Last trade"), element("strong").bind("textContent", "last_trade")),
         element("article", element("span").text("Total notional"), element("strong").bind("textContent", "notional")),
         element(
@@ -243,7 +282,10 @@ page = element(
                 if IS_PYODIDE
                 else "Rows stream over Perspective's websocket; only summary state uses transports."
             ),
-            element("p").text("Click × in the live blotter to delete a trade. Summary totals count all trades received."),
+            element("p").text(
+                "Click × to delete a trade or ⧉ to copy it to the form. Totals cover all retained trades, including filtered-out rows."
+            ),
+            element("p").text("Select cells to copy with Ctrl+C / Cmd+C. Use Find or Ctrl+F / Cmd+F in the grid to filter a column."),
         ),
         element(
             "div",
@@ -340,7 +382,11 @@ styles = """
 </style>
 """
 
-routes = [Route("/api/trades", submit_trade, methods=["POST"]), Route("/api/trades/delete", delete_trade, methods=["POST"])]
+routes = [
+    Route("/api/trades", submit_trade, methods=["POST"]),
+    Route("/api/trades/delete", delete_trade, methods=["POST"]),
+    Route("/api/trades/copy", copy_trade, methods=["POST"]),
+]
 if not IS_PYODIDE:
     routes[:0] = [
         WebSocketRoute("/ws", transports.ws_endpoint(transport_server)),

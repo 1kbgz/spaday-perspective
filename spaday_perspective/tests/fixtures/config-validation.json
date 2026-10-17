@@ -1,0 +1,35 @@
+{
+  "valid": [
+    {},
+    {"local": true, "tables": ["trades", {"name": "quotes", "architecture": "client-server", "index": "id"}]},
+    {"master_theme": "Custom Dark", "layout": {"panels": {"grid": {"table": "trades", "plugin_config": {"edit_mode": "SELECT_REGION", "scroll_lock": true}}}}},
+    {"channels": {"trades": {"plugin": "Datagrid", "plugin_config": {"align": "center", "font_size": 100, "zebra_rows": 0, "columns": {"price": {"custom_style": true}}}}}},
+    {"channels": {"chart": {"plugin": "Custom", "plugin_config": {"edit_mode": "custom"}}}},
+    {"layout": "{\"viewers\":{\"grid\":{\"plugin\":\"Datagrid\",\"plugin_config\":{\"edit_mode\":\"READ_ONLY\"}}}}"}
+  ],
+  "invalid": [
+    [[], "config"],
+    [{"local": "true"}, "config.local"],
+    [{"wait_for_table": 1}, "config.wait_for_table"],
+    [{"single_tab": null}, "config.single_tab"],
+    [{"master_theme": " "}, "config.master_theme"],
+    [{"ws_url": 4}, "config.ws_url"],
+    [{"default_architecture": "browser"}, "config.default_architecture"],
+    [{"tables": {}}, "config.tables"],
+    [{"tables": [""]}, "config.tables[0]"],
+    [{"tables": [{}]}, "config.tables[0].name"],
+    [{"tables": [{"name": "t", "limit": true}]}, "config.tables[0].limit"],
+    [{"tables": [{"name": "t", "index": "id", "limit": 5}]}, "config.tables[0]"],
+    [{"tables": [{"name": "t", "architecture": "bad"}]}, "config.tables[0].architecture"],
+    [{"layout": "{"}, "config.layout"],
+    [{"layout": {"panels": []}}, "config.layout.panels"],
+    [{"channels": []}, "config.channels"],
+    [{"channels": {"t": {"plugin_config": {"edit_mode": "select"}}}}, "config.channels.t.plugin_config.edit_mode"],
+    [{"channels": {"t": {"plugin": null, "plugin_config": {"edit_mode": "select"}}}}, "config.channels.t.plugin_config.edit_mode"],
+    [{"channels": {"t": {"plugin_config": {"scroll_lock": "false"}}}}, "config.channels.t.plugin_config.scroll_lock"],
+    [{"channels": {"t": {"plugin_config": {"scroll_mode": true}}}}, "config.channels.t.plugin_config.scroll_mode"],
+    [{"channels": {"t": {"plugin_config": {"row_height": -1}}}}, "config.channels.t.plugin_config.row_height"],
+    [{"channels": {"t": {"plugin_config": {"font_size": true}}}}, "config.channels.t.plugin_config.font_size"],
+    [{"channels": {"t": {"plugin_config": {"align": "diagonal"}}}}, "config.channels.t.plugin_config.align"]
+  ]
+}

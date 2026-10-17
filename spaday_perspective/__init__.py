@@ -3,7 +3,8 @@ from pathlib import Path
 
 from spaday import ComponentPackage
 
-from .components import PerspectivePanel
+from .config import Alignment, EditMode, Theme, validate_config
+from .panel import PerspectivePanel
 from .workspace import migrate_layout
 
 __version__ = "0.7.2"
@@ -46,4 +47,4 @@ TOKENS: dict[str, tuple[str, str]] = {
 #:     PerspectivePanel(...).compute("theme", cond(field("dark"), "Acme Dark", "Acme Light"))
 THEMES = {"light": "Pro Light", "dark": "Pro Dark"}
 
-__all__ = ["THEMES", "TOKENS", "PerspectivePanel", "migrate_layout", "package"]
+__all__ = ["THEMES", "TOKENS", "Alignment", "EditMode", "PerspectivePanel", "Theme", "migrate_layout", "package", "validate_config"]
