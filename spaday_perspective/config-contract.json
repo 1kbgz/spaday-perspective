@@ -1,0 +1,14 @@
+{
+  "edit_mode": {"kind": "enum", "values": ["EDIT", "READ_ONLY", "SELECT_ROW", "SELECT_COLUMN", "SELECT_REGION", "SELECT_ROW_TREE"]},
+  "scroll_lock": {"kind": "boolean"},
+  "column_menus": {"kind": "boolean"},
+  "font_family": {"kind": "string"},
+  "font_size": {"kind": "number"},
+  "bold": {"kind": "boolean"},
+  "italic": {"kind": "boolean"},
+  "align": {"kind": "enum", "values": ["top-left", "top", "top-right", "left", "center", "right", "bottom-left", "bottom", "bottom-right"]},
+  "word_wrap": {"kind": "boolean"},
+  "row_height": {"kind": "number"},
+  "zebra_rows": {"kind": "number"},
+  "zebra_color": {"kind": "string"}
+}

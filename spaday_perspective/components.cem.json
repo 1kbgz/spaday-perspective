@@ -12,9 +12,14 @@
           "summary": "Perspective workspace whose data connection and layout are configured by a serializable prop.",
           "attributes": [
             {
+              "name": "find",
+              "type": { "text": "boolean" },
+              "description": "Enable a column/value filter prompt for Ctrl+F or Cmd+F in the focused Datagrid, and a Find toolbar button. Disabled by default."
+            },
+            {
               "name": "rowActions",
               "type": { "text": "unknown" },
-              "description": "Optional table-name to indexed-column button descriptions: {table: {column: {action, label, text?}}}. Buttons emit perspective-row-action; applications own authorization and mutations. Grouped/split or unindexed rows are disabled."
+              "description": "Optional table-name to indexed-column button descriptions: {table: {column: {action, label, text?}}}. Each column also accepts a list of descriptions for multiple buttons. Buttons emit perspective-row-action; applications own authorization and mutations. Grouped/split or unindexed rows are disabled."
             },
             {
               "name": "toolbar",
@@ -153,6 +158,12 @@
           ],
           "slots": [],
           "methods": [
+            {
+              "name": "openFind",
+              "description": "Open the column/value filter prompt for the active panel when find is enabled.",
+              "parameters": [],
+              "return": { "type": { "text": "Promise<void>" } }
+            },
             {
               "name": "copySelection",
               "description": "Copy the focused grid's selected text. Call directly from a user gesture. Resolves true on success, false on cancellation, no selection, or failure.",

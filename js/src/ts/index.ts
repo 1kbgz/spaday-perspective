@@ -4,6 +4,8 @@ import perspective from "@perspective-dev/client";
 import PRO from "@perspective-dev/viewer/dist/css/pro.css";
 import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
 import { installClipboard, type ClipboardViewer } from "./clipboard.js";
+import { validateConfig, validateTheme } from "./config.js";
+import { installFind, type FindViewer } from "./find.js";
 import { installRowActions, type RowActions } from "./row-actions.js";
 export type { RowAction, RowActions } from "./row-actions.js";
 import {
@@ -240,28 +242,29 @@ function wsUrl(url: string): string {
 // config (the single-panel `restore`/`save` are the per-panel forms). Theme is
 // viewer config now, not an attribute; the element auto-sizes, so no manual
 // resize plumbing.
-type Viewer = ClipboardViewer & {
-  getViewConfig(options: {
-    panel: string;
-  }): Promise<{ group_by?: string[]; split_by?: string[] }>;
-  getTable(options: {
-    panel: string;
-    wait: boolean;
-  }): Promise<{ get_index(): Promise<string>; get_name(): Promise<string> }>;
-  load(client: unknown): Promise<void>;
-  restore(config: unknown, options?: { panel?: string }): Promise<void>;
-  restoreWorkspace(
-    config: unknown,
-    options?: { wait_for_table?: boolean },
-  ): Promise<void>;
-  saveWorkspace(): Promise<unknown>;
-  flush(): Promise<unknown>;
-  resetThemes(themes?: string[] | null): Promise<unknown>;
-  setAutoSize(autosize: boolean): void;
-  setAutoPause(autopause: boolean): Promise<unknown>;
-  setThrottle(val?: number | null): void;
-  toggleConfig(force?: boolean | null): Promise<unknown>;
-};
+type Viewer = ClipboardViewer &
+  FindViewer & {
+    getViewConfig(options: {
+      panel: string;
+    }): Promise<{ group_by?: string[]; split_by?: string[] }>;
+    getTable(options: {
+      panel: string;
+      wait: boolean;
+    }): Promise<{ get_index(): Promise<string>; get_name(): Promise<string> }>;
+    load(client: unknown): Promise<void>;
+    restore(config: unknown, options?: { panel?: string }): Promise<void>;
+    restoreWorkspace(
+      config: unknown,
+      options?: { wait_for_table?: boolean },
+    ): Promise<void>;
+    saveWorkspace(): Promise<unknown>;
+    flush(): Promise<unknown>;
+    resetThemes(themes?: string[] | null): Promise<unknown>;
+    setAutoSize(autosize: boolean): void;
+    setAutoPause(autopause: boolean): Promise<unknown>;
+    setThrottle(val?: number | null): void;
+    toggleConfig(force?: boolean | null): Promise<unknown>;
+  };
 
 class PerspectivePanel extends HTMLElement {
   #viewer: Viewer | null = null;
@@ -287,10 +290,13 @@ class PerspectivePanel extends HTMLElement {
   #channelConfigs = new Map<string, PanelConfig>();
   #toolbar = false;
   #titlebar: HTMLElement | null = null;
+  #toolbarResize: ResizeObserver | null = null;
   #toolbarKey: string | null = null;
   #clipboard: ReturnType<typeof installClipboard> | null = null;
   #rowActions: RowActions = {};
   #rowActionAdapter: ReturnType<typeof installRowActions> | null = null;
+  #find = false;
+  #findAdapter: ReturnType<typeof installFind> | null = null;
 
   connectedCallback(): void {
     injectStyles();
@@ -323,6 +329,7 @@ class PerspectivePanel extends HTMLElement {
       }
     }
     this.#clipboard ??= installClipboard(this, this.#viewer);
+    this.#findAdapter ??= installFind(this, this.#viewer, () => this.#find);
     this.#rowActionAdapter ??= installRowActions(
       this,
       this.#viewer,
@@ -330,6 +337,7 @@ class PerspectivePanel extends HTMLElement {
     );
     this.#followPageMode();
     this.#renderToolbar();
+    if (this.#titlebar) this.#toolbarResize?.observe(this.#titlebar);
     this.#apply();
   }
 
@@ -340,6 +348,9 @@ class PerspectivePanel extends HTMLElement {
   }
 
   disconnectedCallback(): void {
+    this.#toolbarResize?.disconnect();
+    this.#findAdapter?.dispose();
+    this.#findAdapter = null;
     this.#rowActionAdapter?.dispose();
     this.#rowActionAdapter = null;
     this.#clipboard?.dispose();
@@ -357,18 +368,20 @@ class PerspectivePanel extends HTMLElement {
     for (const columns of Object.values(value ?? {})) {
       if (!columns || typeof columns !== "object" || Array.isArray(columns))
         throw new TypeError("rowActions requires a table-to-column mapping");
-      for (const rule of Object.values(columns)) {
-        if (
-          !rule ||
-          typeof rule.action !== "string" ||
-          !rule.action ||
-          typeof rule.label !== "string" ||
-          !rule.label ||
-          (rule.text !== undefined && typeof rule.text !== "string")
-        )
-          throw new TypeError(
-            "rowActions requires action and label strings, and optional text",
-          );
+      for (const entry of Object.values(columns)) {
+        for (const rule of Array.isArray(entry) ? entry : [entry]) {
+          if (
+            !rule ||
+            typeof rule.action !== "string" ||
+            !rule.action ||
+            typeof rule.label !== "string" ||
+            !rule.label ||
+            (rule.text !== undefined && typeof rule.text !== "string")
+          )
+            throw new TypeError(
+              "rowActions requires action and label strings, and optional text",
+            );
+        }
       }
     }
     this.#rowActions = structuredClone(value ?? {});
@@ -381,6 +394,7 @@ class PerspectivePanel extends HTMLElement {
   }
 
   set theme(name: string) {
+    validateTheme(name);
     this.#explicitTheme = true;
     this.#modeObserver?.disconnect();
     this.#modeObserver = null;
@@ -422,11 +436,26 @@ class PerspectivePanel extends HTMLElement {
   }
 
   set config(config: PerspectiveConfig) {
+    validateConfig(config ?? {});
     this.#config = config || {};
     this.#apply();
   }
   get config(): PerspectiveConfig {
     return this.#config;
+  }
+
+  get find(): boolean {
+    return this.#find;
+  }
+  set find(enabled: boolean) {
+    if (typeof enabled !== "boolean")
+      throw new TypeError("find: expected boolean");
+    this.#find = enabled;
+    if (!enabled) this.#findAdapter?.cancel();
+    this.#renderToolbar();
+  }
+  openFind(): Promise<void> {
+    return this.#findAdapter?.open() ?? Promise.resolve();
   }
 
   set toolbar(visible: boolean) {
@@ -439,9 +468,14 @@ class PerspectivePanel extends HTMLElement {
 
   #renderToolbar(): void {
     if (!this.#viewer) return;
-    const key = JSON.stringify([this.#toolbar, this.#config.channels]);
+    const key = JSON.stringify([
+      this.#toolbar,
+      this.#find,
+      this.#config.channels,
+    ]);
     if (key === this.#toolbarKey) return;
     this.#toolbarKey = key;
+    this.#toolbarResize?.disconnect();
     this.#titlebar?.remove();
     this.#titlebar = null;
     this.#viewer.style.height = "100%";
@@ -449,7 +483,7 @@ class PerspectivePanel extends HTMLElement {
     const bar = document.createElement("div");
     bar.className = "perspective-panel-titlebar";
     bar.style.cssText =
-      "display:flex;align-items:center;gap:.5rem;height:2.5rem;box-sizing:border-box;padding:.25rem .5rem;color:var(--spa-text,inherit);background:var(--spa-surface,inherit)";
+      "display:flex;flex-wrap:wrap;align-items:center;gap:.375rem;box-sizing:border-box;padding:.375rem .5rem;color:var(--spa-text,inherit);background:var(--spa-surface,inherit)";
     const select = document.createElement("select");
     select.setAttribute("aria-label", "Open channel");
     select.append(new Option("Open channel…", ""));
@@ -480,13 +514,35 @@ class PerspectivePanel extends HTMLElement {
     copy.textContent = "Copy selection";
     copy.addEventListener("click", () => void this.copySelection());
     bar.append(select, close, copy);
+    if (this.#find) {
+      const find = document.createElement("button");
+      find.type = "button";
+      find.textContent = "Find";
+      find.addEventListener("click", () => void this.openFind());
+      bar.append(find);
+    }
+    for (const control of [select, ...bar.querySelectorAll("button")]) {
+      control.style.cssText =
+        "box-sizing:border-box;flex:0 0 auto;width:auto;max-width:100%;height:2rem;min-height:2rem;margin:0;padding:.25rem .625rem;font-size:.875rem;line-height:1.25;white-space:nowrap";
+    }
+    select.style.flex = "0 1 16rem";
+    select.style.minWidth = "0";
     this.prepend(bar);
     this.#titlebar = bar;
-    this.#viewer.style.height = "calc(100% - 2.5rem)";
+    this.#toolbarResize ??= new ResizeObserver(() => {
+      if (this.#viewer && this.#titlebar)
+        this.#viewer.style.height = `calc(100% - ${this.#titlebar.getBoundingClientRect().height}px)`;
+    });
+    this.#viewer.style.height = `calc(100% - ${bar.getBoundingClientRect().height}px)`;
+    this.#toolbarResize.observe(bar);
   }
 
   // Element-level options, each a serializable prop queued behind wasm init.
   set themes(names: string[] | null) {
+    if (names != null) {
+      if (!Array.isArray(names)) throw new TypeError("themes: expected array");
+      names.forEach((name, i) => validateTheme(name, `themes[${i}]`));
+    }
     this.#themes = names?.map((name) => THEMES[name] ?? name) ?? null;
     this.#enqueue(() => this.#viewer?.resetThemes(this.#themes));
   }

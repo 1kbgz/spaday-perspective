@@ -5,7 +5,10 @@ export interface RowAction {
 }
 
 /** Table name → indexed column → button description. */
-export type RowActions = Record<string, Record<string, RowAction>>;
+export type RowActions = Record<
+  string,
+  Record<string, RowAction | RowAction[]>
+>;
 
 interface ActionDetail {
   action: string;
@@ -80,11 +83,14 @@ export function installRowActions(
           Object.prototype.hasOwnProperty.call(policy, column)
             ? policy[column]
             : undefined;
-        const old = cell.querySelector<HTMLButtonElement>(
-          "button[data-perspective-row-action]",
-        );
-        if (!rule || typeof column !== "string") {
-          if (old) cell.textContent = String(meta?.user ?? "");
+        const old = [
+          ...cell.querySelectorAll<HTMLButtonElement>(
+            "button[data-perspective-row-action]",
+          ),
+        ];
+        const rules = rule ? (Array.isArray(rule) ? rule : [rule]) : [];
+        if (!rules.length || typeof column !== "string") {
+          if (old.length) cell.textContent = String(meta?.user ?? "");
           continue;
         }
         const key = meta?.user;
@@ -99,27 +105,38 @@ export function installRowActions(
               : !supportedKey
                 ? "Row action has no supported record key"
                 : "";
-        const detail = {
-          action: rule.action,
-          panel: grid.slot,
-          table: name,
-          column,
-          key: key as string | number,
-        };
-        const button =
-          old && JSON.stringify(details.get(old)) === JSON.stringify(detail)
-            ? old
-            : document.createElement("button");
-        button.type = "button";
-        button.dataset.perspectiveRowAction = rule.action;
-        button.textContent = rule.text ?? "×";
-        button.setAttribute("aria-label", rule.label);
-        button.title = reason || rule.label;
-        button.disabled = !!reason;
-        button.style.cssText =
-          "font:inherit;cursor:pointer;color:var(--spa-perspective-action-color,inherit);background:var(--spa-perspective-action-background,transparent);border:1px solid var(--spa-perspective-action-border,currentColor);border-radius:3px;padding:0 6px";
-        details.set(button, detail);
-        if (button !== old) cell.replaceChildren(button);
+        const buttons = rules.map((rule, position) => {
+          const detail = {
+            action: rule.action,
+            panel: grid.slot,
+            table: name,
+            column,
+            key: key as string | number,
+          };
+          const button =
+            old[position] &&
+            JSON.stringify(details.get(old[position])) ===
+              JSON.stringify(detail)
+              ? old[position]
+              : document.createElement("button");
+          button.type = "button";
+          button.dataset.perspectiveRowAction = rule.action;
+          button.textContent = rule.text ?? "×";
+          button.setAttribute("aria-label", rule.label);
+          button.title = reason || rule.label;
+          button.disabled = !!reason;
+          button.style.cssText =
+            "font:inherit;cursor:pointer;color:var(--spa-perspective-action-color,inherit);background:var(--spa-perspective-action-background,transparent);border:1px solid var(--spa-perspective-action-border,currentColor);border-radius:3px;padding:0 6px";
+          button.style.marginInlineEnd =
+            position < rules.length - 1 ? "4px" : "0";
+          details.set(button, detail);
+          return button;
+        });
+        if (
+          buttons.length !== old.length ||
+          buttons.some((button, i) => button !== old[i])
+        )
+          cell.replaceChildren(...buttons);
       }
     };
     const intercept = (event: Event) => {
@@ -178,10 +195,12 @@ export function installRowActions(
       generation++;
       controller.abort();
       unsubscribe();
-      for (const button of table.querySelectorAll(
-        "button[data-perspective-row-action]",
-      )) {
-        const cell = button.parentElement!;
+      const cells = new Set(
+        [...table.querySelectorAll("button[data-perspective-row-action]")].map(
+          (button) => button.parentElement!,
+        ),
+      );
+      for (const cell of cells) {
         cell.textContent = String(table.getMeta(cell)?.user ?? "");
       }
     };
