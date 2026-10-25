@@ -7,7 +7,7 @@ from .config import Alignment, EditMode, Theme, validate_config
 from .panel import PerspectivePanel
 from .workspace import migrate_layout
 
-__version__ = "0.8.0"
+__version__ = "0.8.1"
 
 # the exact version of each JS library the package serves, written by its JS build
 _VERSIONS = Path(__file__).parent / "extension" / "versions.json"
