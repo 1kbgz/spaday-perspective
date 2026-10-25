@@ -33,9 +33,9 @@ package = ComponentPackage(
 #:
 #: These style the wrapper's optional row buttons. The underlying grid uses named :data:`THEMES`.
 TOKENS: dict[str, tuple[str, str]] = {
-    "action_color": ("--spa-perspective-action-color", "Row action button text"),
-    "action_background": ("--spa-perspective-action-background", "Row action button background"),
-    "action_border": ("--spa-perspective-action-border", "Row action button border"),
+    "spa_perspective_action_color": ("--spa-perspective-action-color", "Row action button text"),
+    "spa_perspective_action_background": ("--spa-perspective-action-background", "Row action button background"),
+    "spa_perspective_action_border": ("--spa-perspective-action-border", "Row action button border"),
 }
 
 #: Page mode → the Perspective theme ``<perspective-panel>`` applies for it: Perspective's answer to

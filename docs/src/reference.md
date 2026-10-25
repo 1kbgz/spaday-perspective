@@ -218,8 +218,9 @@ imperative and query API (`getTable`, `getSelection`, `download`, `copy`, `addPa
 
 ## `THEMES` and `TOKENS`
 
-`spaday_perspective.TOKENS` lists `action_color`, `action_background`, and `action_border` for
-the optional row buttons. These do not replace Perspective's grid themes.
+`spaday_perspective.TOKENS` lists `spa_perspective_action_color`, `spa_perspective_action_background`,
+and `spa_perspective_action_border` for the optional row buttons. Pass these keywords to `.css()`
+to set the corresponding `--spa-perspective-*` properties. These do not replace Perspective's grid themes.
 Perspective themes itself by name; `spaday_perspective.THEMES` maps page modes to those names:
 `{"light": "Pro Light", "dark": "Pro Dark"}`, the Perspective theme a panel applies for each page
 mode. A panel with no `theme` follows the nearest `wa-dark` / `wa-light` ancestor to one of these.

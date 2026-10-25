@@ -3,7 +3,7 @@ import json
 import re
 from pathlib import Path
 
-from spaday import generate
+from spaday import element, generate
 from spaday.bootstrap import bootstrap
 
 from spaday_perspective import THEMES, TOKENS, PerspectivePanel, package
@@ -41,6 +41,12 @@ def test_row_action_example_authors_an_endpoint_action():
 def test_row_action_tokens_match_the_adapter():
     source = (Path(__file__).parent.parent.parent / "js" / "src" / "ts" / "row-actions.ts").read_text(encoding="utf-8")
     assert {name for name, _ in TOKENS.values()} == set(re.findall(r"--spa-perspective-[\w-]+", source))
+
+
+def test_token_keywords_serialize_to_the_declared_css_properties():
+    for keyword, (property_name, _) in TOKENS.items():
+        node = element("div").css(**{keyword: "test"}).to_node()
+        assert node["props"]["style"]["Str"] == f"{property_name}: test"
 
 
 def test_row_action_example_validates_requests_and_updates_the_table():
