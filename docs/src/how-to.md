@@ -70,6 +70,22 @@ when the tab becomes visible and when the container resizes. No tab-show callbac
 buttons calling `openChannel` as shown above. The example uses the wrapper toolbar with hidden
 internal tabs.
 
+## Export rows without action columns
+
+Attach this action to your own button to download the configured view as CSV:
+
+```python
+from spaday import Download, Invoke, Sequence, by_id, field
+
+export_trades = Sequence(
+    Invoke(by_id("workspace"), "exportData", {"panel": "trades", "format": "csv"}, result="exported_trades"),
+    Download("trades.csv", field("exported_trades"), "text/csv"),
+)
+```
+
+Use `format="json"` in the options mapping for JSON text, or omit `panel` to export the active panel.
+Filters and sorting still apply. This exports the configured view, not the selected cell block.
+
 ## Stream rows from Python
 
 Keep the table returned by `client.table()`, then update it whenever application data changes:

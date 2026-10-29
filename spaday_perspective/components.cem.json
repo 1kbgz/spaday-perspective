@@ -164,6 +164,12 @@
           "slots": [],
           "methods": [
             {
+              "name": "exportData",
+              "description": "Export CSV (default) or JSON text without synthetic action value columns. Options: panel (defaults to active panel), format (csv or json). Retains filtering, sorting, grouping and expressions; exports the configured view, not a selected block. The temporary view is deleted after export.",
+              "parameters": [{ "name": "options", "optional": true, "type": { "text": "unknown" } }],
+              "return": { "type": { "text": "Promise<string>" } }
+            },
+            {
               "name": "openFind",
               "description": "Open the column/value filter prompt for the active panel when find is enabled.",
               "parameters": [],

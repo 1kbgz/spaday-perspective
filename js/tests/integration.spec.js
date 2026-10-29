@@ -1,4 +1,23 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+
+test("the Python example exports data without action columns", async ({
+  page,
+}) => {
+  await page.goto("http://127.0.0.1:8015");
+  await expect(
+    page
+      .getByRole("button", { name: "Copy trade to form", exact: true })
+      .first(),
+  ).toBeVisible();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export CSV", exact: true }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe("trades.csv");
+  const csv = await readFile(await file.path(), "utf8");
+  expect(csv.split("\n")[0]).toContain('"id"');
+  expect(csv.split("\n")[0]).not.toMatch(/Copy|Delete/);
+});
 
 /* A downstream component library on the same page as `<perspective-panel>`.
  *

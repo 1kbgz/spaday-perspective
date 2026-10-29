@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 import transports
 from pydantic import BaseModel
-from spaday import CallEndpoint, If, Invoke, Sequence, SetField, ToggleField, by_id, cond, element, eq, event_prop, field, obj
+from spaday import CallEndpoint, Download, If, Invoke, Sequence, SetField, ToggleField, by_id, cond, element, eq, event_prop, field, obj
 from spaday.backends.starlette import serve
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -293,7 +293,7 @@ page = element(
                 else "Rows stream over Perspective's websocket; only summary state uses transports."
             ),
             element("p").text(
-                "Click × to delete a trade or ⧉ to copy it to the form. Totals cover all retained trades, including filtered-out rows."
+                "Use Delete to confirm removal or Copy to fill the form. Totals cover all retained trades, including filtered-out rows."
             ),
             element("p").text("Select cells to copy with Ctrl+C / Cmd+C. Use Find or Ctrl+F / Cmd+F in the grid to filter a column."),
         ),
@@ -301,6 +301,15 @@ page = element(
             "div",
             element("button").text("Live blotter").on("click", SetField("view", "blotter")),
             element("button").text("Group by symbol").on("click", SetField("view", "grouped")),
+            element("button")
+            .text("Export CSV")
+            .on(
+                "click",
+                Sequence(
+                    Invoke(by_id("market-grid"), "exportData", {"panel": "market", "format": "csv"}, result="exported_trades"),
+                    Download("trades.csv", field("exported_trades"), "text/csv"),
+                ),
+            ),
             class_="segmented",
         ),
         class_="workspace-heading",

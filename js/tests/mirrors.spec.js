@@ -1,5 +1,51 @@
 import { expect, test } from "@playwright/test";
 
+for (const mode of ["inferred", "explicit", "limited", "unindexed"]) {
+  test(`mirror index configuration: ${mode}`, async ({ page }) => {
+    await page.goto("http://127.0.0.1:8016");
+    const index = await page.evaluate(async (mode) => {
+      const engine = globalThis.__spadayPerspective;
+      const remote = await engine.client("/perspective");
+      const name = `index-${crypto.randomUUID()}`;
+      const source = await remote.table([{ id: 1, alternate: "one" }], {
+        name,
+        ...(mode === "unindexed" ? {} : { index: "id" }),
+      });
+      const panel = document.createElement("perspective-panel");
+      panel.config = {
+        ws_url: "/perspective",
+        tables: [
+          {
+            name,
+            architecture: "client-server",
+            ...(mode === "explicit"
+              ? { index: "alternate" }
+              : mode === "limited"
+                ? { limit: 10 }
+                : {}),
+          },
+        ],
+      };
+      document.body.append(panel);
+      await panel.save();
+      const table = await (await engine.worker()).open_table(name);
+      const index = await table.get_index();
+      panel.config = { ...panel.config, tables: [] };
+      await panel.save();
+      panel.remove();
+      await source.delete({ lazy: true });
+      return index;
+    }, mode);
+    expect(index).toBe(
+      mode === "inferred"
+        ? "id"
+        : mode === "explicit"
+          ? "alternate"
+          : undefined,
+    );
+  });
+}
+
 test("a mirror becomes ready while source updates continue", async ({
   page,
 }) => {
