@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API reference &#8212; spaday-perspective v0.8.2</title>
+    <title>API reference &#8212; spaday-perspective v0.8.3</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/fuma.css?v=ca04d621" />
     <link rel="stylesheet" type="text/css" href="../../_static/fuma-code.css?v=a950e949" />
@@ -16,7 +16,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/fonts/fuma-fonts.css?v=c2892c73" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/custom.css?v=88c24c6a" />
-    <script src="../../_static/documentation_options.js?v=dbee5847"></script>
+    <script src="../../_static/documentation_options.js?v=7f96dc5e"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,7 +49,7 @@
   <div class="fd-subnav-inner">
     <button type="button" class="fd-icon-button fd-sidebar-toggle" aria-controls="fd-sidebar" aria-expanded="false" aria-label="Toggle navigation" title="Toggle navigation">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="fd-icon "><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
-    </button><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.8.2</span>
+    </button><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.8.3</span>
 </a>
 
     <div class="fd-nav-actions">
@@ -64,7 +64,7 @@
 
 <aside id="fd-sidebar" aria-label="Documentation">
   <div class="fd-sidebar-header">
-    <div class="fd-sidebar-brand-row"><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.8.2</span>
+    <div class="fd-sidebar-brand-row"><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.8.3</span>
 </a>
       <button type="button" class="fd-icon-button fd-sidebar-collapse" aria-label="Collapse sidebar" title="Collapse sidebar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="fd-icon "><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
     </div>
@@ -271,7 +271,7 @@ The browser property is <code class="docutils literal notranslate"><span class="
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">channels</span></code></p></td>
 <td><p>mapping</p></td>
-<td><p>Table name to default panel configuration, such as <code class="docutils literal notranslate"><span class="pre">{&quot;trades&quot;:</span> <span class="pre">{&quot;title&quot;:</span> <span class="pre">&quot;Trades&quot;,</span> <span class="pre">&quot;columns&quot;:</span> <span class="pre">[&quot;price&quot;]}}</span></code>. Supplies the channel picker and <code class="docutils literal notranslate"><span class="pre">openChannel</span></code>/<code class="docutils literal notranslate"><span class="pre">closeChannel</span></code>.</p></td>
+<td><p>Table name to default panel configuration, such as <code class="docutils literal notranslate"><span class="pre">{&quot;trades&quot;:</span> <span class="pre">{&quot;title&quot;:</span> <span class="pre">&quot;Trades&quot;,</span> <span class="pre">&quot;columns&quot;:</span> <span class="pre">[&quot;price&quot;]}}</span></code>. Supplies the channel picker and default configs; declared tables also support <code class="docutils literal notranslate"><span class="pre">openChannel</span></code>/<code class="docutils literal notranslate"><span class="pre">closeChannel</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_tab</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
@@ -468,20 +468,42 @@ keyboard copying can still use the fallback where browser policy permits it; oth
 available. Secure-context native-menu writes are not intercepted by the adapter.</p>
 <p><code class="docutils literal notranslate"><span class="pre">save()</span></code> waits for pending connection and restore work, then returns the whole-element workspace
 config (<code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> under the hood — a <code class="docutils literal notranslate"><span class="pre">layout</span></code> tree plus per-panel viewer configs).</p>
-<p>When channels are configured, <code class="docutils literal notranslate"><span class="pre">save()</span></code> also includes <code class="docutils literal notranslate"><span class="pre">closed_channels</span></code>, a mapping from table name
+<p>For configured channels and declared tables, <code class="docutils literal notranslate"><span class="pre">save()</span></code> also includes <code class="docutils literal notranslate"><span class="pre">closed_channels</span></code>, a mapping from table name
 to its last panel configuration. <code class="docutils literal notranslate"><span class="pre">saveClean()</span></code> returns the same shape with themes and datagrid column
 size overrides removed from both open and closed channels. Both results can be assigned to
 <code class="docutils literal notranslate"><span class="pre">config.layout</span></code>. Storage and downloads remain application-owned.</p>
-<p><code class="docutils literal notranslate"><span class="pre">openChannel(name)</span></code> opens a configured table, using its retained configuration or its defaults from
-<code class="docutils literal notranslate"><span class="pre">config.channels</span></code>. If already open, the first matching panel is selected. New channels join the
+<p><code class="docutils literal notranslate"><span class="pre">openChannel(name)</span></code> accepts names from <code class="docutils literal notranslate"><span class="pre">config.channels</span></code> or <code class="docutils literal notranslate"><span class="pre">config.tables</span></code> (string and object entries).
+It opens the table using its retained configuration, then defaults from <code class="docutils literal notranslate"><span class="pre">config.channels</span></code>, or Datagrid
+when no channel defaults exist. Declaring a table does not create it; it must be available from the
+connected client. If already open, the first matching panel is selected. New channels join the
 first detail tab stack; with <code class="docutils literal notranslate"><span class="pre">single_tab=True</span></code>, they replace that stack’s selected channel. Master
 stacks remain in place. <code class="docutils literal notranslate"><span class="pre">closeChannel(name)</span></code> closes panels for that table and retains their last
 configuration, including when closing the final panel. Both methods return promises and share the
-wrapper’s lifecycle queue. Unknown channel names and calls before connection completes reject.</p>
+wrapper’s lifecycle queue. Undeclared names and calls without a loaded client reject. Calls queued behind an initial load wait
+for that load to finish.</p>
 <p>Channels are identified by table name, with one retained configuration per table. Applications with
 multiple independent views of one table can continue using ordinary workspace panels; channel close
 acts on all views of its table. Native tab-close actions also retain the last edited configuration.</p>
-<p>The optional toolbar uses these same methods. Its container has class <code class="docutils literal notranslate"><span class="pre">perspective-panel-titlebar</span></code>
+<p><code class="docutils literal notranslate"><span class="pre">restorePanel(id,</span> <span class="pre">config)</span></code> applies a partial viewer configuration to an existing panel through the
+same lifecycle queue. <code class="docutils literal notranslate"><span class="pre">id</span></code> is a key in <code class="docutils literal notranslate"><span class="pre">save().panels</span></code>, not a table name. Unspecified settings and
+other panels remain unchanged. The method snapshots its arguments when called, validates against the
+panel’s effective plugin, and refreshes synthetic action columns after restoring. It returns a promise
+that rejects for missing panels, invalid configurations, or an upstream restore failure. Later queued
+operations can still run after a rejection. Panel existence is checked when the operation executes.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday</span><span class="w"> </span><span class="kn">import</span> <span class="n">Invoke</span><span class="p">,</span> <span class="n">by_id</span><span class="p">,</span> <span class="n">element</span>
+
+<span class="n">element</span><span class="p">(</span><span class="s2">"button"</span><span class="p">)</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Open trades"</span><span class="p">)</span><span class="o">.</span><span class="n">on</span><span class="p">(</span>
+    <span class="s2">"click"</span><span class="p">,</span> <span class="n">Invoke</span><span class="p">(</span><span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"openChannel"</span><span class="p">,</span> <span class="s2">"trades"</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">element</span><span class="p">(</span><span class="s2">"button"</span><span class="p">)</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Buy trades"</span><span class="p">)</span><span class="o">.</span><span class="n">on</span><span class="p">(</span>
+    <span class="s2">"click"</span><span class="p">,</span>
+    <span class="n">Invoke</span><span class="p">(</span><span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"restorePanel"</span><span class="p">,</span> <span class="s2">"market"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"filter"</span><span class="p">:</span> <span class="p">[[</span><span class="s2">"side"</span><span class="p">,</span> <span class="s2">"=="</span><span class="p">,</span> <span class="s2">"Buy"</span><span class="p">]]}),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>This example targets a panel declared as <code class="docutils literal notranslate"><span class="pre">market</span></code> in <code class="docutils literal notranslate"><span class="pre">config.layout.panels</span></code>. The runnable market
+example also handles reopening a closed channel by reading its panel ID from the saved layout.</p>
+<p>The optional toolbar lists only entries in <code class="docutils literal notranslate"><span class="pre">config.channels</span></code> and uses these same methods. Its container has class <code class="docutils literal notranslate"><span class="pre">perspective-panel-titlebar</span></code>
 and inherits <code class="docutils literal notranslate"><span class="pre">--spa-text</span></code> and <code class="docutils literal notranslate"><span class="pre">--spa-surface</span></code>. Custom design-kit controls can call the methods through
 Spaday <code class="docutils literal notranslate"><span class="pre">Invoke</span></code> without enabling the toolbar or accessing the viewer’s shadow DOM.</p>
 <p><code class="docutils literal notranslate"><span class="pre">viewer</span></code> returns the underlying <code class="docutils literal notranslate"><span class="pre">&lt;perspective-viewer&gt;</span></code> element — the escape hatch for its

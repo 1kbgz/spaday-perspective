@@ -256,6 +256,9 @@ panel = (
     )
 )
 
+# A reopened channel gets a new panel ID; both controls and export use the current one.
+trade_panel_id = cond(field("trade_workspace.panels.market"), "market", "channel:trades")
+
 page = element(
     "main",
     element(
@@ -295,18 +298,40 @@ page = element(
             element("p").text(
                 "Use Delete to confirm removal or Copy to fill the form. Totals cover all retained trades, including filtered-out rows."
             ),
+            element("p").text("Buy trades and All trades update this panel's filter; grouping and other settings stay unchanged."),
             element("p").text("Select cells to copy with Ctrl+C / Cmd+C. Use Find or Ctrl+F / Cmd+F in the grid to filter a column."),
         ),
         element(
             "div",
             element("button").text("Live blotter").on("click", SetField("view", "blotter")),
             element("button").text("Group by symbol").on("click", SetField("view", "grouped")),
+            element("button").text("Open trades").on("click", Invoke(by_id("market-grid"), "openChannel", "trades")),
+            *(
+                element("button")
+                .text(label)
+                .on(
+                    "click",
+                    Sequence(
+                        Invoke(by_id("market-grid"), "openChannel", "trades"),
+                        Invoke(by_id("market-grid"), "save", result="trade_workspace"),
+                        Invoke(by_id("market-grid"), "restorePanel", trade_panel_id, {"filter": filters}),
+                    ),
+                )
+                for label, filters in (("Buy trades", [["side", "==", "Buy"]]), ("All trades", []))
+            ),
             element("button")
             .text("Export CSV")
             .on(
                 "click",
                 Sequence(
-                    Invoke(by_id("market-grid"), "exportData", {"panel": "market", "format": "csv"}, result="exported_trades"),
+                    Invoke(by_id("market-grid"), "openChannel", "trades"),
+                    Invoke(by_id("market-grid"), "save", result="trade_workspace"),
+                    Invoke(
+                        by_id("market-grid"),
+                        "exportData",
+                        obj({"panel": trade_panel_id, "format": "csv"}),
+                        result="exported_trades",
+                    ),
                     Download("trades.csv", field("exported_trades"), "text/csv"),
                 ),
             ),
