@@ -3,6 +3,7 @@ from pathlib import Path
 
 from spaday import ComponentPackage
 
+from .action_config import validate_row_actions
 from .config import Alignment, EditMode, Theme, validate_config
 from .panel import PerspectivePanel
 from .workspace import migrate_layout
@@ -47,4 +48,15 @@ TOKENS: dict[str, tuple[str, str]] = {
 #:     PerspectivePanel(...).compute("theme", cond(field("dark"), "Acme Dark", "Acme Light"))
 THEMES = {"light": "Pro Light", "dark": "Pro Dark"}
 
-__all__ = ["THEMES", "TOKENS", "Alignment", "EditMode", "PerspectivePanel", "Theme", "migrate_layout", "package", "validate_config"]
+__all__ = [
+    "THEMES",
+    "TOKENS",
+    "Alignment",
+    "EditMode",
+    "PerspectivePanel",
+    "Theme",
+    "migrate_layout",
+    "package",
+    "validate_config",
+    "validate_row_actions",
+]

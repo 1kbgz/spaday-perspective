@@ -44,6 +44,9 @@ The browser property is `hideTabs`.
 Changing `ws_url` opens a new client connection. Changing the serialized `layout` restores the viewer's panels.
 The wrapper queues asynchronous changes in assignment order.
 
+For a `client-server` mirror, omitting both `index` and `limit` inherits the source table's index.
+An explicit index or limit takes precedence; unindexed sources remain unindexed.
+
 ### Validation and enums
 
 The public `spaday_perspective.PerspectivePanel` validates literal configuration when serialized
@@ -144,7 +147,12 @@ each position. Each accepts multiple buttons. Headers must be unique and must no
 source columns or user expressions. An empty button list removes the generated column.
 View-level expressions provide the record keys; source tables are unchanged. The wrapper's
 `save()` and `saveClean()` omit those expressions and columns, which are recreated from
-`row_actions` on restoration. Direct calls to `viewer.saveWorkspace()` include them.
+`row_actions` on restoration. Direct calls to `viewer.saveWorkspace()` include them and are not
+portable to a fresh wrapper with the same action policy; use wrapper `save()` or `saveClean()`
+for persistence. Matching expression text alone does not establish wrapper ownership.
+Replace a panel's table through `config.layout`. Partial table swaps through the raw viewer API
+can retain the old table's expressions, including generated action fields; the wrapper does not
+assume ownership of expressions on a different table.
 In dedicated-column events, `column` is the stable `@` identifier, not its display header.
 
 An empty list removes an indexed column's buttons. The market example uses a leading copy
@@ -158,6 +166,17 @@ or `add`. Icons are built-in SVGs, use the button's color, and are hidden from a
 `label` supplies the accessible name. `text` may accompany an icon. Without an icon, it defaults to `×`.
 Labels and text are rendered as text, never HTML. Annotations apply to all Datagrid panels for that
 table and are separate from Perspective's saved layout and column configuration.
+
+Literal `row_actions` values are validated by Python at serialization, including `.prop("rowActions", ...)`.
+`validate_row_actions(value)` performs the same check explicitly. Computed values are validated in
+the browser. Header collisions with live table columns or expressions are checked in the browser;
+one failing panel emits `perspective-error` without preventing other panels or workspace saves.
+Repeated identical errors are reported once until recovery. Initial `perspective-ready` waits for
+action configuration to succeed. Removing or correcting the conflicting policy recovers it.
+User-edited expressions are preserved, even when their name previously belonged to an action column.
+
+Removing generated columns also removes their grouping, splitting, sort, filter, aggregate and
+style references. Saved layouts omit those references with the generated columns.
 
 Indexed-column buttons replace the displayed index value without changing data. Only flat, unsplit views with a
 string or safe-integer key are enabled. Grouped views, non-index columns, and missing/unsupported
@@ -201,6 +220,17 @@ in `detail`, so a host can swap its loader for an error state. The cancelable `*
 the viewer directly for those.
 
 ## Methods
+
+`exportData({panel?, format?})` returns CSV text by default or JSON text with `format: "json"`.
+`panel` defaults to the active panel. It exports the configured view, excluding synthetic action
+value columns, and retains filtering, sorting, grouping, splitting and expressions. Group keys
+remain present, including when a generated expression is used as a grouping key. This exports
+the whole configured view rather than the selected block or viewport. The temporary export view
+is deleted on success and failure; the displayed view is not changed.
+
+Native Perspective export and selected-cell copying retain their original view-based behavior:
+selected/exported action fields contain record IDs. `exportData` provides the separate data-only
+path used by the example's **Export CSV** button.
 
 `openFind()` opens the column/value prompt for the active panel when `find=True`. With the toolbar
 enabled, Find invokes this method. Ctrl+F / Cmd+F instead targets the Datagrid receiving the key event.
