@@ -204,6 +204,7 @@ panel = (
     PerspectivePanel(
         id="market-grid",
         toolbar=True,
+        hide_tabs=True,
         find=True,
         row_actions={
             "trades": {

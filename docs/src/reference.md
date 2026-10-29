@@ -14,6 +14,7 @@ Tag: `<perspective-panel>`.
 | `throttle`  | `int`       | Render throttle in milliseconds; unset restores adaptive throttling.              |
 | `settings`  | `bool`      | Whether the settings sidebar is open.                                             |
 | `toolbar`   | `bool`      | Show channel controls and Copy selection (default `False`).                       |
+| `hide_tabs` | `bool`      | Hide internal viewer tab strips and reclaim their space (default `False`).        |
 | `find`      | `bool`      | Enable focused-grid Ctrl+F / Cmd+F and the toolbar Find button (default `False`). |
 
 ```{eval-rst}
@@ -22,6 +23,11 @@ Tag: `<perspective-panel>`.
 ```
 
 ## Configuration
+
+`hide_tabs` hides every internal tab strip without changing the saved workspace or its panels.
+It does not hide the wrapper toolbar. For multiple channels, provide navigation through the toolbar
+or your own buttons calling `openChannel`; hidden tabs cannot be selected or dragged by the user.
+The browser property is `hideTabs`.
 
 | Key                    | Type    | Description                                                                                                                                                               |
 | ---------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

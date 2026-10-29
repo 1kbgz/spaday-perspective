@@ -29,7 +29,7 @@ export default defineConfig({
     },
     {
       name: "webkit-workspace",
-      testMatch: /(?:workspace|config|find|action-columns)\.spec\.js/,
+      testMatch: /(?:workspace|config|find|action-columns|embedding)\.spec\.js/,
       use: { ...devices["Desktop Safari"] },
     },
   ],

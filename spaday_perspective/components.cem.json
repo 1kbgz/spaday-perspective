@@ -12,6 +12,11 @@
           "summary": "Perspective workspace whose data connection and layout are configured by a serializable prop.",
           "attributes": [
             {
+              "name": "hideTabs",
+              "type": { "text": "boolean" },
+              "description": "Hide the viewer's internal tab strips and reclaim their space. False by default. Does not hide the wrapper toolbar or remove panels; applications provide channel navigation when needed."
+            },
+            {
               "name": "find",
               "type": { "text": "boolean" },
               "description": "Enable a column/value filter prompt for Ctrl+F or Cmd+F in the focused Datagrid, and a Find toolbar button. Disabled by default."
