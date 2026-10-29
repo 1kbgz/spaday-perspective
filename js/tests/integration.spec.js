@@ -172,3 +172,38 @@ test("the downstream bundle satisfies the Python surface it is bound to", async 
   });
   expect(await page.evaluate(script)).toEqual([]);
 });
+
+test("Python controls reopen a channel and update its filter without resetting grouping", async ({
+  page,
+}) => {
+  await page.goto("http://127.0.0.1:8015");
+  const workspace = page.locator("#market-grid");
+  const state = () =>
+    workspace.evaluate(
+      async (panel) => Object.values((await panel.save()).panels)[0],
+    );
+  await expect(
+    page
+      .getByRole("button", { name: "Copy trade to form", exact: true })
+      .first(),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Group by symbol", exact: true })
+    .click();
+  await expect
+    .poll(async () => (await state()).group_by)
+    .toEqual(["symbol", "side"]);
+  await page.getByRole("button", { name: "Buy trades", exact: true }).click();
+  await expect
+    .poll(async () => (await state()).filter)
+    .toEqual([["side", "==", "Buy"]]);
+  expect((await state()).group_by).toEqual(["symbol", "side"]);
+  await workspace.evaluate((panel) => panel.closeChannel("trades"));
+  await page.getByRole("button", { name: "Open trades", exact: true }).click();
+  await expect
+    .poll(async () => (await state())?.filter)
+    .toEqual([["side", "==", "Buy"]]);
+  await page.getByRole("button", { name: "All trades", exact: true }).click();
+  await expect.poll(async () => (await state()).filter).toEqual([]);
+  expect((await state()).group_by).toEqual(["symbol", "side"]);
+});

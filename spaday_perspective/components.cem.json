@@ -182,14 +182,23 @@
             },
             {
               "name": "openChannel",
-              "description": "Open a configured channel by table name, reusing its last view configuration. Uses the wrapper's restore queue.",
+              "description": "Open a configured channel or declared table by name, reusing its last view configuration or defaulting to Datagrid. Uses the wrapper's restore queue.",
               "parameters": [{ "name": "name", "type": { "text": "string" } }],
               "return": { "type": { "text": "Promise<void>" } }
             },
             {
               "name": "closeChannel",
-              "description": "Close a configured channel by table name and retain its view configuration in saved workspace data.",
+              "description": "Close a configured channel or declared table by name and retain its view configuration in saved workspace data.",
               "parameters": [{ "name": "name", "type": { "text": "string" } }],
+              "return": { "type": { "text": "Promise<void>" } }
+            },
+            {
+              "name": "restorePanel",
+              "description": "Apply a partial viewer configuration to one existing panel through the lifecycle queue. Rejects unknown panel IDs and invalid configurations.",
+              "parameters": [
+                { "name": "id", "type": { "text": "string" } },
+                { "name": "config", "type": { "text": "Partial<PanelConfig>" } }
+              ],
               "return": { "type": { "text": "Promise<void>" } }
             },
             {
