@@ -21,6 +21,12 @@ def test_perspective_panel_serializes_local_worker_mode():
     assert node["props"]["config"]["Map"]["local"] == {"Bool": True}
 
 
+def test_viewer_tab_visibility_is_a_python_property():
+    for hidden in (True, False):
+        node = PerspectivePanel(hide_tabs=hidden).to_node()
+        assert node["props"]["hideTabs"] == {"Bool": hidden}
+
+
 def test_row_actions_are_wrapper_props_and_declare_the_event():
     node = PerspectivePanel(row_actions={"orders": {"id": {"action": "delete", "label": "Delete order"}}}).to_node()
     rule = node["props"]["rowActions"]["Map"]["orders"]["Map"]["id"]["Map"]

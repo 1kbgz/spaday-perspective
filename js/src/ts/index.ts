@@ -231,7 +231,18 @@ function injectStyles(): void {
   if (stylesInjected || typeof document === "undefined") return;
   stylesInjected = true;
   const style = document.createElement("style");
-  style.textContent = [PRO, PRO_DARK].join("\n");
+  style.textContent = [
+    PRO,
+    PRO_DARK,
+    `
+    perspective-panel[hide-tabs] > perspective-viewer {
+      --psp-panel-titlebar--height: 0px;
+    }
+    perspective-panel[hide-tabs] > perspective-viewer > perspective-viewer-tab {
+      display: none !important;
+    }
+  `,
+  ].join("\n");
   document.head.appendChild(style);
 }
 
@@ -376,6 +387,13 @@ class PerspectivePanel extends HTMLElement {
     this.#clipboard = null;
     this.#modeObserver?.disconnect();
     this.#modeObserver = null;
+  }
+
+  get hideTabs(): boolean {
+    return this.hasAttribute("hide-tabs");
+  }
+  set hideTabs(value: boolean) {
+    this.toggleAttribute("hide-tabs", !!value);
   }
 
   get rowActions(): RowActions {

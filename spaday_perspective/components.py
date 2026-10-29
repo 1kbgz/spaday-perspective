@@ -19,6 +19,13 @@ class PerspectivePanel(Component):
         summary="Perspective workspace whose data connection and layout are configured by a serializable prop.",
         props=(
             PropertySchema(
+                name="hideTabs",
+                kind="boolean",
+                choices=(),
+                default=None,
+                description="Hide the viewer's internal tab strips and reclaim their space. False by default. Does not hide the wrapper toolbar or remove panels; applications provide channel navigation when needed.",
+            ),
+            PropertySchema(
                 name="find",
                 kind="boolean",
                 choices=(),
@@ -92,6 +99,7 @@ class PerspectivePanel(Component):
         self,
         *children: Child,
         key: str | None = None,
+        hideTabs: bool | None = None,
         find: bool | None = None,
         rowActions: Any = None,
         toolbar: bool | None = None,
@@ -108,6 +116,7 @@ class PerspectivePanel(Component):
             *children,
             key=key,
             props={
+                "hideTabs": hideTabs,
                 "find": find,
                 "rowActions": rowActions,
                 "toolbar": toolbar,

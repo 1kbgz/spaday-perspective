@@ -45,6 +45,31 @@ Use the same result with Spaday's `Download` action when exporting a layout.
 Saved panel themes follow the current application theme when restored. For a filter sidebar that
 must use its own theme, set `config.master_theme` and list its panel ID in the layout's `masters`.
 
+## Embed a grid without internal tabs
+
+Set `hide_tabs=True` when your application already supplies navigation:
+
+```python
+panel = PerspectivePanel(
+    hide_tabs=True,
+    config={
+        "ws_url": "/perspective",
+        "layout": {
+            "panels": {"trades": {"table": "trades", "plugin": "Datagrid"}},
+            "layout": {"type": "tab-layout", "tabs": ["trades"]},
+        },
+    },
+).style(height="24rem", width="100%", min_width="0")
+```
+
+Give the grid a definite height, including inside a WebAwesome tab panel. `height="100%"` needs a
+parent with a definite height; otherwise the grid can collapse. A sized grid observes its container
+when the tab becomes visible and when the container resizes. No tab-show callback is required.
+
+`hide_tabs` changes presentation only. For several channels, retain `toolbar=True` or supply
+buttons calling `openChannel` as shown above. The example uses the wrapper toolbar with hidden
+internal tabs.
+
 ## Stream rows from Python
 
 Keep the table returned by `client.table()`, then update it whenever application data changes:
