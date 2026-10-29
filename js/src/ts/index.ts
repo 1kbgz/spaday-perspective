@@ -6,8 +6,13 @@ import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
 import { installClipboard, type ClipboardViewer } from "./clipboard.js";
 import { validateConfig, validateTheme } from "./config.js";
 import { installFind, type FindViewer } from "./find.js";
-import { installRowActions, type RowActions } from "./row-actions.js";
-export type { RowAction, RowActions } from "./row-actions.js";
+import {
+  installRowActions,
+  isActionColumn,
+  type RowActions,
+} from "./row-actions.js";
+import { installActionColumns } from "./action-columns.js";
+export type { RowAction, RowActions, ActionColumn } from "./row-actions.js";
 import {
   migrateLayout,
   pruneLayout,
@@ -247,10 +252,11 @@ type Viewer = ClipboardViewer &
     getViewConfig(options: {
       panel: string;
     }): Promise<{ group_by?: string[]; split_by?: string[] }>;
-    getTable(options: {
-      panel: string;
-      wait: boolean;
-    }): Promise<{ get_index(): Promise<string>; get_name(): Promise<string> }>;
+    getTable(options: { panel: string; wait: boolean }): Promise<{
+      get_index(): Promise<string>;
+      get_name(): Promise<string>;
+      schema(): Promise<Record<string, string>>;
+    }>;
     load(client: unknown): Promise<void>;
     restore(config: unknown, options?: { panel?: string }): Promise<void>;
     restoreWorkspace(
@@ -295,6 +301,7 @@ class PerspectivePanel extends HTMLElement {
   #clipboard: ReturnType<typeof installClipboard> | null = null;
   #rowActions: RowActions = {};
   #rowActionAdapter: ReturnType<typeof installRowActions> | null = null;
+  #actionColumns: ReturnType<typeof installActionColumns> | null = null;
   #find = false;
   #findAdapter: ReturnType<typeof installFind> | null = null;
 
@@ -313,7 +320,10 @@ class PerspectivePanel extends HTMLElement {
           event as CustomEvent<{ getConfig?: () => PanelConfig }>
         ).detail?.getConfig?.();
         if (config && hasOwn(this.#config.channels ?? {}, config.table)) {
-          this.#channelConfigs.set(config.table, structuredClone(config));
+          this.#channelConfigs.set(
+            config.table,
+            this.#actionColumns?.cleanConfig(config) ?? structuredClone(config),
+          );
         }
       });
       for (const name of REDISPATCH) {
@@ -330,10 +340,18 @@ class PerspectivePanel extends HTMLElement {
     }
     this.#clipboard ??= installClipboard(this, this.#viewer);
     this.#findAdapter ??= installFind(this, this.#viewer, () => this.#find);
+    this.#actionColumns ??= installActionColumns(
+      this,
+      this.#viewer,
+      () => this.#rowActions,
+      (step) => this.#enqueue(step),
+    );
+    this.#actionColumns.connect();
     this.#rowActionAdapter ??= installRowActions(
       this,
       this.#viewer,
       () => this.#rowActions,
+      (panel, header) => this.#actionColumns?.columnKey(panel, header),
     );
     this.#followPageMode();
     this.#renderToolbar();
@@ -353,6 +371,7 @@ class PerspectivePanel extends HTMLElement {
     this.#findAdapter = null;
     this.#rowActionAdapter?.dispose();
     this.#rowActionAdapter = null;
+    this.#actionColumns?.dispose();
     this.#clipboard?.dispose();
     this.#clipboard = null;
     this.#modeObserver?.disconnect();
@@ -368,15 +387,37 @@ class PerspectivePanel extends HTMLElement {
     for (const columns of Object.values(value ?? {})) {
       if (!columns || typeof columns !== "object" || Array.isArray(columns))
         throw new TypeError("rowActions requires a table-to-column mapping");
-      for (const entry of Object.values(columns)) {
-        for (const rule of Array.isArray(entry) ? entry : [entry]) {
+      const headers = new Set<string>();
+      for (const [key, entry] of Object.entries(columns)) {
+        if (entry && typeof entry === "object" && isActionColumn(entry)) {
+          if (
+            !key.startsWith("@") ||
+            !entry.header?.trim() ||
+            !["start", "end"].includes(entry.position) ||
+            !Array.isArray(entry.buttons) ||
+            headers.has(entry.header)
+          )
+            throw new TypeError(
+              "Action columns require an @ identifier, unique nonempty header, start/end position, and buttons array",
+            );
+          headers.add(entry.header);
+        }
+        for (const rule of entry &&
+        typeof entry === "object" &&
+        isActionColumn(entry)
+          ? entry.buttons
+          : Array.isArray(entry)
+            ? entry
+            : [entry]) {
           if (
             !rule ||
             typeof rule.action !== "string" ||
             !rule.action ||
             typeof rule.label !== "string" ||
             !rule.label ||
-            (rule.text !== undefined && typeof rule.text !== "string")
+            (rule.text !== undefined && typeof rule.text !== "string") ||
+            (rule.icon !== undefined &&
+              !["copy", "delete", "add"].includes(rule.icon))
           )
             throw new TypeError(
               "rowActions requires action and label strings, and optional text",
@@ -386,6 +427,10 @@ class PerspectivePanel extends HTMLElement {
     }
     this.#rowActions = structuredClone(value ?? {});
     this.#rowActionAdapter?.refresh();
+    if (this.#loaded)
+      void this.#enqueue(() => this.#actionColumns?.refresh()).catch((error) =>
+        this.#reportError(error),
+      );
   }
 
   /** Copy the focused grid selection. Call directly from a user gesture. */
@@ -649,6 +694,7 @@ class PerspectivePanel extends HTMLElement {
   }
 
   #rememberChannels(workspace: Workspace, config = this.#config): void {
+    workspace = this.#actionColumns?.clean(workspace) ?? workspace;
     for (const panel of Object.values(workspace.panels ?? {})) {
       if (hasOwn(config.channels ?? {}, panel.table)) {
         this.#channelConfigs.set(panel.table, structuredClone(panel));
@@ -688,6 +734,8 @@ class PerspectivePanel extends HTMLElement {
     await this.#viewer.restoreWorkspace(prepared, {
       wait_for_table: !!config.wait_for_table,
     });
+    await this.#viewer.flush();
+    await this.#actionColumns?.refresh();
     if (
       this.#settings !== true &&
       !prepared.active &&
@@ -898,13 +946,15 @@ class PerspectivePanel extends HTMLElement {
   /** The whole-element workspace config (layout tree + per-panel viewer configs). */
   async save(): Promise<unknown> {
     await this.#queue.catch(() => {});
+    await this.#actionColumns?.refresh();
     const workspace = (await this.#viewer?.saveWorkspace()) as
       | Workspace
       | undefined;
     if (!workspace) return workspace;
-    this.#rememberChannels(workspace);
+    const clean = this.#actionColumns?.clean(workspace) ?? workspace;
+    this.#rememberChannels(clean);
     const open = new Set(
-      Object.values(workspace.panels ?? {}).map((panel) => panel.table),
+      Object.values(clean.panels ?? {}).map((panel) => panel.table),
     );
     const closed = Object.fromEntries(
       [...this.#channelConfigs].filter(
@@ -913,8 +963,8 @@ class PerspectivePanel extends HTMLElement {
       ),
     );
     if (Object.keys(closed).length)
-      workspace.closed_channels = structuredClone(closed);
-    return workspace;
+      clean.closed_channels = structuredClone(closed);
+    return clean;
   }
 
   /** `save()` minus per-session transient state — panel themes and column size overrides — so the

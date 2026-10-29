@@ -118,17 +118,55 @@ PerspectivePanel(row_actions={"orders": {"id": [
 ]}})
 ```
 
-An empty list removes the column's buttons. The market example routes delete and copy actions to
-Python endpoints; copy fills the existing order form without inserting a row. Its summary totals
+Dedicated columns use identifiers starting with `@` and do not replace the real index column:
+
+```python
+PerspectivePanel(row_actions={"orders": {
+    "@copy": {
+        "header": "Copy", "position": "start",
+        "buttons": [{"action": "copy", "label": "Copy order", "icon": "copy"}],
+    },
+    "@delete": {
+        "header": "Delete", "position": "end",
+        "buttons": [{"action": "delete", "label": "Delete order", "icon": "delete"}],
+    },
+}})
+```
+
+Any number of dedicated columns may appear at either end, in mapping insertion order within
+each position. Each accepts multiple buttons. Headers must be unique and must not collide with
+source columns or user expressions. An empty button list removes the generated column.
+View-level expressions provide the record keys; source tables are unchanged. The wrapper's
+`save()` and `saveClean()` omit those expressions and columns, which are recreated from
+`row_actions` on restoration. Direct calls to `viewer.saveWorkspace()` include them.
+In dedicated-column events, `column` is the stable `@` identifier, not its display header.
+
+An empty list removes an indexed column's buttons. The market example uses a leading copy
+column and a trailing delete column. Copy fills the existing order form without inserting a row.
+Delete opens a dialog authored in Python; Cancel and Escape leave the table unchanged, and
+confirmation calls the Python deletion endpoint. Its summary totals
 cover all retained trades, including rows hidden by filters, and update when rows are deleted or expire.
 
-`action` and accessible `label` are nonempty strings. `text` is optional and defaults to `×`.
+`action` and accessible `label` are nonempty strings. `icon` accepts `copy`, `delete` (an X),
+or `add`. Icons are built-in SVGs, use the button's color, and are hidden from assistive technology;
+`label` supplies the accessible name. `text` may accompany an icon. Without an icon, it defaults to `×`.
 Labels and text are rendered as text, never HTML. Annotations apply to all Datagrid panels for that
 table and are separate from Perspective's saved layout and column configuration.
 
-Buttons replace the displayed index value without changing data. Only flat, unsplit views with a
+Indexed-column buttons replace the displayed index value without changing data. Only flat, unsplit views with a
 string or safe-integer key are enabled. Grouped views, non-index columns, and missing/unsupported
-keys disable the button. Split views may not display the annotated column. Other plugins are unchanged.
+keys disable the button. Other plugins do not display dedicated columns.
+
+`rowActions` supports computed bindings, including nested labels:
+
+```python
+PerspectivePanel().compute("rowActions", obj({"orders": obj({"id": obj({
+    "action": "copy", "label": field("copy_label"), "icon": "copy",
+})})}))
+```
+
+Here `obj` and `field` are imported from `spaday`. Updating the store's `copy_label` updates
+button labels without recreating the panel or mutating its data.
 
 Pointer or keyboard activation emits bubbling, composed `perspective-row-action` with
 `{action, panel, table, column, key}`. `key` retains its string/number type; `panel` is the current

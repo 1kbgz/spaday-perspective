@@ -20,7 +20,7 @@ from pathlib import Path
 import perspective
 import uvicorn
 from perspective.handlers.starlette import PerspectiveStarletteHandler
-from spaday import Component, ComponentPackage, ComponentSchema, PropertySchema, check_script, element
+from spaday import Component, ComponentPackage, ComponentSchema, PropertySchema, SetField, arr, check_script, element, field, obj
 from spaday.backends.starlette import serve
 from starlette.responses import PlainTextResponse
 from starlette.routing import Route, WebSocketRoute
@@ -39,7 +39,7 @@ perspective_client = perspective_server.new_local_client()
 perspective_client.table(
     {"symbol": "string", "quantity": "integer", "price": "float"},
     name="positions",
-    limit=100,
+    index="symbol",
 ).update(ROWS)
 
 
@@ -67,6 +67,7 @@ PACKAGES = [perspective_package, downstream_package]
 
 page = element("div", id="app").child(
     element("h1").text("Two libraries, one Perspective engine"),
+    element("button", id="rename-action").text("Rename action").on("click", SetField("copy_label", "Copy to portfolio")),
     element("section", id="server-backed").child(
         PerspectivePanel(
             id="panel",
@@ -78,7 +79,26 @@ page = element("div", id="app").child(
                     "panels": {"positions": {"table": "positions", "plugin": "Datagrid"}},
                 },
             },
-        ).style(display="block", width="640px", height="240px"),
+        )
+        .compute(
+            "rowActions",
+            obj(
+                {
+                    "positions": obj(
+                        {
+                            "@copy": obj(
+                                {
+                                    "header": "Copy",
+                                    "position": "start",
+                                    "buttons": arr(obj({"action": "copy", "label": field("copy_label"), "icon": "copy"})),
+                                }
+                            )
+                        }
+                    )
+                }
+            ),
+        )
+        .style(display="block", width="640px", height="240px"),
     ),
     element("section", id="in-page").child(
         DemoRowsGrid(id="grid", rows=ROWS).style(display="block", width="640px", height="240px"),
@@ -100,6 +120,7 @@ async def conformance(request) -> PlainTextResponse:
 
 app = serve(
     page,
+    store={"copy_label": "Copy position"},
     packages=PACKAGES,
     routes=[
         WebSocketRoute("/perspective", perspective_socket),

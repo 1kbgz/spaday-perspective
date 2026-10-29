@@ -30,7 +30,7 @@ class PerspectivePanel(Component):
                 kind="json",
                 choices=(),
                 default=None,
-                description="Optional table-name to indexed-column button descriptions: {table: {column: {action, label, text?}}}. Each column also accepts a list of descriptions for multiple buttons. Buttons emit perspective-row-action; applications own authorization and mutations. Grouped/split or unindexed rows are disabled.",
+                description="Table-name to row actions. Indexed columns accept {action, label, text?, icon?} or a list. Dedicated @ identifiers accept {header, position: start|end, buttons: [...]}. Icons: copy, delete, add. Buttons emit perspective-row-action; applications own confirmation, authorization and mutations. Grouped/split or unindexed rows are disabled.",
             ),
             PropertySchema(
                 name="toolbar",
