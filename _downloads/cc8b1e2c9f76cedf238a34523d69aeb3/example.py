@@ -204,13 +204,20 @@ panel = (
     PerspectivePanel(
         id="market-grid",
         toolbar=True,
+        hide_tabs=True,
         find=True,
         row_actions={
             "trades": {
-                "id": [
-                    {"action": "delete", "label": "Delete trade"},
-                    {"action": "copy", "label": "Copy trade to form", "text": "⧉"},
-                ]
+                "@copy": {
+                    "header": "Copy",
+                    "position": "start",
+                    "buttons": [{"action": "copy", "label": "Copy trade to form", "icon": "copy"}],
+                },
+                "@delete": {
+                    "header": "Delete",
+                    "position": "end",
+                    "buttons": [{"action": "delete", "label": "Delete trade", "icon": "delete"}],
+                },
             }
         },
     )
