@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API reference &#8212; spaday-perspective v0.8.1</title>
+    <title>API reference &#8212; spaday-perspective v0.8.2</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/fuma.css?v=ca04d621" />
     <link rel="stylesheet" type="text/css" href="../../_static/fuma-code.css?v=a950e949" />
@@ -16,7 +16,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/fonts/fuma-fonts.css?v=c2892c73" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/custom.css?v=88c24c6a" />
-    <script src="../../_static/documentation_options.js?v=ec16d22d"></script>
+    <script src="../../_static/documentation_options.js?v=dbee5847"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,7 +49,7 @@
   <div class="fd-subnav-inner">
     <button type="button" class="fd-icon-button fd-sidebar-toggle" aria-controls="fd-sidebar" aria-expanded="false" aria-label="Toggle navigation" title="Toggle navigation">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="fd-icon "><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
-    </button><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.8.1</span>
+    </button><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.8.2</span>
 </a>
 
     <div class="fd-nav-actions">
@@ -64,7 +64,7 @@
 
 <aside id="fd-sidebar" aria-label="Documentation">
   <div class="fd-sidebar-header">
-    <div class="fd-sidebar-brand-row"><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.8.1</span>
+    <div class="fd-sidebar-brand-row"><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.8.2</span>
 </a>
       <button type="button" class="fd-icon-button fd-sidebar-collapse" aria-label="Collapse sidebar" title="Collapse sidebar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="fd-icon "><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
     </div>
@@ -281,6 +281,8 @@ The browser property is <code class="docutils literal notranslate"><span class="
 </table>
 <p>Changing <code class="docutils literal notranslate"><span class="pre">ws_url</span></code> opens a new client connection. Changing the serialized <code class="docutils literal notranslate"><span class="pre">layout</span></code> restores the viewer’s panels.
 The wrapper queues asynchronous changes in assignment order.</p>
+<p>For a <code class="docutils literal notranslate"><span class="pre">client-server</span></code> mirror, omitting both <code class="docutils literal notranslate"><span class="pre">index</span></code> and <code class="docutils literal notranslate"><span class="pre">limit</span></code> inherits the source table’s index.
+An explicit index or limit takes precedence; unindexed sources remain unindexed.</p>
 <section id="validation-and-enums">
 <h3>Validation and enums<a class="headerlink" href="#validation-and-enums" title="Link to this heading">¶</a></h3>
 <p>The public <code class="docutils literal notranslate"><span class="pre">spaday_perspective.PerspectivePanel</span></code> validates literal configuration when serialized
@@ -367,7 +369,12 @@ each position. Each accepts multiple buttons. Headers must be unique and must no
 source columns or user expressions. An empty button list removes the generated column.
 View-level expressions provide the record keys; source tables are unchanged. The wrapper’s
 <code class="docutils literal notranslate"><span class="pre">save()</span></code> and <code class="docutils literal notranslate"><span class="pre">saveClean()</span></code> omit those expressions and columns, which are recreated from
-<code class="docutils literal notranslate"><span class="pre">row_actions</span></code> on restoration. Direct calls to <code class="docutils literal notranslate"><span class="pre">viewer.saveWorkspace()</span></code> include them.
+<code class="docutils literal notranslate"><span class="pre">row_actions</span></code> on restoration. Direct calls to <code class="docutils literal notranslate"><span class="pre">viewer.saveWorkspace()</span></code> include them and are not
+portable to a fresh wrapper with the same action policy; use wrapper <code class="docutils literal notranslate"><span class="pre">save()</span></code> or <code class="docutils literal notranslate"><span class="pre">saveClean()</span></code>
+for persistence. Matching expression text alone does not establish wrapper ownership.
+Replace a panel’s table through <code class="docutils literal notranslate"><span class="pre">config.layout</span></code>. Partial table swaps through the raw viewer API
+can retain the old table’s expressions, including generated action fields; the wrapper does not
+assume ownership of expressions on a different table.
 In dedicated-column events, <code class="docutils literal notranslate"><span class="pre">column</span></code> is the stable <code class="docutils literal notranslate"><span class="pre">&#64;</span></code> identifier, not its display header.</p>
 <p>An empty list removes an indexed column’s buttons. The market example uses a leading copy
 column and a trailing delete column. Copy fills the existing order form without inserting a row.
@@ -379,6 +386,15 @@ or <code class="docutils literal notranslate"><span class="pre">add</span></code
 <code class="docutils literal notranslate"><span class="pre">label</span></code> supplies the accessible name. <code class="docutils literal notranslate"><span class="pre">text</span></code> may accompany an icon. Without an icon, it defaults to <code class="docutils literal notranslate"><span class="pre">×</span></code>.
 Labels and text are rendered as text, never HTML. Annotations apply to all Datagrid panels for that
 table and are separate from Perspective’s saved layout and column configuration.</p>
+<p>Literal <code class="docutils literal notranslate"><span class="pre">row_actions</span></code> values are validated by Python at serialization, including <code class="docutils literal notranslate"><span class="pre">.prop(&quot;rowActions&quot;,</span> <span class="pre">...)</span></code>.
+<code class="docutils literal notranslate"><span class="pre">validate_row_actions(value)</span></code> performs the same check explicitly. Computed values are validated in
+the browser. Header collisions with live table columns or expressions are checked in the browser;
+one failing panel emits <code class="docutils literal notranslate"><span class="pre">perspective-error</span></code> without preventing other panels or workspace saves.
+Repeated identical errors are reported once until recovery. Initial <code class="docutils literal notranslate"><span class="pre">perspective-ready</span></code> waits for
+action configuration to succeed. Removing or correcting the conflicting policy recovers it.
+User-edited expressions are preserved, even when their name previously belonged to an action column.</p>
+<p>Removing generated columns also removes their grouping, splitting, sort, filter, aggregate and
+style references. Saved layouts omit those references with the generated columns.</p>
 <p>Indexed-column buttons replace the displayed index value without changing data. Only flat, unsplit views with a
 string or safe-integer key are enabled. Grouped views, non-index columns, and missing/unsupported
 keys disable the button. Other plugins do not display dedicated columns.</p>
@@ -416,6 +432,15 @@ the viewer directly for those.</p>
 </section>
 <section id="methods">
 <h2>Methods<a class="headerlink" href="#methods" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">exportData({panel?,</span> <span class="pre">format?})</span></code> returns CSV text by default or JSON text with <code class="docutils literal notranslate"><span class="pre">format:</span> <span class="pre">&quot;json&quot;</span></code>.
+<code class="docutils literal notranslate"><span class="pre">panel</span></code> defaults to the active panel. It exports the configured view, excluding synthetic action
+value columns, and retains filtering, sorting, grouping, splitting and expressions. Group keys
+remain present, including when a generated expression is used as a grouping key. This exports
+the whole configured view rather than the selected block or viewport. The temporary export view
+is deleted on success and failure; the displayed view is not changed.</p>
+<p>Native Perspective export and selected-cell copying retain their original view-based behavior:
+selected/exported action fields contain record IDs. <code class="docutils literal notranslate"><span class="pre">exportData</span></code> provides the separate data-only
+path used by the example’s <strong>Export CSV</strong> button.</p>
 <p><code class="docutils literal notranslate"><span class="pre">openFind()</span></code> opens the column/value prompt for the active panel when <code class="docutils literal notranslate"><span class="pre">find=True</span></code>. With the toolbar
 enabled, Find invokes this method. Ctrl+F / Cmd+F instead targets the Datagrid receiving the key event.
 Other page content, editable inputs, and wrappers with Find disabled keep browser find behavior.</p>
