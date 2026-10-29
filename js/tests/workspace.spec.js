@@ -199,34 +199,39 @@ test("single_tab prepares the selected layout before restore and retains hidden 
   ).toEqual(["orders"]);
 });
 
-test("native panel removal preserves the last edited channel configuration", async ({
-  page,
-}) => {
-  await mountChannels(page);
-  const saved = await page.evaluate(async () => {
-    const panel = document.querySelector("#workspace");
-    const workspace = await panel.save();
-    const id = Object.keys(workspace.panels).find(
-      (id) => workspace.panels[id].table === "quotes",
+for (const declared of [false, true]) {
+  test(`native panel removal preserves the last edited ${declared ? "table" : "channel"} configuration`, async ({
+    page,
+  }) => {
+    await mountChannels(
+      page,
+      declared ? { tables: ["quotes", "orders"], channels: {} } : {},
     );
-    const updated = new Promise((resolve) =>
-      panel.addEventListener("perspective-config-update", resolve, {
-        once: true,
-      }),
-    );
-    await panel.viewer.restore(
-      { columns: ["price"], title: "Edited quotes" },
-      { panel: id },
-    );
-    await updated;
-    await panel.viewer.removePanel(id);
-    return panel.saveClean();
+    const saved = await page.evaluate(async () => {
+      const panel = document.querySelector("#workspace");
+      const workspace = await panel.save();
+      const id = Object.keys(workspace.panels).find(
+        (id) => workspace.panels[id].table === "quotes",
+      );
+      const updated = new Promise((resolve) =>
+        panel.addEventListener("perspective-config-update", resolve, {
+          once: true,
+        }),
+      );
+      await panel.viewer.restore(
+        { columns: ["price"], title: "Edited quotes" },
+        { panel: id },
+      );
+      await updated;
+      await panel.viewer.removePanel(id);
+      return panel.saveClean();
+    });
+    expect(saved.closed_channels.quotes).toMatchObject({
+      columns: ["price"],
+      title: "Edited quotes",
+    });
   });
-  expect(saved.closed_channels.quotes).toMatchObject({
-    columns: ["price"],
-    title: "Edited quotes",
-  });
-});
+}
 
 test("master theme overrides survive restoration and live application theme changes", async ({
   page,
@@ -560,3 +565,218 @@ for (const fixture of legacyLayouts) {
     }
   });
 }
+
+for (const tables of [
+  ["quotes", "orders"],
+  [{ name: "quotes" }, { name: "orders" }],
+]) {
+  test(`declared tables support channel open, close, and saved configuration with ${typeof tables[0]} entries`, async ({
+    page,
+  }) => {
+    await mountChannels(page, { tables, channels: {} });
+    const result = await page.evaluate(async () => {
+      const panel = document.querySelector("#workspace");
+      await panel.openChannel("quotes");
+      const selected = await panel.save();
+      await panel.restorePanel("quotes", {
+        columns: ["price"],
+        filter: [["symbol", "==", "AAPL"]],
+      });
+      await panel.closeChannel("quotes");
+      const closed = await panel.saveClean();
+      panel.config = { ...panel.config, layout: closed };
+      await panel.openChannel("quotes");
+      const reopened = await panel.save();
+      await panel.closeChannel("quotes");
+      await panel.closeChannel("orders");
+      panel.config = { ...panel.config, layout: { panels: {}, layout: null } };
+      await panel.openChannel("orders");
+      let unknown;
+      try {
+        await panel.openChannel("toString");
+      } catch (error) {
+        unknown = error.message;
+      }
+      await panel.openChannel("quotes");
+      return {
+        selected,
+        closed,
+        reopened,
+        defaults: await panel.save(),
+        unknown,
+      };
+    });
+    expect(result.selected.layout.selected).toBe(0);
+    expect(Object.keys(result.selected.panels).sort()).toEqual([
+      "orders",
+      "quotes",
+    ]);
+    expect(result.closed.closed_channels.quotes.columns).toEqual(["price"]);
+    const reopened = Object.values(result.reopened.panels).find(
+      (panel) => panel.table === "quotes",
+    );
+    expect(reopened.filter).toEqual([["symbol", "==", "AAPL"]]);
+    expect(reopened.columns).toEqual(["price"]);
+    expect(
+      Object.values(result.defaults.panels).map((panel) => panel.plugin),
+    ).toEqual(["Datagrid", "Datagrid"]);
+    expect(result.unknown).toBe("Unknown channel: toString");
+    // Declared tables do not implicitly add toolbar entries.
+    await expect(
+      page.locator(".perspective-panel-titlebar select option"),
+    ).toHaveCount(1);
+  });
+}
+
+test("declared table opens beside master panels and respects single-tab mode", async ({
+  page,
+}) => {
+  await mountChannels(page, {
+    tables: ["quotes", "orders"],
+    channels: {},
+    single_tab: true,
+    layout: {
+      layout: { type: "tab-layout", tabs: ["master"] },
+      masters: ["master"],
+      panels: {
+        master: { table: "quotes", plugin: "Datagrid", group_by: ["symbol"] },
+      },
+    },
+  });
+  const result = await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    await panel.openChannel("orders");
+    const opened = await panel.save();
+    panel.config = {
+      ...panel.config,
+      layout: {
+        ...opened,
+        layout: {
+          ...opened.layout,
+          children: [
+            opened.layout.children[0],
+            { type: "tab-layout", tabs: ["detail"] },
+          ],
+        },
+        panels: {
+          master: opened.panels.master,
+          detail: { table: "quotes", plugin: "Datagrid" },
+        },
+      },
+    };
+    await panel.openChannel("orders");
+    return { opened, replaced: await panel.save() };
+  });
+  for (const workspace of [result.opened, result.replaced]) {
+    expect(workspace.masters).toEqual(["master"]);
+    expect(workspace.layout.children.map((stack) => stack.tabs)).toEqual([
+      ["master"],
+      ["channel:orders"],
+    ]);
+    expect(Object.keys(workspace.panels).sort()).toEqual([
+      "channel:orders",
+      "master",
+    ]);
+  }
+});
+
+test("restorePanel serializes partial updates with layout changes and isolates same-table panels", async ({
+  page,
+}) => {
+  await mountChannels(page);
+  const result = await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    panel.config = {
+      ...panel.config,
+      layout: {
+        layout: { type: "tab-layout", tabs: ["first", "second"] },
+        panels: {
+          first: {
+            table: "quotes",
+            plugin: "Datagrid",
+            columns: ["symbol", "price"],
+          },
+          second: {
+            table: "quotes",
+            plugin: "Datagrid",
+            columns: ["symbol", "price"],
+          },
+        },
+      },
+    };
+    const config = { filter: [["symbol", "==", "NVDA"]] };
+    const first = panel.restorePanel("first", config);
+    config.filter[0][2] = "AAPL";
+    const second = panel.restorePanel("first", { sort: [["price", "desc"]] });
+    await Promise.all([first, second]);
+    const saved = await panel.save();
+    panel.config = {
+      ...panel.config,
+      layout: {
+        layout: { type: "tab-layout", tabs: ["second"] },
+        panels: { second: saved.panels.second },
+      },
+    };
+    const errors = [];
+    for (const [id, config] of [
+      ["first", { filter: [] }],
+      ["toString", {}],
+      ["second", { plugin_config: { edit_mode: "invalid" } }],
+      ["second", null],
+      ["second", { filter: [["absent", "==", 1]] }],
+    ]) {
+      try {
+        await panel.restorePanel(id, config);
+      } catch (error) {
+        errors.push(String(error));
+      }
+    }
+    await panel.restorePanel("second", { filter: [["symbol", "==", "AAPL"]] });
+    return { saved, errors, recovered: await panel.save() };
+  });
+  expect(result.saved.panels.first.filter).toEqual([["symbol", "==", "NVDA"]]);
+  expect(result.saved.panels.first.sort).toEqual([["price", "desc"]]);
+  expect(result.saved.panels.second.filter).toEqual([]);
+  expect(result.errors).toHaveLength(5);
+  expect(result.errors[0]).toContain("Unknown panel: first");
+  expect(result.errors[1]).toContain("Unknown panel: toString");
+  expect(result.errors[2]).toContain("config.plugin_config.edit_mode");
+  expect(result.errors[3]).toContain("config: expected object");
+  expect(result.recovered.panels.second.filter).toEqual([
+    ["symbol", "==", "AAPL"],
+  ]);
+});
+
+test("restorePanel validates plugin config against the panel's effective plugin", async ({
+  page,
+}) => {
+  await mountChannels(page, {
+    layout: {
+      layout: { type: "tab-layout", tabs: ["chart"] },
+      panels: {
+        chart: {
+          table: "quotes",
+          plugin: "Y Bar",
+          columns: ["price"],
+          group_by: ["symbol"],
+        },
+      },
+    },
+  });
+  const result = await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    await panel.restorePanel("chart", { plugin_config: {} });
+    let error;
+    try {
+      await panel.restorePanel("chart", {
+        plugin: "Datagrid",
+        plugin_config: { edit_mode: "invalid" },
+      });
+    } catch (reason) {
+      error = String(reason);
+    }
+    return { error, workspace: await panel.save() };
+  });
+  expect(result.error).toContain("config.plugin_config.edit_mode");
+  expect(result.workspace.panels.chart.plugin).toBe("Y Bar");
+});

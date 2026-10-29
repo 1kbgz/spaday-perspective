@@ -4,7 +4,7 @@ import perspective from "@perspective-dev/client";
 import PRO from "@perspective-dev/viewer/dist/css/pro.css";
 import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
 import { installClipboard, type ClipboardViewer } from "./clipboard.js";
-import { validateConfig, validateTheme } from "./config.js";
+import { validateConfig, validatePanel, validateTheme } from "./config.js";
 import { installFind, type FindViewer } from "./find.js";
 import {
   installRowActions,
@@ -336,12 +336,11 @@ class PerspectivePanel extends HTMLElement {
       this.#viewer.style.height = "100%";
       this.appendChild(this.#viewer);
       this.#viewer.addEventListener("perspective-config-update", (event) => {
-        if (!this.#config.channels) return;
         // Perspective releases this callback after dispatch; read it synchronously.
         const config = (
           event as CustomEvent<{ getConfig?: () => PanelConfig }>
         ).detail?.getConfig?.();
-        if (config && hasOwn(this.#config.channels ?? {}, config.table)) {
+        if (config && this.#hasChannel(config.table)) {
           const source = event
             .composedPath()
             .find(
@@ -767,10 +766,19 @@ class PerspectivePanel extends HTMLElement {
     return cloned;
   }
 
+  #hasChannel(name: string, config = this.#config): boolean {
+    return (
+      hasOwn(config.channels ?? {}, name) ||
+      (config.tables ?? []).some(
+        (table) => (typeof table === "string" ? table : table.name) === name,
+      )
+    );
+  }
+
   #rememberChannels(workspace: Workspace, config = this.#config): void {
     workspace = this.#actionColumns?.clean(workspace) ?? workspace;
     for (const panel of Object.values(workspace.panels ?? {})) {
-      if (hasOwn(config.channels ?? {}, panel.table)) {
+      if (this.#hasChannel(panel.table, config)) {
         this.#channelConfigs.set(panel.table, structuredClone(panel));
       }
     }
@@ -785,7 +793,7 @@ class PerspectivePanel extends HTMLElement {
     for (const [name, cached] of Object.entries(
       prepared.closed_channels ?? {},
     )) {
-      if (hasOwn(config.channels ?? {}, name)) {
+      if (this.#hasChannel(name, config)) {
         this.#channelConfigs.set(name, structuredClone(cached));
       }
     }
@@ -822,8 +830,7 @@ class PerspectivePanel extends HTMLElement {
   /** Open a named table using its last channel configuration or configured defaults. */
   openChannel(name: string): Promise<void> {
     return this.#enqueue(async () => {
-      if (!hasOwn(this.#config.channels ?? {}, name))
-        throw new Error(`Unknown channel: ${name}`);
+      if (!this.#hasChannel(name)) throw new Error(`Unknown channel: ${name}`);
       if (!this.#loaded || !this.#viewer)
         throw new Error("Perspective panel is not ready");
       const workspace = (await this.#viewer.saveWorkspace()) as Workspace;
@@ -844,7 +851,9 @@ class PerspectivePanel extends HTMLElement {
       while (hasOwn(panels, id)) id += ":";
       panels[id] = structuredClone(
         this.#channelConfigs.get(name) ?? {
-          ...this.#config.channels![name],
+          ...(hasOwn(this.#config.channels ?? {}, name)
+            ? this.#config.channels![name]
+            : { plugin: "Datagrid" }),
           table: name,
         },
       );
@@ -871,8 +880,7 @@ class PerspectivePanel extends HTMLElement {
   /** Close a channel, retaining its configuration for reopen and saveClean(). */
   closeChannel(name: string): Promise<void> {
     return this.#enqueue(async () => {
-      if (!hasOwn(this.#config.channels ?? {}, name))
-        throw new Error(`Unknown channel: ${name}`);
+      if (!this.#hasChannel(name)) throw new Error(`Unknown channel: ${name}`);
       if (!this.#loaded || !this.#viewer)
         throw new Error("Perspective panel is not ready");
       const workspace = (await this.#viewer.saveWorkspace()) as Workspace;
@@ -890,6 +898,24 @@ class PerspectivePanel extends HTMLElement {
       if (workspace.active && !keep.has(workspace.active))
         workspace.active = null;
       await this.#restoreWorkspace(workspace);
+    });
+  }
+
+  /** Apply a partial viewer configuration to one panel through the lifecycle queue. */
+  async restorePanel(id: string, config: Partial<PanelConfig>): Promise<void> {
+    validateTheme(id, "panel");
+    const patch = structuredClone(config);
+    return this.#enqueue(async () => {
+      if (!this.#loaded || !this.#viewer)
+        throw new Error("Perspective panel is not ready");
+      const workspace = (await this.#viewer.saveWorkspace()) as Workspace;
+      if (!hasOwn(workspace.panels ?? {}, id))
+        throw new Error(`Unknown panel: ${id}`);
+      validatePanel(patch, "config", workspace.panels![id].plugin);
+      await this.#viewer.restore(patch, { panel: id });
+      await this.#viewer.flush();
+      await this.#actionColumns?.refresh();
+      this.#rememberChannels((await this.#viewer.saveWorkspace()) as Workspace);
     });
   }
 
@@ -1043,8 +1069,7 @@ class PerspectivePanel extends HTMLElement {
     );
     const closed = Object.fromEntries(
       [...this.#channelConfigs].filter(
-        ([name]) =>
-          hasOwn(this.#config.channels ?? {}, name) && !open.has(name),
+        ([name]) => this.#hasChannel(name) && !open.has(name),
       ),
     );
     if (Object.keys(closed).length)

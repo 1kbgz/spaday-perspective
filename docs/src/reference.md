@@ -29,17 +29,17 @@ It does not hide the wrapper toolbar. For multiple channels, provide navigation 
 or your own buttons calling `openChannel`; hidden tabs cannot be selected or dragged by the user.
 The browser property is `hideTabs`.
 
-| Key                    | Type    | Description                                                                                                                                                               |
-| ---------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ws_url`               | `str`   | Perspective websocket URL; relative URLs use the current host.                                                                                                            |
-| `local`                | `bool`  | Load the shared in-browser Perspective worker instead of opening a websocket.                                                                                             |
-| `tables`               | `list`  | Table names (`str`), or `{name, architecture, index, limit}` mappings for per-table architecture.                                                                         |
-| `default_architecture` | `str`   | `server` (default) or `client-server`, applied to `tables` entries without their own `architecture`.                                                                      |
-| `layout`               | mapping | Workspace config accepted by `<perspective-viewer>.restoreWorkspace()`, plus optional `closed_channels`.                                                                  |
-| `wait_for_table`       | `bool`  | Leave a panel whose `table` no loaded client hosts yet empty and pending until it is created, instead of erroring (the default).                                          |
-| `master_theme`         | `str`   | Theme for filter-source panels listed in `masters`. Accepts `light`, `dark`, or a registered theme name. Defaults to the application theme.                               |
-| `channels`             | mapping | Table name to default panel configuration, such as `{"trades": {"title": "Trades", "columns": ["price"]}}`. Supplies the channel picker and `openChannel`/`closeChannel`. |
-| `single_tab`           | `bool`  | Keep only the selected tab in each stack before restoring it. Hidden configured channels retain their settings for reopening. Default `False`.                            |
+| Key                    | Type    | Description                                                                                                                                                                                                             |
+| ---------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ws_url`               | `str`   | Perspective websocket URL; relative URLs use the current host.                                                                                                                                                          |
+| `local`                | `bool`  | Load the shared in-browser Perspective worker instead of opening a websocket.                                                                                                                                           |
+| `tables`               | `list`  | Table names (`str`), or `{name, architecture, index, limit}` mappings for per-table architecture.                                                                                                                       |
+| `default_architecture` | `str`   | `server` (default) or `client-server`, applied to `tables` entries without their own `architecture`.                                                                                                                    |
+| `layout`               | mapping | Workspace config accepted by `<perspective-viewer>.restoreWorkspace()`, plus optional `closed_channels`.                                                                                                                |
+| `wait_for_table`       | `bool`  | Leave a panel whose `table` no loaded client hosts yet empty and pending until it is created, instead of erroring (the default).                                                                                        |
+| `master_theme`         | `str`   | Theme for filter-source panels listed in `masters`. Accepts `light`, `dark`, or a registered theme name. Defaults to the application theme.                                                                             |
+| `channels`             | mapping | Table name to default panel configuration, such as `{"trades": {"title": "Trades", "columns": ["price"]}}`. Supplies the channel picker and default configs; declared tables also support `openChannel`/`closeChannel`. |
+| `single_tab`           | `bool`  | Keep only the selected tab in each stack before restoring it. Hidden configured channels retain their settings for reopening. Default `False`.                                                                          |
 
 Changing `ws_url` opens a new client connection. Changing the serialized `layout` restores the viewer's panels.
 The wrapper queues asynchronous changes in assignment order.
@@ -266,23 +266,48 @@ available. Secure-context native-menu writes are not intercepted by the adapter.
 `save()` waits for pending connection and restore work, then returns the whole-element workspace
 config (`saveWorkspace()` under the hood — a `layout` tree plus per-panel viewer configs).
 
-When channels are configured, `save()` also includes `closed_channels`, a mapping from table name
+For configured channels and declared tables, `save()` also includes `closed_channels`, a mapping from table name
 to its last panel configuration. `saveClean()` returns the same shape with themes and datagrid column
 size overrides removed from both open and closed channels. Both results can be assigned to
 `config.layout`. Storage and downloads remain application-owned.
 
-`openChannel(name)` opens a configured table, using its retained configuration or its defaults from
-`config.channels`. If already open, the first matching panel is selected. New channels join the
+`openChannel(name)` accepts names from `config.channels` or `config.tables` (string and object entries).
+It opens the table using its retained configuration, then defaults from `config.channels`, or Datagrid
+when no channel defaults exist. Declaring a table does not create it; it must be available from the
+connected client. If already open, the first matching panel is selected. New channels join the
 first detail tab stack; with `single_tab=True`, they replace that stack's selected channel. Master
 stacks remain in place. `closeChannel(name)` closes panels for that table and retains their last
 configuration, including when closing the final panel. Both methods return promises and share the
-wrapper's lifecycle queue. Unknown channel names and calls before connection completes reject.
+wrapper's lifecycle queue. Undeclared names and calls without a loaded client reject. Calls queued behind an initial load wait
+for that load to finish.
 
 Channels are identified by table name, with one retained configuration per table. Applications with
 multiple independent views of one table can continue using ordinary workspace panels; channel close
 acts on all views of its table. Native tab-close actions also retain the last edited configuration.
 
-The optional toolbar uses these same methods. Its container has class `perspective-panel-titlebar`
+`restorePanel(id, config)` applies a partial viewer configuration to an existing panel through the
+same lifecycle queue. `id` is a key in `save().panels`, not a table name. Unspecified settings and
+other panels remain unchanged. The method snapshots its arguments when called, validates against the
+panel's effective plugin, and refreshes synthetic action columns after restoring. It returns a promise
+that rejects for missing panels, invalid configurations, or an upstream restore failure. Later queued
+operations can still run after a rejection. Panel existence is checked when the operation executes.
+
+```python
+from spaday import Invoke, by_id, element
+
+element("button").text("Open trades").on(
+    "click", Invoke(by_id("workspace"), "openChannel", "trades")
+)
+element("button").text("Buy trades").on(
+    "click",
+    Invoke(by_id("workspace"), "restorePanel", "market", {"filter": [["side", "==", "Buy"]]}),
+)
+```
+
+This example targets a panel declared as `market` in `config.layout.panels`. The runnable market
+example also handles reopening a closed channel by reading its panel ID from the saved layout.
+
+The optional toolbar lists only entries in `config.channels` and uses these same methods. Its container has class `perspective-panel-titlebar`
 and inherits `--spa-text` and `--spa-surface`. Custom design-kit controls can call the methods through
 Spaday `Invoke` without enabling the toolbar or accessing the viewer's shadow DOM.
 

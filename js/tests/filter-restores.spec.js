@@ -1,7 +1,13 @@
 import { expect, test } from "@playwright/test";
 
-for (const architecture of ["local", "server", "client-server"]) {
-  test(`filter restores during ${architecture} updates do not report deleted views`, async ({
+for (const [architecture, queued] of [
+  "local",
+  "server",
+  "client-server",
+].flatMap((architecture) =>
+  [false, true].map((queued) => [architecture, queued]),
+)) {
+  test(`${queued ? "queued" : "raw"} filter restores during ${architecture} updates do not report deleted views`, async ({
     page,
   }) => {
     const errors = [];
@@ -63,32 +69,29 @@ for (const architecture of ["local", "server", "client-server"]) {
     await expect(
       page.locator("#filter-test regular-table td").first(),
     ).toBeVisible();
-    await page.evaluate(async () => {
+    await page.evaluate(async (queued) => {
       const { panel, source } = window.filterTest;
+      const restore = (config) =>
+        queued
+          ? panel.restorePanel("rows", config)
+          : panel.viewer.restore(config, { panel: "rows" });
       for (let i = 0; i < 30; i++) {
         await Promise.all([
           source.update([{ id: 1, value: `update-${i}` }]),
-          panel.viewer.restore(
-            { filter: i % 2 ? [["id", "==", 1]] : [] },
-            { panel: "rows" },
-          ),
+          restore({
+            filter: i % 2 ? [["id", "==", 1]] : [],
+          }),
         ]);
       }
       await Promise.all(
         Array.from({ length: 15 }, (_, i) =>
-          panel.viewer.restore(
-            { filter: [["id", "==", (i % 2) + 1]] },
-            { panel: "rows" },
-          ),
+          restore({ filter: [["id", "==", (i % 2) + 1]] }),
         ),
       );
-      await panel.viewer.restore(
-        { filter: [["id", "==", 1]] },
-        { panel: "rows" },
-      );
+      await restore({ filter: [["id", "==", 1]] });
       await source.update([{ id: 1, value: "final update" }]);
       await panel.viewer.flush();
-    });
+    }, queued);
     await expect(
       page.locator("#filter-test perspective-viewer-datagrid"),
     ).toContainText("final update");

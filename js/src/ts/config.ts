@@ -12,14 +12,15 @@ export function validateTheme(
   if (typeof value !== "string" || !value.trim())
     throw new TypeError(`${path}: expected string`);
 }
-function panel(value: unknown, path: string) {
+export function validatePanel(
+  value: unknown,
+  path: string,
+  plugin: unknown = "Datagrid",
+) {
   object(value, path);
   for (const key of ["table", "plugin", "theme"])
     if (value[key] != null) validateTheme(value[key], `${path}.${key}`);
-  if (
-    value.plugin_config == null ||
-    (value.plugin ?? "Datagrid") !== "Datagrid"
-  )
+  if (value.plugin_config == null || (value.plugin ?? plugin) !== "Datagrid")
     return;
   const config = value.plugin_config;
   object(config, `${path}.plugin_config`);
@@ -112,12 +113,12 @@ export function validateConfig(value: unknown): void {
       if (entries == null) continue;
       object(entries, `config.layout.${key}`);
       for (const [name, entry] of Object.entries(entries))
-        panel(entry, `config.layout.${key}.${name}`);
+        validatePanel(entry, `config.layout.${key}.${name}`);
     }
   }
   if ("channels" in value) {
     object(value.channels, "config.channels");
     for (const [name, entry] of Object.entries(value.channels))
-      panel(entry, `config.channels.${name}`);
+      validatePanel(entry, `config.channels.${name}`);
   }
 }
