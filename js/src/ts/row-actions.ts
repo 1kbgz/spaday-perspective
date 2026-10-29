@@ -2,12 +2,25 @@ export interface RowAction {
   action: string;
   label: string;
   text?: string;
+  icon?: "copy" | "delete" | "add";
 }
 
-/** Table name → indexed column → button description. */
+export interface ActionColumn {
+  header: string;
+  position: "start" | "end";
+  buttons: RowAction[];
+}
+
+export function isActionColumn(
+  rule: RowAction | RowAction[] | ActionColumn,
+): rule is ActionColumn {
+  return !Array.isArray(rule) && "buttons" in rule;
+}
+
+/** Table name → indexed column or dedicated column identifier → actions. */
 export type RowActions = Record<
   string,
-  Record<string, RowAction | RowAction[]>
+  Record<string, RowAction | RowAction[] | ActionColumn>
 >;
 
 interface ActionDetail {
@@ -19,9 +32,11 @@ interface ActionDetail {
 }
 
 interface ActionViewer extends HTMLElement {
-  getViewConfig(options: {
-    panel: string;
-  }): Promise<{ group_by?: string[]; split_by?: string[] }>;
+  getViewConfig(options: { panel: string }): Promise<{
+    group_by?: string[];
+    split_by?: string[];
+    expressions?: Record<string, string>;
+  }>;
   getTable(options: {
     panel: string;
     wait: boolean;
@@ -43,6 +58,8 @@ export function installRowActions(
   host: HTMLElement,
   viewer: ActionViewer,
   actions: () => RowActions,
+  columnKey: (panel: string, header: string) => string | undefined = () =>
+    undefined,
 ) {
   const attached = new Map<Grid, { dispose(): void; refresh(): void }>();
   let disposed = false;
@@ -77,18 +94,32 @@ export function installRowActions(
         "tbody td",
       )) {
         const meta = table.getMeta(cell);
-        const column = meta?.column_header?.[0];
-        const rule =
+        const column = meta?.column_header?.[meta.column_header.length - 1];
+        const actionColumn =
           typeof column === "string" &&
-          Object.prototype.hasOwnProperty.call(policy, column)
-            ? policy[column]
+          config.expressions?.[column] === (index ? JSON.stringify(index) : "0")
+            ? columnKey(grid.slot, column)
+            : undefined;
+        const policyKey = actionColumn ?? column;
+        const rule =
+          typeof policyKey === "string" &&
+          Object.prototype.hasOwnProperty.call(policy, policyKey)
+            ? policy[policyKey]
             : undefined;
         const old = [
           ...cell.querySelectorAll<HTMLButtonElement>(
             "button[data-perspective-row-action]",
           ),
         ];
-        const rules = rule ? (Array.isArray(rule) ? rule : [rule]) : [];
+        const rules = rule
+          ? isActionColumn(rule)
+            ? actionColumn
+              ? rule.buttons
+              : []
+            : Array.isArray(rule)
+              ? rule
+              : [rule]
+          : [];
         if (!rules.length || typeof column !== "string") {
           if (old.length) cell.textContent = String(meta?.user ?? "");
           continue;
@@ -100,7 +131,7 @@ export function installRowActions(
         const reason =
           config.group_by?.length || config.split_by?.length
             ? "Row actions require an ungrouped, unsplit table"
-            : column !== index
+            : !index || (column !== index && !actionColumn)
               ? "Row actions require the table's indexed column"
               : !supportedKey
                 ? "Row action has no supported record key"
@@ -110,7 +141,7 @@ export function installRowActions(
             action: rule.action,
             panel: grid.slot,
             table: name,
-            column,
+            column: actionColumn ?? column,
             key: key as string | number,
           };
           const button =
@@ -121,7 +152,35 @@ export function installRowActions(
               : document.createElement("button");
           button.type = "button";
           button.dataset.perspectiveRowAction = rule.action;
-          button.textContent = rule.text ?? "×";
+          button.replaceChildren();
+          if (rule.icon) {
+            const svg = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "svg",
+            );
+            svg.setAttribute("viewBox", "0 0 16 16");
+            svg.setAttribute("width", "14");
+            svg.setAttribute("height", "14");
+            svg.setAttribute("aria-hidden", "true");
+            svg.setAttribute("focusable", "false");
+            svg.style.verticalAlign = "middle";
+            const path = document.createElementNS(svg.namespaceURI, "path");
+            path.setAttribute(
+              "d",
+              {
+                copy: "M5 5h8v8H5z M3 10H2V2h8v1",
+                delete: "M4 4l8 8M12 4l-8 8",
+                add: "M8 3v10M3 8h10",
+              }[rule.icon],
+            );
+            path.setAttribute("fill", "none");
+            path.setAttribute("stroke", "currentColor");
+            path.setAttribute("stroke-width", "1.5");
+            svg.append(path);
+            button.append(svg);
+          }
+          if (rule.text !== undefined || !rule.icon)
+            button.append(rule.text ?? "×");
           button.setAttribute("aria-label", rule.label);
           button.title = reason || rule.label;
           button.disabled = !!reason;
