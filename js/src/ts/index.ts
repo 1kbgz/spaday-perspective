@@ -3,6 +3,7 @@ import { restoreDefine } from "./define-guard.js";
 import perspective from "@perspective-dev/client";
 import PRO from "@perspective-dev/viewer/dist/css/pro.css";
 import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
+import { styleWorkspace } from "./workspace-style.js";
 import { installClipboard, type ClipboardViewer } from "./clipboard.js";
 import { validateConfig, validatePanel, validateTheme } from "./config.js";
 import { installFind, type FindViewer } from "./find.js";
@@ -250,6 +251,19 @@ function injectStyles(): void {
   document.head.appendChild(style);
 }
 
+function sameConfig(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== "object" || typeof b !== "object") return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const left = a as Record<string, unknown>;
+  const right = b as Record<string, unknown>;
+  const keys = Object.keys(left);
+  return (
+    keys.length === Object.keys(right).length &&
+    keys.every((key) => hasOwn(right, key) && sameConfig(left[key], right[key]))
+  );
+}
+
 function wsUrl(url: string): string {
   if (/^wss?:\/\//.test(url)) return url;
   const scheme = location.protocol === "https:" ? "wss" : "ws";
@@ -299,6 +313,7 @@ class PerspectivePanel extends HTMLElement {
   #config: PerspectiveConfig = {};
   #connectedUrl: string | null = null;
   #lastLayout: string | null = null;
+  #configGeneration = 0;
   #lastMasterTheme: string | undefined;
   #lastSingleTab = false;
   #lastMirrored: string | null = null;
@@ -461,10 +476,10 @@ class PerspectivePanel extends HTMLElement {
             !rule.label ||
             (rule.text !== undefined && typeof rule.text !== "string") ||
             (rule.icon !== undefined &&
-              !["copy", "delete", "add"].includes(rule.icon))
+              !["copy", "delete", "add", "share"].includes(rule.icon))
           )
             throw new TypeError(
-              "rowActions requires action and label strings, optional text, and an optional copy/delete/add icon",
+              "rowActions requires action and label strings, optional text, and an optional copy/delete/add/share icon",
             );
         }
       }
@@ -813,6 +828,26 @@ class PerspectivePanel extends HTMLElement {
         prepared.masters = prepared.masters.filter((id) => keep.has(id));
       if (prepared.active && !keep.has(prepared.active)) prepared.active = null;
     }
+    // Supplying `panels` replaces every plugin in Perspective 5.6, including
+    // hidden tabs. A layout-only update can keep them, but compare LIVE state:
+    // cached configs would accidentally preserve edits a profile should reset.
+    if (
+      prepared.panels &&
+      Object.keys(prepared.panels).length &&
+      !Object.keys(this.#rowActions).length
+    ) {
+      const live = (await this.#viewer
+        .saveWorkspace()
+        .catch(() => null)) as Workspace | null;
+      if (
+        live &&
+        sameConfig(prepared.panels, live.panels) &&
+        sameConfig(prepared.derived_tables, live.derived_tables)
+      ) {
+        delete prepared.panels;
+      }
+    }
+    if (prepared.panels) this.#actionColumns?.reset();
     await this.#viewer.restoreWorkspace(prepared, {
       wait_for_table: !!config.wait_for_table,
     });
@@ -952,11 +987,13 @@ class PerspectivePanel extends HTMLElement {
 
   #apply(): void {
     const config = this.#config;
+    const generation = ++this.#configGeneration;
     this.#queue = this.#queue
       .catch(() => {})
       .then(async () => {
         await ready;
-        if (!this.#viewer) return;
+        if (!this.#viewer || generation !== this.#configGeneration) return;
+        styleWorkspace(this.#viewer);
         try {
           const mirrored = this.#mirroredTables(config);
           const mirroredKey = JSON.stringify(mirrored);
@@ -987,6 +1024,7 @@ class PerspectivePanel extends HTMLElement {
             await this.#viewer.load(await sharedWorker());
             this.#loaded = true;
           }
+          if (generation !== this.#configGeneration) return;
           if (this.#loaded && config.layout) {
             const layout = JSON.stringify(config.layout);
             if (layout !== this.#lastLayout) {
@@ -994,7 +1032,6 @@ class PerspectivePanel extends HTMLElement {
               // restores the earlier behavior, a pending panel that fills once it is created
               this.#channelConfigs.clear();
               this.#lastLayout = null;
-              this.#actionColumns?.reset();
               await this.#restoreWorkspace(config.layout as Workspace, config);
               this.#lastLayout = layout;
             } else if (!!config.single_tab !== this.#lastSingleTab) {
@@ -1006,6 +1043,7 @@ class PerspectivePanel extends HTMLElement {
               await this.#restoreTheme(config);
             }
           }
+          if (generation !== this.#configGeneration) return;
           this.#lastMasterTheme = config.master_theme;
           this.#lastSingleTab = !!config.single_tab;
           this.#renderToolbar();

@@ -37,6 +37,6 @@ def validate_row_actions(value):
                     not isinstance(rule, dict)
                     or any(not isinstance(rule.get(name), str) or not rule[name] for name in ("action", "label"))
                     or ("text" in rule and not isinstance(rule["text"], str))
-                    or ("icon" in rule and rule["icon"] not in ("copy", "delete", "add"))
+                    or ("icon" in rule and rule["icon"] not in ("copy", "delete", "add", "share"))
                 ):
-                    raise ValueError(f"{path}: expected action and label strings, optional text, and an optional copy/delete/add icon")
+                    raise ValueError(f"{path}: expected action and label strings, optional text, and an optional copy/delete/add/share icon")
