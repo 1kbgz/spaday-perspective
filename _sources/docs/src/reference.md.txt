@@ -162,7 +162,7 @@ confirmation calls the Python deletion endpoint. Its summary totals
 cover all retained trades, including rows hidden by filters, and update when rows are deleted or expire.
 
 `action` and accessible `label` are nonempty strings. `icon` accepts `copy`, `delete` (an X),
-or `add`. Icons are built-in SVGs, use the button's color, and are hidden from assistive technology;
+`add`, or `share` (a chain link). Icons are built-in SVGs, use the button's color, and are hidden from assistive technology;
 `label` supplies the accessible name. `text` may accompany an icon. Without an icon, it defaults to `×`.
 Labels and text are rendered as text, never HTML. Annotations apply to all Datagrid panels for that
 table and are separate from Perspective's saved layout and column configuration.
@@ -319,7 +319,23 @@ imperative and query API (`getTable`, `getSelection`, `download`, `copy`, `addPa
 
 `spaday_perspective.TOKENS` lists `spa_perspective_action_color`, `spa_perspective_action_background`,
 and `spa_perspective_action_border` for the optional row buttons. Pass these keywords to `.css()`
-to set the corresponding `--spa-perspective-*` properties. These do not replace Perspective's grid themes.
+to set the corresponding `--spa-perspective-*` properties. `spa_perspective_divider_color` controls
+panel borders and resize gaps; `spa_perspective_divider_hover_color` controls feedback while hovering
+or dragging a divider. Defaults follow Perspective's inactive border and active colors in light and
+dark themes. These do not replace Perspective's grid themes.
+
+```python
+PerspectivePanel().css(
+    spa_perspective_divider_color="#666",
+    spa_perspective_divider_hover_color="#0af",
+)
+```
+
+The wrapper contains frame and title overflow and uses Perspective's own resize coordination.
+Applications do not need shadow-root observers or frame selectors. These frame styles target the
+pinned Perspective minor version and have narrow-pane and divider-drag tests in Chromium and WebKit.
+Legacy `--psp-workspace--tabbar-*` variables belong to the removed workspace component and do not
+style Perspective 5.6 frames.
 Perspective themes itself by name; `spaday_perspective.THEMES` maps page modes to those names:
 `{"light": "Pro Light", "dark": "Pro Dark"}`, the Perspective theme a panel applies for each page
 mode. A panel with no `theme` follows the nearest `wa-dark` / `wa-light` ancestor to one of these.
@@ -344,3 +360,21 @@ the page's import map:
 | `@perspective-dev/viewer-datagrid` | `vendor/@perspective-dev/viewer-datagrid/dist/cdn/perspective-viewer-datagrid.js` |
 
 Any other module on the page that imports them gets the same copy.
+
+## Profile switching
+
+Config updates skip superseded work that has not started. An already-running upstream restore
+finishes before the newest config applies. Imperative methods remain queued in order.
+
+For a saved profile whose panel configurations and derived tables match the live workspace,
+the wrapper restores only layout and workspace settings. This retains inactive plugin instances.
+Comparison uses live state, so restoring a profile still resets user edits. Profiles with changed
+panel configurations, incomplete panel configurations, or row-action policies use a full restore.
+Missing and removed panels retain upstream replacement semantics.
+
+`js/tests/profile-switching.spec.js` measures 48 Datagrid panels over a local 200-row table,
+including 47 inactive tabs. It attaches elapsed time, long tasks, restore calls, and retained
+plugin counts to the Playwright report. It checks reuse and final state rather than a
+machine-dependent timing threshold. This fixture does not establish performance for large
+remote tables or expensive chart configurations; those full restores still include upstream
+panel construction and rendering costs.

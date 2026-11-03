@@ -151,6 +151,9 @@
   <li class="fd-toc-item" data-depth="1">
     <a href="#package">package</a>
   </li>
+  <li class="fd-toc-item" data-depth="1">
+    <a href="#profile-switching">Profile switching</a>
+  </li>
 </ul>
 </div>
   </div>
@@ -382,7 +385,7 @@ Delete opens a dialog authored in Python; Cancel and Escape leave the table unch
 confirmation calls the Python deletion endpoint. Its summary totals
 cover all retained trades, including rows hidden by filters, and update when rows are deleted or expire.</p>
 <p><code class="docutils literal notranslate"><span class="pre">action</span></code> and accessible <code class="docutils literal notranslate"><span class="pre">label</span></code> are nonempty strings. <code class="docutils literal notranslate"><span class="pre">icon</span></code> accepts <code class="docutils literal notranslate"><span class="pre">copy</span></code>, <code class="docutils literal notranslate"><span class="pre">delete</span></code> (an X),
-or <code class="docutils literal notranslate"><span class="pre">add</span></code>. Icons are built-in SVGs, use the button’s color, and are hidden from assistive technology;
+<code class="docutils literal notranslate"><span class="pre">add</span></code>, or <code class="docutils literal notranslate"><span class="pre">share</span></code> (a chain link). Icons are built-in SVGs, use the button’s color, and are hidden from assistive technology;
 <code class="docutils literal notranslate"><span class="pre">label</span></code> supplies the accessible name. <code class="docutils literal notranslate"><span class="pre">text</span></code> may accompany an icon. Without an icon, it defaults to <code class="docutils literal notranslate"><span class="pre">×</span></code>.
 Labels and text are rendered as text, never HTML. Annotations apply to all Datagrid panels for that
 table and are separate from Perspective’s saved layout and column configuration.</p>
@@ -514,7 +517,21 @@ imperative and query API (<code class="docutils literal notranslate"><span class
 <h2><code class="docutils literal notranslate"><span class="pre">THEMES</span></code> and <code class="docutils literal notranslate"><span class="pre">TOKENS</span></code><a class="headerlink" href="#themes-and-tokens" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">spaday_perspective.TOKENS</span></code> lists <code class="docutils literal notranslate"><span class="pre">spa_perspective_action_color</span></code>, <code class="docutils literal notranslate"><span class="pre">spa_perspective_action_background</span></code>,
 and <code class="docutils literal notranslate"><span class="pre">spa_perspective_action_border</span></code> for the optional row buttons. Pass these keywords to <code class="docutils literal notranslate"><span class="pre">.css()</span></code>
-to set the corresponding <code class="docutils literal notranslate"><span class="pre">--spa-perspective-*</span></code> properties. These do not replace Perspective’s grid themes.
+to set the corresponding <code class="docutils literal notranslate"><span class="pre">--spa-perspective-*</span></code> properties. <code class="docutils literal notranslate"><span class="pre">spa_perspective_divider_color</span></code> controls
+panel borders and resize gaps; <code class="docutils literal notranslate"><span class="pre">spa_perspective_divider_hover_color</span></code> controls feedback while hovering
+or dragging a divider. Defaults follow Perspective’s inactive border and active colors in light and
+dark themes. These do not replace Perspective’s grid themes.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectivePanel</span><span class="p">()</span><span class="o">.</span><span class="n">css</span><span class="p">(</span>
+    <span class="n">spa_perspective_divider_color</span><span class="o">=</span><span class="s2">"#666"</span><span class="p">,</span>
+    <span class="n">spa_perspective_divider_hover_color</span><span class="o">=</span><span class="s2">"#0af"</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The wrapper contains frame and title overflow and uses Perspective’s own resize coordination.
+Applications do not need shadow-root observers or frame selectors. These frame styles target the
+pinned Perspective minor version and have narrow-pane and divider-drag tests in Chromium and WebKit.
+Legacy <code class="docutils literal notranslate"><span class="pre">--psp-workspace--tabbar-*</span></code> variables belong to the removed workspace component and do not
+style Perspective 5.6 frames.
 Perspective themes itself by name; <code class="docutils literal notranslate"><span class="pre">spaday_perspective.THEMES</span></code> maps page modes to those names:
 <code class="docutils literal notranslate"><span class="pre">{&quot;light&quot;:</span> <span class="pre">&quot;Pro</span> <span class="pre">Light&quot;,</span> <span class="pre">&quot;dark&quot;:</span> <span class="pre">&quot;Pro</span> <span class="pre">Dark&quot;}</span></code>, the Perspective theme a panel applies for each page
 mode. A panel with no <code class="docutils literal notranslate"><span class="pre">theme</span></code> follows the nearest <code class="docutils literal notranslate"><span class="pre">wa-dark</span></code> / <code class="docutils literal notranslate"><span class="pre">wa-light</span></code> ancestor to one of these.
@@ -551,6 +568,22 @@ the page’s import map:</p>
 </tbody>
 </table>
 <p>Any other module on the page that imports them gets the same copy.</p>
+</section>
+<section id="profile-switching">
+<h2>Profile switching<a class="headerlink" href="#profile-switching" title="Link to this heading">¶</a></h2>
+<p>Config updates skip superseded work that has not started. An already-running upstream restore
+finishes before the newest config applies. Imperative methods remain queued in order.</p>
+<p>For a saved profile whose panel configurations and derived tables match the live workspace,
+the wrapper restores only layout and workspace settings. This retains inactive plugin instances.
+Comparison uses live state, so restoring a profile still resets user edits. Profiles with changed
+panel configurations, incomplete panel configurations, or row-action policies use a full restore.
+Missing and removed panels retain upstream replacement semantics.</p>
+<p><code class="docutils literal notranslate"><span class="pre">js/tests/profile-switching.spec.js</span></code> measures 48 Datagrid panels over a local 200-row table,
+including 47 inactive tabs. It attaches elapsed time, long tasks, restore calls, and retained
+plugin counts to the Playwright report. It checks reuse and final state rather than a
+machine-dependent timing threshold. This fixture does not establish performance for large
+remote tables or expensive chart configurations; those full restores still include upstream
+panel construction and rendering costs.</p>
 </section>
 </section>
 
@@ -619,6 +652,9 @@ the page’s import map:</p>
   </li>
   <li class="fd-toc-item" data-depth="1">
     <a href="#package">package</a>
+  </li>
+  <li class="fd-toc-item" data-depth="1">
+    <a href="#profile-switching">Profile switching</a>
   </li>
 </ul>
 
