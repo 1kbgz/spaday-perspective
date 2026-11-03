@@ -44,8 +44,9 @@ def test_row_action_example_authors_an_endpoint_action():
     assert "/orders/delete" in serialized
 
 
-def test_row_action_tokens_match_the_adapter():
+def test_tokens_match_browser_styles():
     source = (Path(__file__).parent.parent.parent / "js" / "src" / "ts" / "row-actions.ts").read_text(encoding="utf-8")
+    source += (Path(__file__).parents[2] / "js" / "src" / "ts" / "workspace-style.ts").read_text(encoding="utf-8")
     assert {name for name, _ in TOKENS.values()} == set(re.findall(r"--spa-perspective-[\w-]+", source))
 
 
@@ -155,3 +156,11 @@ def test_panel_serializes_channel_controls_and_restore_options():
     assert config["channels"]["Map"]["trades"]["Map"]["title"] == {"Str": "Trades"}
     assert config["single_tab"] == {"Bool": True}
     assert config["master_theme"] == {"Str": "light"}
+
+
+def test_share_icon_is_accepted_in_python_policy_validation():
+    from spaday_perspective import validate_row_actions
+
+    policy = {"rows": {"id": {"action": "open", "label": "Open", "icon": "share", "text": ""}}}
+    validate_row_actions(policy)
+    assert PerspectivePanel(row_actions=policy).to_node()["props"]["rowActions"]["Map"]["rows"]

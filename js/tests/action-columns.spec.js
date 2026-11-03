@@ -15,6 +15,7 @@ test("Python computed labels update existing action buttons through the store", 
 
 async function mount(page, options = {}) {
   await page.goto("/dist/index.html");
+  await page.waitForFunction(() => !!globalThis.__spadayPerspective);
   await page.evaluate(async (options) => {
     const client = await globalThis.__spadayPerspective.worker();
     const table = await client.table(
@@ -265,4 +266,33 @@ test("invalid policies are rejected atomically", async ({ page }) => {
     });
   });
   expect(errors).toEqual([true, true, true, true]);
+});
+
+test("share icons emit interceptable row actions without changing the table", async ({
+  page,
+}) => {
+  await mount(page);
+  await page.evaluate(async () => {
+    actionTest.panel.rowActions = {
+      rows: {
+        "@share": {
+          header: "Share",
+          position: "end",
+          buttons: [
+            { action: "open", label: "Open row", icon: "share", text: "" },
+          ],
+        },
+      },
+    };
+    await actionTest.panel.save();
+  });
+  const button = page.getByRole("button", { name: "Open row" }).first();
+  await expect(button.locator("svg path")).toHaveCount(1);
+  await button.click();
+  expect(await page.evaluate(() => actionTest.events.at(-1))).toMatchObject({
+    action: "open",
+    column: "@share",
+    key: "a",
+  });
+  expect(await page.evaluate(() => actionTest.table.size())).toBe(2);
 });

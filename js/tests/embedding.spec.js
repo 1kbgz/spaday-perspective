@@ -25,6 +25,7 @@ async function mount(page, tabs = false) {
       }),
     );
   await page.goto("/dist/index.html");
+  await page.waitForFunction(() => !!globalThis.__spadayPerspective);
   await page.evaluate(async (tabs) => {
     await customElements.whenDefined("perspective-panel");
     const client = await globalThis.__spadayPerspective.worker();
@@ -120,3 +121,108 @@ test("a sized grid renders after tab activation and follows container resizes", 
   await expect(page.locator("regular-table td").first()).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+for (const theme of ["light", "dark"]) {
+  test(`narrow workspace frames stay bounded with visible dividers (${theme})`, async ({
+    page,
+  }) => {
+    await mount(page);
+    await page.locator("#embedded").evaluate(async (panel, theme) => {
+      panel.theme = theme;
+      panel.style.width = "480px";
+      panel.config = {
+        local: true,
+        layout: {
+          panels: {
+            left: {
+              table: "rows",
+              title: "A very long title that must stay inside the narrow pane",
+            },
+            right: {
+              table: "rows",
+              title: "Another very long title that must not overflow",
+            },
+          },
+          layout: {
+            type: "split-layout",
+            orientation: "horizontal",
+            sizes: [0.5, 0.5],
+            children: [
+              { type: "tab-layout", tabs: ["left"] },
+              { type: "tab-layout", tabs: ["right"] },
+            ],
+          },
+        },
+      };
+      await panel.save();
+    }, theme);
+    const frames = page.locator("#embedded regular-layout-frame");
+    await expect(frames).toHaveCount(2);
+    // Compare the same pinned viewer with and without the wrapper stylesheet.
+    const upstream = await page.locator("#embedded").evaluate((panel) => {
+      const root = panel.viewer.shadowRoot;
+      const sheets = [...root.adoptedStyleSheets];
+      root.adoptedStyleSheets = sheets.filter(
+        (sheet) =>
+          !Array.from(sheet.cssRules).some((rule) =>
+            rule.cssText.includes("--spa-perspective-divider-color"),
+          ),
+      );
+      const border = getComputedStyle(
+        root.querySelector("regular-layout-frame"),
+      ).borderColor;
+      root.adoptedStyleSheets = sheets;
+      return border;
+    });
+    expect(upstream).toBe("rgba(0, 0, 0, 0)");
+    const bounds = await page.locator("#embedded").evaluate((panel) => {
+      const host = panel.getBoundingClientRect();
+      return Array.from(
+        panel.viewer.shadowRoot.querySelectorAll("regular-layout-frame"),
+        (frame) => {
+          const box = frame.getBoundingClientRect();
+          const titlebar = frame.shadowRoot.querySelector('[part="titlebar"]');
+          const style = getComputedStyle(frame);
+          return {
+            width: box.width,
+            inside: box.left >= host.left && box.right <= host.right,
+            border: style.borderColor,
+            titleOverflow: getComputedStyle(titlebar).overflow,
+          };
+        },
+      );
+    });
+    for (const frame of bounds) {
+      expect(frame.width).toBeLessThanOrEqual(240);
+      expect(frame.inside).toBe(true);
+      expect(frame.border).not.toBe("rgba(0, 0, 0, 0)");
+      expect(frame.titleOverflow).toBe("hidden");
+    }
+    await page.locator("#embedded").evaluate((panel) => {
+      panel.style.setProperty(
+        "--spa-perspective-divider-color",
+        "rgb(102, 102, 102)",
+      );
+      panel.style.setProperty(
+        "--spa-perspective-divider-hover-color",
+        "rgb(0, 170, 255)",
+      );
+    });
+    const layout = page.locator("#embedded regular-layout");
+    await expect(layout).toHaveCSS("background-color", "rgb(102, 102, 102)");
+    const box = await layout.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(layout).toHaveCSS("cursor", "col-resize");
+    await expect(layout).toHaveCSS("background-color", "rgb(0, 170, 255)");
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.6, box.y + box.height / 2, {
+      steps: 4,
+    });
+    await page.mouse.up();
+    await expect
+      .poll(async () => (await frames.first().boundingBox()).width)
+      .toBeGreaterThan(260);
+    await page.mouse.move(1, 1);
+    await expect(layout).toHaveCSS("background-color", "rgb(102, 102, 102)");
+  });
+}

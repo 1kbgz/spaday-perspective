@@ -2,7 +2,7 @@ export interface RowAction {
   action: string;
   label: string;
   text?: string;
-  icon?: "copy" | "delete" | "add";
+  icon?: "copy" | "delete" | "add" | "share";
 }
 
 export interface ActionColumn {
@@ -168,6 +168,8 @@ export function installRowActions(
             path.setAttribute(
               "d",
               {
+                share:
+                  "M6 10l4-4 M5 7L3 9a3 3 0 004 4l2-2 M7 5l2-2a3 3 0 014 4l-2 2",
                 copy: "M5 5h8v8H5z M3 10H2V2h8v1",
                 delete: "M4 4l8 8M12 4l-8 8",
                 add: "M8 3v10M3 8h10",

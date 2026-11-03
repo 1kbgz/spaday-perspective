@@ -29,7 +29,8 @@ export default defineConfig({
     },
     {
       name: "webkit-workspace",
-      testMatch: /(?:workspace|config|find|action-columns|action-lifecycle|embedding|filter-restores)\.spec\.js/,
+      testMatch:
+        /(?:workspace|profile-switching|config|find|action-columns|action-lifecycle|embedding|filter-restores)\.spec\.js/,
       use: { ...devices["Desktop Safari"] },
     },
   ],
