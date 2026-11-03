@@ -829,8 +829,10 @@ class PerspectivePanel extends HTMLElement {
       if (prepared.active && !keep.has(prepared.active)) prepared.active = null;
     }
     // Supplying `panels` replaces every plugin in Perspective 5.6, including
-    // hidden tabs. A layout-only update can keep them, but compare LIVE state:
-    // cached configs would accidentally preserve edits a profile should reset.
+    // hidden tabs. Compare LIVE state so restoring a profile resets user edits.
+    // Only complete saved configs on the same tables/plugins can be applied as
+    // updates. Plugin/style buckets merge on restore, so changes there must
+    // retain replacement semantics too.
     if (
       prepared.panels &&
       Object.keys(prepared.panels).length &&
@@ -841,9 +843,33 @@ class PerspectivePanel extends HTMLElement {
         .catch(() => null)) as Workspace | null;
       if (
         live &&
-        sameConfig(prepared.panels, live.panels) &&
-        sameConfig(prepared.derived_tables, live.derived_tables)
+        live.panels &&
+        sameConfig(
+          Object.keys(prepared.panels).sort(),
+          Object.keys(live.panels).sort(),
+        ) &&
+        sameConfig(prepared.derived_tables, live.derived_tables) &&
+        Object.entries(prepared.panels).every(([id, panel]) => {
+          const current = live.panels![id];
+          return (
+            sameConfig(
+              Object.keys(panel).sort(),
+              Object.keys(current).sort(),
+            ) &&
+            [
+              "table",
+              "plugin",
+              "version",
+              "plugin_config",
+              "columns_config",
+            ].every((key) => sameConfig(panel[key], current[key]))
+          );
+        })
       ) {
+        for (const [id, panel] of Object.entries(prepared.panels)) {
+          if (!sameConfig(panel, live.panels[id]))
+            await this.#viewer.restore(panel, { panel: id });
+        }
         delete prepared.panels;
       }
     }

@@ -366,15 +366,19 @@ Any other module on the page that imports them gets the same copy.
 Config updates skip superseded work that has not started. An already-running upstream restore
 finishes before the newest config applies. Imperative methods remain queued in order.
 
-For a saved profile whose panel configurations and derived tables match the live workspace,
-the wrapper restores only layout and workspace settings. This retains inactive plugin instances.
-Comparison uses live state, so restoring a profile still resets user edits. Profiles with changed
-panel configurations, incomplete panel configurations, or row-action policies use a full restore.
-Missing and removed panels retain upstream replacement semantics.
+Saved profiles with the same panel IDs, tables, plugins, and style settings reuse existing plugins,
+including inactive tabs. Only panels whose view configuration changed are restored; unchanged panels
+receive no per-panel restore. Comparison uses live state, so restoring a profile resets user edits.
 
-`js/tests/profile-switching.spec.js` measures 48 Datagrid panels over a local 200-row table,
-including 47 inactive tabs. It attaches elapsed time, long tasks, restore calls, and retained
-plugin counts to the Playwright report. It checks reuse and final state rather than a
-machine-dependent timing threshold. This fixture does not establish performance for large
-remote tables or expensive chart configurations; those full restores still include upstream
-panel construction and rendering costs.
+Reuse requires complete saved configurations and unchanged derived tables. Incomplete configurations,
+added or removed panels, table/plugin/style changes, and row-action policies use a full restore.
+Perspective merges plugin and column styles during per-panel updates; full restoration preserves the
+replacement semantics of saved profiles in those cases.
+
+`js/tests/profile-switching.spec.js` measures layout-only changes on 48 panels and changed saved
+profiles on 48 Datagrid panels over 100,000 synthetic trade rows. The larger fixture has four visible
+stacks, inactive tabs, grouping, sorting, and filters. It compares a full restore with changes to four
+existing panels and checks that the saved results match. Timing, long tasks, restore calls, and
+retained plugin counts are attached to the Playwright report without machine-dependent thresholds.
+This local-worker fixture does not measure remote-table latency or expensive chart configurations.
+Initial loads and structural changes still include upstream panel construction and rendering costs.
