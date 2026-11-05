@@ -2,6 +2,7 @@
   "valid": [
     {},
     {"local": true, "tables": ["trades", {"name": "quotes", "architecture": "client-server", "index": "id"}]},
+    {"tables": [{"name": "fills", "architecture": "client-server", "index": ["symbol", "venue"]}, {"name": "one", "index": ["id"]}]},
     {"master_theme": "Custom Dark", "layout": {"panels": {"grid": {"table": "trades", "plugin_config": {"edit_mode": "SELECT_REGION", "scroll_lock": true}}}}},
     {"channels": {"trades": {"plugin": "Datagrid", "plugin_config": {"align": "center", "font_size": 100, "zebra_rows": 0, "columns": {"price": {"custom_style": true}}}}}},
     {"channels": {"chart": {"plugin": "Custom", "plugin_config": {"edit_mode": "custom"}}}},
@@ -20,6 +21,10 @@
     [{"tables": [{}]}, "config.tables[0].name"],
     [{"tables": [{"name": "t", "limit": true}]}, "config.tables[0].limit"],
     [{"tables": [{"name": "t", "index": "id", "limit": 5}]}, "config.tables[0]"],
+    [{"tables": [{"name": "t", "index": ["a", "b"], "limit": 5}]}, "config.tables[0]"],
+    [{"tables": [{"name": "t", "index": []}]}, "config.tables[0].index"],
+    [{"tables": [{"name": "t", "index": ["a", ""]}]}, "config.tables[0].index[1]"],
+    [{"tables": [{"name": "t", "index": ["a", 1]}]}, "config.tables[0].index[1]"],
     [{"tables": [{"name": "t", "architecture": "bad"}]}, "config.tables[0].architecture"],
     [{"layout": "{"}, "config.layout"],
     [{"layout": {"panels": []}}, "config.layout.panels"],

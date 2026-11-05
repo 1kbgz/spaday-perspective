@@ -37,7 +37,7 @@ class PerspectivePanel(Component):
                 kind="json",
                 choices=(),
                 default=None,
-                description="Table-name to row actions. Indexed columns accept {action, label, text?, icon?} or a list. Dedicated @ identifiers accept {header, position: start|end, buttons: [...]}. Icons: copy, delete, add, share. Buttons emit perspective-row-action; applications own confirmation, authorization and mutations. Grouped/split or unindexed rows are disabled.",
+                description="Table-name to row actions. Indexed columns accept {action, label, text?, icon?} or a list. Dedicated @ identifiers accept {header, position: start|end, buttons: [...]}. Icons: copy, delete, add, share. Buttons emit perspective-row-action with the row's index value as key, a list of values for a multi-column index; applications own confirmation, authorization and mutations. Grouped/split or unindexed rows are disabled.",
             ),
             PropertySchema(
                 name="toolbar",

@@ -121,7 +121,14 @@ def validate_config(config):
             if "architecture" in table and table["architecture"] not in ("server", "client-server"):
                 raise ValueError(f"{path}.architecture: expected server or client-server")
             if "index" in table:
-                _check(table["index"], "string", f"{path}.index")
+                index = table["index"]
+                if isinstance(index, list):
+                    if not index:
+                        raise ValueError(f"{path}.index: expected string or non-empty array of strings")
+                    for j, column in enumerate(index):
+                        _check(column, "string", f"{path}.index[{j}]")
+                else:
+                    _check(index, "string", f"{path}.index")
             if "limit" in table and (type(table["limit"]) is not int or table["limit"] <= 0):
                 raise ValueError(f"{path}.limit: expected positive integer")
             if "index" in table and "limit" in table:
