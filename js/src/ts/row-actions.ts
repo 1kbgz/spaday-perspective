@@ -56,7 +56,8 @@ interface ActionViewer extends HTMLElement {
     get_index(): Promise<string | string[] | undefined>;
     get_name(): Promise<string>;
   }>;
-  /** The panel's live View, owned by the viewer: read from it, never delete it. */
+  /** The panel's live View. The viewer owns it and may replace or delete it at any time; callers
+   * read from it and must not delete it. */
   getView(options: { panel: string; mode: "live" }): Promise<{
     to_columns(window: {
       start_row: number;
@@ -104,7 +105,9 @@ export function installRowActions(
       { row: number; width: number }
     >();
     let gesture: { button: HTMLButtonElement; detail: string } | undefined;
-    // One row's identity from the panel's live View, owned by the viewer (read, never deleted).
+    // One row's identity from the panel's live View. The viewer owns that View and may replace or
+    // delete it at any moment (config change, auto-pause); this only reads it and must not delete
+    // it, and a "View already deleted" failure is a cancellation reported like any other error.
     // For a flat view `__ID__` is the key tuple wrapped in a one-element row path.
     const resolveKey = async (row: number): Promise<unknown> => {
       const view = await viewer.getView({ panel: grid.slot, mode: "live" });

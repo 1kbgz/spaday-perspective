@@ -1,18 +1,10 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
+const read = (path) =>
+  readFileSync(new URL(path, import.meta.url), "utf8");
 const cases = JSON.parse(
-  readFileSync(
-    new URL(
-      "../../spaday_perspective/tests/fixtures/config-validation.json",
-      import.meta.url,
-    ),
-  ),
-);
-const contract = JSON.parse(
-  readFileSync(
-    new URL("../../spaday_perspective/config-contract.json", import.meta.url),
-  ),
+  read("../../spaday_perspective/tests/fixtures/config-validation.json"),
 );
 
 test("browser configuration validation agrees with Python fixtures", async ({
@@ -44,64 +36,110 @@ test("browser configuration validation agrees with Python fixtures", async ({
   }
 });
 
-test("the validation contract matches the installed Datagrid schema and enums", async ({
-  page,
-}) => {
-  const source = readFileSync(
-    new URL(
-      "../node_modules/@perspective-dev/viewer-datagrid/dist/esm/types.d.ts",
-      import.meta.url,
-    ),
-    "utf8",
+// The Python enums and the wrapper's `Alignment` cells are the only Datagrid values this package
+// repeats; they are checked against the installed plugin's declarations.
+test("repeated Datagrid enums match the installed plugin", () => {
+  const types = read(
+    "../node_modules/@perspective-dev/viewer-datagrid/dist/esm/types.d.ts",
   );
-  const values = (name) =>
+  const declared = (name) =>
     [
-      ...source
+      ...types
         .match(new RegExp(`export type ${name} =([\\s\\S]*?);`))[1]
         .matchAll(/"([^"]+)"/g),
-    ].map((m) => m[1]);
-  expect(values("EditMode").sort()).toEqual(
-    [...contract.edit_mode.values].sort(),
-  );
-  expect(values("Align").sort()).toEqual([...contract.align.values].sort());
+    ]
+      .map((m) => m[1])
+      .sort();
+  const python = read("../../spaday_perspective/config.py");
+  const members = (name) =>
+    [
+      ...python
+        .match(new RegExp(`class ${name}\\(StrEnum\\):\\n([\\s\\S]*?)\\n\\n`))[1]
+        .matchAll(/= "([^"]+)"/g),
+    ]
+      .map((m) => m[1])
+      .sort();
+  const alignments = [
+    ...read("../src/ts/config.ts")
+      .match(/const ALIGNMENTS = \[([\s\S]*?)\]/)[1]
+      .matchAll(/"([^"]+)"/g),
+  ]
+    .map((m) => m[1])
+    .sort();
+  expect(members("EditMode")).toEqual(declared("EditMode"));
+  expect(members("Alignment")).toEqual(declared("Align"));
+  expect(alignments).toEqual(declared("Align"));
+});
+
+test("plugin settings are validated against the plugin's own schema when applied", async ({
+  page,
+}) => {
   await page.goto("/dist/index.html");
-  const actual = await page.evaluate(async (aligns) => {
-    await customElements.whenDefined("perspective-viewer-datagrid");
-    const grid = document.createElement("perspective-viewer-datagrid");
-    document.body.append(grid);
-    const schema = grid.plugin_config_schema({}, { zebra_rows: 1 });
-    const result = {};
-    const visit = (field) => {
-      if (field.kind === "Group") return field.fields.forEach(visit);
-      if (field.kind === "Font") {
-        result[field.key] = { kind: "string" };
-        for (const [key, kind] of [
-          ["size", "number"],
-          ["bold", "boolean"],
-          ["italic", "boolean"],
-        ])
-          if (field[key]) result[field[key].key] = { kind };
-      } else if (field.kind === "Alignment")
-        result[field.key] = { kind: "enum", values: aligns };
-      else if (field.kind === "Enum")
-        result[field.key] = {
-          kind: "enum",
-          values: field.variants.map((v) => v.value),
-        };
-      else {
-        const kind = { Bool: "boolean", Number: "number", Color: "string" }[
-          field.kind
-        ];
-        if (!kind)
-          throw new Error(`Unhandled upstream config kind ${field.kind}`);
-        result[field.key] = { kind };
-      }
+  const result = await page.evaluate(async () => {
+    const worker = await globalThis.__spadayPerspective.worker();
+    await worker.table([{ symbol: "NVDA", price: 181 }], { name: "quotes" });
+    const panel = document.createElement("perspective-panel");
+    panel.style.cssText = "display:block;width:800px;height:400px";
+    document.body.append(panel);
+    const errors = [];
+    panel.addEventListener("perspective-error", (event) =>
+      errors.push(String(event.detail)),
+    );
+    const apply = async (plugin_config, plugin = "Datagrid") => {
+      errors.length = 0;
+      panel.config = {
+        local: true,
+        layout: {
+          layout: { type: "tab-layout", tabs: ["grid"] },
+          panels: { grid: { table: "quotes", plugin, plugin_config } },
+        },
+      };
+      await panel.save();
+      return errors.slice();
     };
-    schema.fields.forEach(visit);
-    grid.remove();
-    return result;
-  }, values("Align"));
-  expect(actual).toEqual(contract);
+    // the first restore of an empty viewer: the plugin can only be asked once the panel exists
+    const first = await apply({ edit_mode: "invalid" });
+    const rejected = {};
+    for (const [key, value] of [
+      ["edit_mode", "invalid"],
+      ["scroll_lock", "false"],
+      ["scroll_mode", true],
+      ["row_height", -1],
+      ["font_size", "12"],
+      ["align", "diagonal"],
+      ["zebra_color", "#fff"],
+    ])
+      rejected[key] = await apply({ [key]: value });
+    // the charts plugin describes its own settings; a Datagrid setting is unknown to it
+    rejected.chart = await apply({ edit_mode: "EDIT" }, "Y Bar");
+    const accepted = {
+      datagrid: await apply({
+        edit_mode: "SELECT_REGION",
+        scroll_lock: true,
+        font_size: 100,
+        align: "center",
+        zebra_rows: 2,
+        zebra_color: "#f0f0f0",
+      }),
+      chart: await apply({ include_zero: true, bar_inner_pad: 0.2 }, "Y Bar"),
+    };
+    const saved = await panel.save();
+    return { first, rejected, accepted, saved };
+  });
+  const path = "config.layout.panels.grid.plugin_config.";
+  expect(result.first).toEqual([
+    expect.stringContaining(`${path}edit_mode: expected one of`),
+  ]);
+  for (const [key, errors] of Object.entries(result.rejected))
+    expect(errors, key).toEqual([
+      expect.stringContaining(path + (key === "chart" ? "edit_mode" : key)),
+    ]);
+  expect(result.rejected.chart[0]).toContain("not a Y Bar setting");
+  expect(result.rejected.scroll_mode[0]).toContain("not a Datagrid setting");
+  expect(result.rejected.zebra_color[0]).toContain("not a Datagrid setting");
+  expect(result.rejected.row_height[0]).toContain("expected number >= 8");
+  expect(result.accepted).toEqual({ datagrid: [], chart: [] });
+  expect(result.saved.panels.grid.plugin).toBe("Y Bar");
 });
 
 test("bundled themes and theme validation remain usable", async ({ page }) => {

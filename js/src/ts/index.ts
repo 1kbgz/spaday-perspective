@@ -7,10 +7,12 @@ import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
 import { styleWorkspace } from "./workspace-style.js";
 import { installClipboard, type ClipboardViewer } from "./clipboard.js";
 import {
+  object as assertObject,
   sameConfig,
   validateConfig,
-  validatePanel,
+  validatePluginConfig,
   validateTheme,
+  type PluginElement,
 } from "./config.js";
 import { installFind, type FindViewer } from "./find.js";
 import {
@@ -145,6 +147,7 @@ async function acquireMirror(
       );
     let table: PspTable;
     try {
+      // 5.7.0's typings list the data forms only; the runtime accepts a View (`TableData::View`).
       table = await local.table(
         view as unknown as Parameters<PspClient["table"]>[0],
         { name: config.name, index: config.index, limit },
@@ -282,6 +285,7 @@ type Viewer = ClipboardViewer &
     ): Promise<void>;
     saveWorkspace(): Promise<unknown>;
     getView(options: GetViewOptions): Promise<PspView>;
+    getAllPlugins(): PluginElement[];
     flush(): Promise<unknown>;
     resetThemes(themes?: string[] | null): Promise<unknown>;
     setAutoSize(autosize: boolean): void;
@@ -341,6 +345,8 @@ class PerspectivePanel extends HTMLElement {
           }>
         ).detail?.getConfig?.();
         if (config && this.#hasTable(config.table)) {
+          // The event carries the element-level config; `settings` is the sidebar state, which a
+          // per-panel config may not name (5.7 rejects unknown keys on restore).
           delete config.settings;
           const source = event
             .composedPath()
@@ -796,14 +802,49 @@ class PerspectivePanel extends HTMLElement {
     }
   }
 
+  /**
+   * The plugin element a panel's `plugin` names, the viewer's default (its first registered
+   * plugin) for none, or `undefined` for a name the viewer does not know, which is Perspective's
+   * own error to raise. The viewer exposes its plugins only once it hosts a panel.
+   */
+  #plugin(name: string | null | undefined): PluginElement | undefined {
+    const plugins = this.#viewer?.getAllPlugins() ?? [];
+    return name == null
+      ? plugins[0]
+      : plugins.find((plugin) => plugin.name === name);
+  }
+
+  /**
+   * Check each panel's `plugin_config` against its plugin's own settings schema. Returns `false`
+   * when the viewer hosts no panel yet and so has no plugin elements to ask.
+   */
+  #validatePanels(panels: Record<string, PanelConfig>, path: string): boolean {
+    if (!this.#viewer?.getAllPlugins().length) return false;
+    for (const [id, panel] of Object.entries(panels)) {
+      if (panel.plugin_config == null) continue;
+      const plugin = this.#plugin(panel.plugin);
+      if (plugin)
+        validatePluginConfig(
+          plugin,
+          panel.plugin_config,
+          `${path}.${id}.plugin_config`,
+        );
+    }
+    return true;
+  }
+
   async #restoreWorkspace(
-    workspace: Workspace | LegacyWorkspace,
+    workspace: Workspace | LegacyWorkspace | string,
     config = this.#config,
+    path = "config.layout",
   ): Promise<void> {
     if (!this.#viewer) return;
     const parsed =
       typeof workspace === "string" ? JSON.parse(workspace) : workspace;
     const prepared = this.#themedWorkspace(migrateLayout(parsed), config);
+    const panels = prepared.panels;
+    const checked =
+      !panels || this.#validatePanels(panels, `${path}.panels`);
     for (const [name, cached] of Object.entries(
       prepared.retained_panel_configs_by_table ??
         prepared.closed_channels ??
@@ -881,6 +922,9 @@ class PerspectivePanel extends HTMLElement {
     await this.#viewer.restoreWorkspace(prepared, {
       wait_for_table: !!config.wait_for_table,
     });
+    // the first restore of an empty viewer creates the panels whose plugins can now be asked; a
+    // setting the plugin would have dropped silently is reported after the fact instead
+    if (!checked) this.#validatePanels(panels!, `${path}.panels`);
     await this.#viewer.flush();
     await this.#actionColumns?.refresh();
     if (
@@ -936,9 +980,10 @@ class PerspectivePanel extends HTMLElement {
           children: [workspace.layout, { type: "tab-layout", tabs: [id] }],
         };
       } else {
+        // an emptied workspace reports a split with no children; start from the new tab instead
         workspace.layout = { type: "tab-layout", tabs: [id] };
       }
-      await this.#restoreWorkspace(workspace);
+      await this.#restoreWorkspace(workspace, this.#config, "workspace");
     });
   }
 
@@ -1062,7 +1107,7 @@ class PerspectivePanel extends HTMLElement {
         workspace.masters = workspace.masters.filter((id) => keep.has(id));
       if (workspace.active && !keep.has(workspace.active))
         workspace.active = null;
-      await this.#restoreWorkspace(workspace);
+      await this.#restoreWorkspace(workspace, this.#config, "workspace");
     });
   }
 
@@ -1086,7 +1131,12 @@ class PerspectivePanel extends HTMLElement {
       const workspace = (await this.#viewer.saveWorkspace()) as Workspace;
       if (!hasOwn(workspace.panels ?? {}, id))
         throw new Error(`Unknown panel: ${id}`);
-      validatePanel(patch, "config", workspace.panels![id].plugin);
+      assertObject(patch, "config");
+      if (patch.plugin_config != null) {
+        const plugin = this.#plugin(patch.plugin ?? workspace.panels![id].plugin);
+        if (plugin)
+          validatePluginConfig(plugin, patch.plugin_config, "config.plugin_config");
+      }
       await this.#viewer.restore(patch, { panel: id });
       await this.#viewer.flush();
       await this.#actionColumns?.refresh();

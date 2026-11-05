@@ -1,4 +1,6 @@
 import type { WorkspaceConfigUpdate } from "@perspective-dev/viewer";
+// The entry re-exports the workspace and viewer config types but not their constituents; these
+// are the same generated declarations, reached through the package's `./dist/*` export.
 import type { Layout } from "@perspective-dev/viewer/dist/ts-rs/Layout.d.ts";
 import type { ViewerConfigInitial } from "@perspective-dev/viewer/dist/ts-rs/ViewerConfigInitial.d.ts";
 
