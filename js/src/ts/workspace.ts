@@ -1,36 +1,29 @@
-export interface PanelConfig {
-  table: string;
-  title?: string;
-  theme?: string;
-  columns_config?: Record<
-    string,
-    { column_size_override?: unknown; [key: string]: unknown }
-  >;
-  plugin_config?: {
-    columns?: Record<string, { column_size_override?: unknown }>;
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
-}
+import type { WorkspaceConfigUpdate } from "@perspective-dev/viewer";
+import type { Layout } from "@perspective-dev/viewer/dist/ts-rs/Layout.d.ts";
+import type { ViewerConfigInitial } from "@perspective-dev/viewer/dist/ts-rs/ViewerConfigInitial.d.ts";
 
-export type Layout =
-  | { type: "tab-layout"; tabs: string[]; selected?: number }
-  | {
-      type: "split-layout";
-      children: Layout[];
-      sizes: number[];
-      orientation: string;
-    };
+export type { Layout };
 
-export interface Workspace {
+export type PanelConfig = ViewerConfigInitial;
+
+export type Workspace = Omit<
+  WorkspaceConfigUpdate,
+  "layout" | "panels" | "active"
+> & {
   layout?: Layout | null;
   panels?: Record<string, PanelConfig>;
-  masters?: string[];
   active?: string | null;
   retained_panel_configs_by_table?: Record<string, PanelConfig>;
   /** Compatibility metadata key used by save() and saveClean(). */
   closed_channels?: Record<string, PanelConfig>;
-  [key: string]: unknown;
+};
+
+/** A Perspective 4 workspace envelope, which `migrateLayout` converts. */
+export interface LegacyWorkspace {
+  viewers?: Record<string, PanelConfig> | null;
+  detail?: { main?: LegacyNode } | null;
+  master?: { widgets?: string[]; sizes?: number[] } | null;
+  sizes?: number[];
 }
 
 interface LegacyNode {
@@ -52,7 +45,7 @@ function migrateNode(node: LegacyNode): Layout {
   const children = (node.children ?? []).map(migrateNode);
   return {
     type: "split-layout",
-    orientation: node.orientation ?? "horizontal",
+    orientation: node.orientation === "vertical" ? "vertical" : "horizontal",
     sizes: node.sizes?.length
       ? node.sizes
       : children.map(() => 1 / children.length),
@@ -61,17 +54,17 @@ function migrateNode(node: LegacyNode): Layout {
 }
 
 /** Convert a v4 workspace envelope; v5 configurations pass through unchanged. */
-export function migrateLayout(workspace: Workspace): Workspace {
-  if (!("viewers" in workspace) || "panels" in workspace) return workspace;
+export function migrateLayout(
+  workspace: Workspace | LegacyWorkspace,
+): Workspace {
+  if (!("viewers" in workspace) || "panels" in workspace)
+    return workspace as Workspace;
   const { viewers, detail, master, sizes, ...rest } =
     structuredClone(workspace);
-  const result: Workspace = {
-    ...rest,
-    panels: (viewers ?? {}) as Record<string, PanelConfig>,
-  };
-  const root = (detail as { main?: LegacyNode } | null)?.main;
+  const result: Workspace = { ...rest, panels: viewers ?? {} };
+  const root = detail?.main;
   if (root) result.layout = migrateNode(root);
-  const masters = master as { widgets?: string[]; sizes?: number[] } | null;
+  const masters = master;
   if (masters?.widgets?.length) {
     result.masters = masters.widgets;
     const masterLayout: Layout = {
@@ -90,9 +83,7 @@ export function migrateLayout(workspace: Workspace): Workspace {
       ? {
           type: "split-layout",
           orientation: "horizontal",
-          sizes: (sizes as number[] | undefined)?.length
-            ? (sizes as number[])
-            : [0.25, 0.75],
+          sizes: sizes?.length ? sizes : [0.25, 0.75],
           children: [masterLayout, result.layout],
         }
       : masterLayout;

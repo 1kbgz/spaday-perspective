@@ -49,7 +49,7 @@ test("the validation contract matches the installed Datagrid schema and enums", 
 }) => {
   const source = readFileSync(
     new URL(
-      "../node_modules/@perspective-dev/viewer-datagrid/src/ts/types.ts",
+      "../node_modules/@perspective-dev/viewer-datagrid/dist/esm/types.d.ts",
       import.meta.url,
     ),
     "utf8",

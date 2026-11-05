@@ -1,25 +1,18 @@
-import { isActionColumn, type RowActions } from "./row-actions.js";
-import type { Workspace } from "./workspace.js";
+import {
+  actionExpression,
+  isActionColumn,
+  type RowActions,
+} from "./row-actions.js";
+import type { PanelConfig, Workspace } from "./workspace.js";
 
-interface ViewConfig {
-  table?: string;
-  plugin?: string;
-  columns?: (string | null)[];
-  expressions?: Record<string, string>;
-  sort?: unknown[][];
-  filter?: unknown[][];
-  group_by?: string[];
-  split_by?: string[];
-  aggregates?: Record<string, unknown>;
-  columns_config?: Record<string, unknown>;
-  plugin_config?: { columns?: Record<string, unknown>; [key: string]: unknown };
-}
+/** A partial panel config, as `getViewConfig` returns and `restore` takes. */
+type ViewConfig = Partial<PanelConfig>;
 
 interface Viewer extends HTMLElement {
   saveWorkspace(): Promise<unknown>;
   getViewConfig(options: { panel: string }): Promise<ViewConfig>;
   getTable(options: { panel: string; wait: boolean }): Promise<{
-    get_index(): Promise<string>;
+    get_index(): Promise<string | string[] | undefined>;
     get_name(): Promise<string>;
     schema(): Promise<Record<string, string>>;
   }>;
@@ -77,11 +70,7 @@ export function installActionColumns(
     for (const key of ["group_by", "split_by"] as const)
       if (result[key])
         result[key] = result[key].filter((name) => !removed.has(name));
-    for (const mapping of [
-      result.aggregates,
-      result.columns_config,
-      result.plugin_config?.columns,
-    ])
+    for (const mapping of [result.aggregates, result.columns_config])
       if (mapping) for (const name of removed) delete mapping[name];
     return result;
   }
@@ -160,7 +149,7 @@ export function installActionColumns(
               throw new Error(
                 `Action column ${key}: header ${JSON.stringify(rule.header)} conflicts with an existing column or expression`,
               );
-            const expression = index ? JSON.stringify(index) : "0";
+            const expression = actionExpression(index || undefined);
             Object.defineProperty(expressions, rule.header, {
               value: expression,
               enumerable: true,
