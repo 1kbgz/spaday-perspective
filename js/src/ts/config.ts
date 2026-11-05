@@ -88,7 +88,13 @@ export function validateConfig(value: unknown): void {
         throw new TypeError(
           `${path}.architecture: expected server or client-server`,
         );
-      if ("index" in table) validateTheme(table.index, `${path}.index`);
+      if ("index" in table) {
+        if (Array.isArray(table.index)) {
+          table.index.forEach((column, j) =>
+            validateTheme(column, `${path}.index[${j}]`),
+          );
+        } else validateTheme(table.index, `${path}.index`);
+      }
       if (
         "limit" in table &&
         (!Number.isInteger(table.limit) || (table.limit as number) <= 0)

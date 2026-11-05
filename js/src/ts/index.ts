@@ -18,6 +18,7 @@ import {
   migrateLayout,
   pruneLayout,
   tabStacks,
+  type LegacyWorkspace,
   type PanelConfig,
   type Workspace,
 } from "./workspace.js";
@@ -29,7 +30,9 @@ export type PerspectiveArchitecture = "server" | "client-server";
 export interface PerspectiveTableConfig {
   name: string;
   architecture?: PerspectiveArchitecture;
-  index?: string;
+  /** One column, or several for a multi-column index. A mirror of an indexed server table inherits
+   * the server's index and treats this as a hint, warning when they disagree. */
+  index?: string | string[];
   limit?: number;
 }
 
@@ -51,7 +54,7 @@ type PspView = Awaited<ReturnType<PspTable["view"]>>;
 
 declare const __PERSPECTIVE_VERSION__: string;
 
-type Mirror = { view: PspView; table: PspTable; stop(): Promise<void> };
+type Mirror = { view: PspView; table: PspTable };
 
 /* Perspective cannot load twice on a page, so the copy this bundle owns is the page's copy and is
  * shared rather than duplicated: one websocket client per server, one local worker, and one local
@@ -87,12 +90,14 @@ function sharedWorker(): Promise<PspClient> {
 }
 
 function mirrorKey(url: string, table: PerspectiveTableConfig): string {
-  return JSON.stringify([
-    wsUrl(url),
-    table.name,
-    table.index ?? null,
-    table.limit ?? null,
-  ]);
+  return JSON.stringify([wsUrl(url), table.name]);
+}
+
+/* Perspective folds a one-column list into the column itself, so hints compare that way too. */
+function normalizeIndex(
+  index: string | string[] | undefined,
+): string | string[] | undefined {
+  return Array.isArray(index) && index.length === 1 ? index[0] : index;
 }
 
 /* A `client-server` table mirrored into the shared worker, refcounted by that key: two panels
@@ -115,54 +120,24 @@ async function acquireMirror(
       sharedWorker(),
     ]);
     const serverTable = await remote.open_table(config.name);
+    const sourceIndex = normalizeIndex(await serverTable.get_index());
     const view = await serverTable.view();
-    const table = await local.table(await serverTable.schema(), {
-      name: config.name,
-      index:
-        config.index ??
-        (config.limit === undefined
-          ? (await serverTable.get_index()) || undefined
-          : undefined),
-      limit: config.limit,
-    });
-    let stopped = false;
-    let dirty = false;
-    let running: Promise<void> | undefined;
-    const report = (error: unknown) =>
-      console.error("perspective-panel: mirror refresh failed", error);
-    const refresh = (): Promise<void> => {
-      dirty = true;
-      running ??= (async () => {
-        dirty = false;
-        // Row deltas omit deleted keys. Replace from an authoritative snapshot, also
-        // covering clear/replace and unindexed sources without appending duplicates.
-        const snapshot = await view.to_arrow();
-        if (!stopped) await table.replace(snapshot);
-      })().finally(() => {
-        running = undefined;
-        // Ready means the first snapshot is loaded, not that a live source is idle.
-        if (dirty && !stopped) void refresh().catch(report);
-      });
-      return running;
-    };
-    // Subscribe before the initial snapshot so writes during initialization are not lost.
-    const subscription = await view.on_update(() => {
-      void refresh().catch(report);
-    });
-    const stop = async () => {
-      stopped = true;
-      await view.remove_update(subscription);
-      await running?.catch(() => {});
-    };
+    const limit = sourceIndex === undefined ? config.limit : undefined;
+    if (config.limit !== undefined && limit === undefined)
+      console.warn(
+        `perspective-panel: ${config.name} mirrors an indexed server table; the configured limit ${config.limit} is ignored`,
+      );
+    let table: PspTable;
     try {
-      await refresh();
+      table = await local.table(
+        view as unknown as Parameters<PspClient["table"]>[0],
+        { name: config.name, index: config.index, limit },
+      );
     } catch (error) {
-      await stop();
-      await view.delete();
-      await table.delete({ lazy: true });
+      await view.delete().catch(() => {});
       throw error;
     }
-    return { view, table, stop };
+    return { view, table };
   })();
   sharedMirrors.set(key, { mirror, refs: 1 });
   try {
@@ -182,9 +157,8 @@ async function releaseMirror(key: string): Promise<void> {
   sharedMirrors.delete(key);
   const mirror = await entry.mirror.catch(() => null);
   if (!mirror) return;
-  await mirror.stop().catch(() => {});
-  await mirror.view.delete().catch(() => {});
   await mirror.table.delete({ lazy: true }).catch(() => {});
+  await mirror.view.delete().catch(() => {});
 }
 
 // Perspective's CDN builds initialize themselves from their own URLs. The viewer instantiates the
@@ -284,7 +258,7 @@ type Viewer = ClipboardViewer &
       expressions?: Record<string, string>;
     }>;
     getTable(options: { panel: string; wait: boolean }): Promise<{
-      get_index(): Promise<string>;
+      get_index(): Promise<string | string[] | undefined>;
       get_name(): Promise<string>;
       schema(): Promise<Record<string, string>>;
       view(config: unknown): Promise<{
@@ -300,6 +274,7 @@ type Viewer = ClipboardViewer &
       options?: { wait_for_table?: boolean },
     ): Promise<void>;
     saveWorkspace(): Promise<unknown>;
+    getView(options: GetViewOptions): Promise<PspView>;
     flush(): Promise<unknown>;
     resetThemes(themes?: string[] | null): Promise<unknown>;
     setAutoSize(autosize: boolean): void;
@@ -353,9 +328,12 @@ class PerspectivePanel extends HTMLElement {
       this.#viewer.addEventListener("perspective-config-update", (event) => {
         // Perspective releases this callback after dispatch; read it synchronously.
         const config = (
-          event as CustomEvent<{ getConfig?: () => PanelConfig }>
+          event as CustomEvent<{
+            getConfig?: () => PanelConfig & { settings?: boolean };
+          }>
         ).detail?.getConfig?.();
         if (config && this.#hasChannel(config.table)) {
+          delete config.settings;
           const source = event
             .composedPath()
             .find(
@@ -800,7 +778,7 @@ class PerspectivePanel extends HTMLElement {
   }
 
   async #restoreWorkspace(
-    workspace: Workspace,
+    workspace: Workspace | LegacyWorkspace,
     config = this.#config,
   ): Promise<void> {
     if (!this.#viewer) return;
@@ -856,13 +834,15 @@ class PerspectivePanel extends HTMLElement {
               Object.keys(panel).sort(),
               Object.keys(current).sort(),
             ) &&
-            [
-              "table",
-              "plugin",
-              "version",
-              "plugin_config",
-              "columns_config",
-            ].every((key) => sameConfig(panel[key], current[key]))
+            (
+              [
+                "table",
+                "plugin",
+                "version",
+                "plugin_config",
+                "columns_config",
+              ] as const
+            ).every((key) => sameConfig(panel[key], current[key]))
           );
         })
       ) {
@@ -924,11 +904,11 @@ class PerspectivePanel extends HTMLElement {
       if (stack) {
         stack.tabs.push(id);
         stack.selected = stack.tabs.length - 1;
-      } else if (workspace.layout) {
+      } else if (workspace.layout && tabStacks(workspace.layout).length) {
         workspace.layout = {
           type: "split-layout",
           orientation: "horizontal",
-          sizes: [1, 3],
+          sizes: [0.25, 0.75],
           children: [workspace.layout, { type: "tab-layout", tabs: [id] }],
         };
       } else {
@@ -991,7 +971,7 @@ class PerspectivePanel extends HTMLElement {
   }
 
   // `client-server` tables mirror into a local worker: open the server table, take a
-  // view, and refresh its local snapshot (with the configured index/limit) on changes.
+  // view, and replicate it (indexed sources) or refresh a local snapshot from it on changes.
   // `viewer.load` ACCUMULATES clients and resolves panel table names
   // across all of them in load order, so the worker is loaded before the websocket
   // client — the local copies win the name lookup. `server` tables (the default) resolve
@@ -1141,9 +1121,6 @@ class PerspectivePanel extends HTMLElement {
     return clean;
   }
 
-  /** `save()` minus per-session transient state — panel themes and column size overrides — so the
-   * result is portable across sessions and themes: the shape to persist or export. Made for
-   * spaday's `Invoke` action: `Invoke(by_id("workspace"), "saveClean", result="custom_layout")`. */
   async saveClean(): Promise<unknown> {
     const layout = (await this.save()) as Workspace | null;
     if (!layout) return layout;
@@ -1153,9 +1130,6 @@ class PerspectivePanel extends HTMLElement {
       ...Object.values(cleaned.closed_channels ?? {}),
     ]) {
       delete panel.theme;
-      for (const column of Object.values(panel.plugin_config?.columns ?? {})) {
-        delete column.column_size_override;
-      }
     }
     return cleaned;
   }

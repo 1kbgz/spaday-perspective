@@ -20,10 +20,13 @@ async function mount(page, options = {}) {
     const client = await globalThis.__spadayPerspective.worker();
     const table = await client.table(
       [
-        { id: "a", value: 10 },
-        { id: "b", value: 20 },
+        { id: "a", value: 10, ...(options.index && { group: "g" }) },
+        { id: "b", value: 20, ...(options.index && { group: "g" }) },
       ],
-      { name: "rows", ...(!options.unindexed && { index: "id" }) },
+      {
+        name: "rows",
+        ...(!options.unindexed && { index: options.index ?? "id" }),
+      },
     );
     const panel = document.createElement("perspective-panel");
     panel.id = "actions";
@@ -295,4 +298,59 @@ test("share icons emit interceptable row actions without changing the table", as
     key: "a",
   });
   expect(await page.evaluate(() => actionTest.table.size())).toBe(2);
+});
+
+test("a multi-column index emits the row's index values in index order", async ({
+  page,
+}) => {
+  await mount(page, { index: ["id", "group"] });
+  const copy = page.getByRole("button", { name: "Copy row" });
+  await expect(copy).toHaveCount(2);
+  await expect(copy.first()).toBeEnabled();
+  await copy.first().click();
+  // the key is resolved from the view after the click, so the event follows asynchronously
+  await expect
+    .poll(() => page.evaluate(() => actionTest.events))
+    .toEqual([
+      {
+        action: "copy",
+        panel: "main",
+        table: "rows",
+        column: "@copy",
+        key: ["a", "g"],
+      },
+    ]);
+  await page.evaluate(() =>
+    actionTest.panel.viewer.restore(
+      { sort: [["value", "desc"]] },
+      { panel: "main" },
+    ),
+  );
+  await page.getByRole("button", { name: "Delete row" }).first().click();
+  await expect
+    .poll(() => page.evaluate(() => actionTest.events.at(-1)))
+    .toMatchObject({ column: "@delete", key: ["b", "g"] });
+  expect(await page.evaluate(() => actionTest.panel.save())).toMatchObject({
+    panels: { main: { columns: ["id", "value"], expressions: {} } },
+  });
+  expect(await page.evaluate(() => actionTest.errors)).toEqual([]);
+});
+
+test("a policy keyed by one column of a multi-column index emits the whole key", async ({
+  page,
+}) => {
+  await mount(page, { index: ["id", "group"] });
+  await page.evaluate(() => {
+    actionTest.panel.rowActions = {
+      rows: { id: { action: "inspect", label: "Inspect row" } },
+    };
+  });
+  const inspect = page.getByRole("button", { name: "Inspect row" });
+  await expect(inspect).toHaveCount(2);
+  await expect(inspect.first()).toBeEnabled();
+  await inspect.first().click();
+  await expect
+    .poll(() => page.evaluate(() => actionTest.events.at(-1)))
+    .toMatchObject({ action: "inspect", column: "id", key: ["a", "g"] });
+  expect(await page.evaluate(() => actionTest.errors)).toEqual([]);
 });

@@ -24,7 +24,7 @@
             {
               "name": "rowActions",
               "type": { "text": "unknown" },
-              "description": "Table-name to row actions. Indexed columns accept {action, label, text?, icon?} or a list. Dedicated @ identifiers accept {header, position: start|end, buttons: [...]}. Icons: copy, delete, add, share. Buttons emit perspective-row-action; applications own confirmation, authorization and mutations. Grouped/split or unindexed rows are disabled."
+              "description": "Table-name to row actions. Indexed columns accept {action, label, text?, icon?} or a list. Dedicated @ identifiers accept {header, position: start|end, buttons: [...]}. Icons: copy, delete, add, share. Buttons emit perspective-row-action with the row's index value as key, a list of values for a multi-column index; applications own confirmation, authorization and mutations. Grouped/split or unindexed rows are disabled."
             },
             {
               "name": "toolbar",
@@ -83,7 +83,7 @@
             {
               "name": "perspective-row-action",
               "type": { "text": "CustomEvent" },
-              "description": "A row button was activated. Detail contains action, panel, table, column, and typed record key. No data is mutated automatically."
+              "description": "A row button was activated. Detail contains action, panel, table, column, and the typed record key: the row's index value, or a list of its index values for a multi-column index. No data is mutated automatically."
             },
             {
               "name": "perspective-click",
@@ -203,7 +203,7 @@
             },
             {
               "name": "saveClean",
-              "description": "Save open and closed channels without session themes or column size overrides. Use with spaday's Invoke action to persist or export the workspace.",
+              "description": "Save open and closed channels without session themes. Use with spaday's Invoke action to persist or export the workspace.",
               "return": {
                 "type": {
                   "text": "Promise<unknown>"

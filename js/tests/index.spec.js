@@ -617,11 +617,6 @@ test("saveClean strips per-session transient state from the workspace config", a
     return {
       sameShape: typeof clean === "object" && "panels" in clean,
       themes: cleanedPanels.map((p) => "theme" in p),
-      overrides: cleanedPanels.flatMap((p) =>
-        Object.values(p.plugin_config?.columns ?? {}).map(
-          (c) => "column_size_override" in c,
-        ),
-      ),
       originalUntouched:
         Object.values((await panel.save()).panels ?? {}).length ===
         cleanedPanels.length,
@@ -629,7 +624,6 @@ test("saveClean strips per-session transient state from the workspace config", a
   });
   expect(r.sameShape).toBe(true);
   expect(r.themes.every((present) => present === false)).toBe(true);
-  expect(r.overrides.every((present) => present === false)).toBe(true);
   expect(r.originalUntouched).toBe(true);
 });
 
@@ -731,4 +725,33 @@ test("warns, naming what it serves, when another copy registered its elements fi
   expect(
     warnings.find((text) => text.includes("<perspective-viewer>")),
   ).toContain("@perspective-dev/client ");
+});
+
+test("a stored layout with unknown keys reports perspective-error", async ({
+  page,
+}) => {
+  await page.goto("/dist/index.html");
+  await page.waitForFunction(() => !!globalThis.__spadayPerspective);
+  const errors = await page.evaluate(async () => {
+    const worker = await globalThis.__spadayPerspective.worker();
+    await worker.table([{ id: 1 }], { name: "unknown-keys" });
+    const panel = document.createElement("perspective-panel");
+    const errors = [];
+    panel.addEventListener("perspective-error", (event) =>
+      errors.push(String(event.detail)),
+    );
+    panel.config = {
+      local: true,
+      layout: {
+        layout: { type: "tab-layout", tabs: ["main"] },
+        panels: { main: { table: "unknown-keys", bogus: true } },
+      },
+    };
+    document.body.append(panel);
+    await panel.save().catch(() => {});
+    return errors;
+  });
+  expect(errors.some((text) => text.includes("Unknown config keys"))).toBe(
+    true,
+  );
 });
