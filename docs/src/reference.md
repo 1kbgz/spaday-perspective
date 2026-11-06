@@ -285,6 +285,20 @@ Channels are identified by table name, with one retained configuration per table
 multiple independent views of one table can continue using ordinary workspace panels; channel close
 acts on all views of its table. Native tab-close actions also retain the last edited configuration.
 
+`focusChannel(name, options={})` selects the first existing non-master panel for the table, or
+creates a detail panel from `config.channels[name]` (Datagrid for declared tables without defaults).
+It preserves other panel instances, configuration, and existing split proportions. New panels join
+the first detail tab stack; if none exists, a new detail stack is added beside the existing layout.
+This operation retains other tabs even with `single_tab=True`.
+
+`options.filter` accepts Perspective filter clauses. Clauses on the supplied columns replace all
+existing clauses on those columns; filters on other columns remain. Omitting `filter` or passing an
+empty list leaves filters unchanged. Use `restorePanel(id, {"filter": []})` to clear every filter.
+Arguments are snapshotted when called. Selection, creation, and filtering run together on the
+lifecycle queue; the returned promise resolves to the selected panel ID after rendering and action
+column refresh. Unknown channels, malformed options, and upstream restore failures reject without
+blocking later queued operations.
+
 `restorePanel(id, config)` applies a partial viewer configuration to an existing panel through the
 same lifecycle queue. `id` is a key in `save().panels`, not a table name. Unspecified settings and
 other panels remain unchanged. The method snapshots its arguments when called, validates against the
@@ -300,12 +314,12 @@ element("button").text("Open trades").on(
 )
 element("button").text("Buy trades").on(
     "click",
-    Invoke(by_id("workspace"), "restorePanel", "market", {"filter": [["side", "==", "Buy"]]}),
+    Invoke(by_id("workspace"), "focusChannel", "trades", {"filter": [["side", "==", "Buy"]]}, result="focused"),
 )
 ```
 
-This example targets a panel declared as `market` in `config.layout.panels`. The runnable market
-example also handles reopening a closed channel by reading its panel ID from the saved layout.
+This example selects a detail panel for `trades` and stores its ID in `focused`. The runnable market
+example uses the returned ID to export rows without inspecting the workspace layout.
 
 The optional toolbar lists only entries in `config.channels` and uses these same methods. Its container has class `perspective-panel-titlebar`
 and inherits `--spa-text` and `--spa-surface`. Custom design-kit controls can call the methods through

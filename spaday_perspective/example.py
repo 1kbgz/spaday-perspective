@@ -256,9 +256,6 @@ panel = (
     )
 )
 
-# A reopened channel gets a new panel ID; both controls and export use the current one.
-trade_panel_id = cond(field("trade_workspace.panels.market"), "market", "channel:trades")
-
 page = element(
     "main",
     element(
@@ -311,25 +308,20 @@ page = element(
                 .text(label)
                 .on(
                     "click",
-                    Sequence(
-                        Invoke(by_id("market-grid"), "openChannel", "trades"),
-                        Invoke(by_id("market-grid"), "save", result="trade_workspace"),
-                        Invoke(by_id("market-grid"), "restorePanel", trade_panel_id, {"filter": filters}),
-                    ),
+                    Invoke(by_id("market-grid"), "focusChannel", "trades", {"filter": filters}),
                 )
-                for label, filters in (("Buy trades", [["side", "==", "Buy"]]), ("All trades", []))
+                for label, filters in (("Buy trades", [["side", "==", "Buy"]]), ("All trades", [["side", "in", ["Buy", "Sell"]]]))
             ),
             element("button")
             .text("Export CSV")
             .on(
                 "click",
                 Sequence(
-                    Invoke(by_id("market-grid"), "openChannel", "trades"),
-                    Invoke(by_id("market-grid"), "save", result="trade_workspace"),
+                    Invoke(by_id("market-grid"), "focusChannel", "trades", result="trade_panel"),
                     Invoke(
                         by_id("market-grid"),
                         "exportData",
-                        obj({"panel": trade_panel_id, "format": "csv"}),
+                        obj({"panel": field("trade_panel"), "format": "csv"}),
                         result="exported_trades",
                     ),
                     Download("trades.csv", field("exported_trades"), "text/csv"),

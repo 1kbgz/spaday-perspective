@@ -187,6 +187,15 @@
               "return": { "type": { "text": "Promise<void>" } }
             },
             {
+              "name": "focusChannel",
+              "description": "Select an existing detail panel or open one from channel defaults, replacing filter clauses only on supplied columns. Preserves other panels and split proportions. Resolves to the selected panel ID through the lifecycle queue.",
+              "parameters": [
+                { "name": "name", "type": { "text": "string" } },
+                { "name": "options", "type": { "text": "FocusChannelOptions" }, "optional": true }
+              ],
+              "return": { "type": { "text": "Promise<string>" } }
+            },
+            {
               "name": "closeChannel",
               "description": "Close a configured channel or declared table by name and retain its view configuration in saved workspace data.",
               "parameters": [{ "name": "name", "type": { "text": "string" } }],

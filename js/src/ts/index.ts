@@ -26,6 +26,10 @@ export { migrateLayout } from "./workspace.js";
 
 export type PerspectiveArchitecture = "server" | "client-server";
 
+export interface FocusChannelOptions {
+  filter?: [string, string, ...unknown[]][];
+}
+
 export interface PerspectiveTableConfig {
   name: string;
   architecture?: PerspectiveArchitecture;
@@ -294,7 +298,11 @@ type Viewer = ClipboardViewer &
       }>;
     }>;
     load(client: unknown): Promise<void>;
-    restore(config: unknown, options?: { panel?: string }): Promise<void>;
+    restore(
+      config: unknown,
+      options?: { panel?: string; wait_for_table?: boolean },
+    ): Promise<void>;
+    removePanel(id: string): Promise<unknown>;
     restoreWorkspace(
       config: unknown,
       options?: { wait_for_table?: boolean },
@@ -935,6 +943,104 @@ class PerspectivePanel extends HTMLElement {
         workspace.layout = { type: "tab-layout", tabs: [id] };
       }
       await this.#restoreWorkspace(workspace);
+    });
+  }
+
+  /** Select a detail panel and replace filters on the supplied columns. */
+  async focusChannel(
+    name: string,
+    options: FocusChannelOptions = {},
+  ): Promise<string> {
+    const patch = structuredClone(options);
+    return this.#enqueue(async () => {
+      if (!this.#hasChannel(name)) throw new Error(`Unknown channel: ${name}`);
+      if (!this.#loaded || !this.#viewer)
+        throw new Error("Perspective panel is not ready");
+      if (!patch || typeof patch !== "object" || Array.isArray(patch))
+        throw new TypeError("options: expected object");
+      if (
+        patch.filter !== undefined &&
+        (!Array.isArray(patch.filter) ||
+          patch.filter.some(
+            (clause) =>
+              !Array.isArray(clause) ||
+              clause.length < 2 ||
+              typeof clause[0] !== "string" ||
+              typeof clause[1] !== "string",
+          ))
+      )
+        throw new TypeError("options.filter: expected filter clauses");
+      const workspace = (await this.#viewer.saveWorkspace()) as Workspace;
+      const panels = workspace.panels ?? {};
+      let id = Object.keys(panels).find(
+        (id) => panels[id].table === name && !workspace.masters?.includes(id),
+      );
+      const existing = id !== undefined;
+      if (!id) {
+        id = `channel:${name}`;
+        while (hasOwn(panels, id)) id += ":";
+      }
+      const config = existing
+        ? panels[id]
+        : {
+            plugin: "Datagrid",
+            ...(hasOwn(this.#config.channels ?? {}, name)
+              ? structuredClone(this.#config.channels![name])
+              : {}),
+            table: name,
+            theme: this.#panelTheme(false),
+          };
+      const update: Partial<PanelConfig> = existing ? {} : config;
+      if (patch.filter?.length) {
+        const columns = new Set(patch.filter.map((clause) => clause[0]));
+        update.filter = [
+          ...(
+            (config.filter ?? []) as NonNullable<FocusChannelOptions["filter"]>
+          ).filter((clause) => !columns.has(clause[0])),
+          ...patch.filter,
+        ];
+      }
+      if (Object.keys(update).length) {
+        try {
+          await this.#viewer.restore(update, {
+            panel: id,
+            wait_for_table: this.#config.wait_for_table,
+          });
+        } catch (error) {
+          if (!existing) await this.#viewer.removePanel(id);
+          throw error;
+        }
+      }
+      // Finish the initial panel render before restoring its tab placement.
+      await this.#viewer.flush();
+      let stack = tabStacks(workspace.layout).find((stack) =>
+        stack.tabs.includes(id),
+      );
+      if (!stack) {
+        stack = tabStacks(workspace.layout).find((stack) =>
+          stack.tabs.some((tab) => !workspace.masters?.includes(tab)),
+        );
+        if (stack) stack.tabs.push(id);
+        else {
+          stack = { type: "tab-layout", tabs: [id] };
+          workspace.layout = workspace.layout
+            ? {
+                type: "split-layout",
+                orientation: "horizontal",
+                sizes: [1, 3],
+                children: [workspace.layout, stack],
+              }
+            : stack;
+        }
+      }
+      stack.selected = stack.tabs.indexOf(id);
+      await this.#viewer.restoreWorkspace({
+        layout: workspace.layout,
+      });
+      await this.#viewer.flush();
+      await this.#actionColumns?.refresh();
+      this.#rememberChannels((await this.#viewer.saveWorkspace()) as Workspace);
+      return id;
     });
   }
 

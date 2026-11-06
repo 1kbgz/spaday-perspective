@@ -45,6 +45,27 @@ Use the same result with Spaday's `Download` action when exporting a layout.
 Saved panel themes follow the current application theme when restored. For a filter sidebar that
 must use its own theme, set `config.master_theme` and list its panel ID in the layout's `masters`.
 
+## Select and filter a table
+
+Use `focusChannel` to select a table's detail panel and update filters in one action:
+
+```python
+from spaday import Invoke, by_id, element
+
+element("button").text("Buy trades").on(
+    "click",
+    Invoke(
+        by_id("workspace"), "focusChannel", "trades",
+        {"filter": [["side", "==", "Buy"]]}, result="focused",
+    ),
+)
+```
+
+Declare `trades` in `config.channels` or `config.tables`. If only a master panel shows the table,
+this opens a separate detail panel using the channel defaults. Existing filters on other columns
+remain; the action replaces only the `side` clauses. The result field contains the selected panel ID
+for later `restorePanel` or `exportData` actions.
+
 ## Embed a grid without internal tabs
 
 Set `hide_tabs=True` when your application already supplies navigation:
