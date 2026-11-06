@@ -1,21 +1,21 @@
 # How to stream data and change layouts
 
-## Open, close, and save channels
+## Open table panels and save workspaces
 
-Configure channels by table name and enable the optional toolbar:
+Set default panel configurations by table name and enable the optional toolbar:
 
 ```python
-panel = PerspectivePanel(
+panel = PerspectiveViewer(
     id="workspace",
     toolbar=True,
     config={
         "ws_url": "/perspective",
-        "channels": {
+        "panel_defaults": {
             "trades": {"title": "Trades", "plugin": "Datagrid", "columns": ["symbol", "price"]},
             "orders": {"title": "Orders", "plugin": "Datagrid"},
         },
-        "single_tab": True,
-        "layout": {
+        "restore_selected_tabs_only": True,
+        "workspace": {
             "layout": {"type": "tab-layout", "tabs": ["trades"]},
             "panels": {"trades": {"table": "trades", "plugin": "Datagrid"}},
         },
@@ -24,22 +24,22 @@ panel = PerspectivePanel(
 ```
 
 Host both tables on the Perspective server. Selecting **Orders** replaces the selected detail tab;
-reopening **Trades** restores its columns, filters, sorting, and title. Omit `single_tab` to keep
+reopening **Trades** restores its columns, filters, sorting, and title. Omit `restore_selected_tabs_only` to keep
 multiple tabs. To use your own design-kit buttons, omit `toolbar` and attach these actions:
 
 ```python
 from spaday import Invoke, Sequence, SetStorage, by_id, field
 
-open_orders = Invoke(by_id("workspace"), "openChannel", "orders")
-close_orders = Invoke(by_id("workspace"), "closeChannel", "orders")
+open_orders = Invoke(by_id("workspace"), "openTablePanel", "orders")
+close_orders = Invoke(by_id("workspace"), "closeTablePanels", "orders")
 save_layout = Sequence(
-    Invoke(by_id("workspace"), "saveClean", result="saved_layout"),
+    Invoke(by_id("workspace"), "savePortableWorkspace", result="saved_layout"),
     SetStorage("workspace-layout", field("saved_layout")),
 )
 ```
 
-Assign a saved or imported token to `config.layout` to restore it. Keep its `closed_channels` field:
-`saveClean()` includes configurations for channels closed through either the wrapper or native tabs.
+Assign a saved or imported token to `config.workspace` to restore it. Keep its `retained_panel_configs_by_table` field:
+`savePortableWorkspace()` includes retained configurations for panels closed through either the wrapper or native tabs.
 Use the same result with Spaday's `Download` action when exporting a layout.
 
 Saved panel themes follow the current application theme when restored. For a filter sidebar that
@@ -61,8 +61,8 @@ element("button").text("Buy trades").on(
 )
 ```
 
-Declare `trades` in `config.channels` or `config.tables`. If only a master panel shows the table,
-this opens a separate detail panel using the channel defaults. Existing filters on other columns
+Declare `trades` in `config.panel_defaults` or `config.tables`. If only a master panel shows the table,
+this opens a separate detail panel using the panel defaults. Existing filters on other columns
 remain; the action replaces only the `side` clauses. The result field contains the selected panel ID
 for later `restorePanel` or `exportData` actions.
 
@@ -71,11 +71,11 @@ for later `restorePanel` or `exportData` actions.
 Set `hide_tabs=True` when your application already supplies navigation:
 
 ```python
-panel = PerspectivePanel(
+panel = PerspectiveViewer(
     hide_tabs=True,
     config={
         "ws_url": "/perspective",
-        "layout": {
+        "workspace": {
             "panels": {"trades": {"table": "trades", "plugin": "Datagrid"}},
             "layout": {"type": "tab-layout", "tabs": ["trades"]},
         },
@@ -87,8 +87,8 @@ Give the grid a definite height, including inside a WebAwesome tab panel. `heigh
 parent with a definite height; otherwise the grid can collapse. A sized grid observes its container
 when the tab becomes visible and when the container resizes. No tab-show callback is required.
 
-`hide_tabs` changes presentation only. For several channels, retain `toolbar=True` or supply
-buttons calling `openChannel` as shown above. The example uses the wrapper toolbar with hidden
+`hide_tabs` changes presentation only. For several tables, retain `toolbar=True` or supply
+buttons calling `openTablePanel` as shown above. The example uses the wrapper toolbar with hidden
 internal tabs.
 
 ## Export rows without action columns
@@ -134,10 +134,10 @@ Create the source table with a unique index, include that column in the Datagrid
 
 ```python
 from spaday import CallEndpoint, event_prop, obj
-from spaday_perspective import PerspectivePanel
+from spaday_perspective import PerspectiveViewer
 
 orders = client.table(rows, name="orders", index="id")
-panel = PerspectivePanel(
+panel = PerspectiveViewer(
     config=config,
     row_actions={"orders": {"id": {"action": "delete", "label": "Delete order"}}},
 ).on(
@@ -166,21 +166,21 @@ return an error. This local demo illustrates a record policy, not production aut
 Perspective socket is application-owned; production hosts must also restrict client-side table writes.
 For a mirrored table, configure its local `index` to match the authoritative index.
 
-## Switch between saved layouts
+## Switch between saved workspaces
 
 Build two workspace layouts and compute `config` from a small reactive field:
 
 ```python
 from spaday import SetField, cond, element, eq, field, obj
-from spaday_perspective import PerspectivePanel
+from spaday_perspective import PerspectiveViewer
 
-panel = PerspectivePanel().compute(
+panel = PerspectiveViewer().compute(
     "config",
     obj(
         {
             "ws_url": "/perspective",
             "tables": ["trades"],
-            "layout": cond(
+            "workspace": cond(
                 eq(field("view"), "grouped"),
                 grouped_layout,
                 blotter_layout,
@@ -222,15 +222,15 @@ panel.compute("theme", cond(field("dark"), "Acme Dark", "Acme Light"))
 Enable region selection, cell-aligned scrolling, and Find from Python:
 
 ```python
-from spaday_perspective import EditMode, PerspectivePanel, Theme
+from spaday_perspective import EditMode, PerspectiveViewer, Theme
 
-panel = PerspectivePanel(
+panel = PerspectiveViewer(
     theme=Theme.DARK,
     toolbar=True,
     find=True,
     config={
         "ws_url": "/perspective",
-        "layout": {
+        "workspace": {
             "layout": {"type": "tab-layout", "tabs": ["trades"]},
             "panels": {
                 "trades": {
@@ -253,17 +253,23 @@ call `Invoke(by_id("your-panel-id"), "openFind")` from its click action; keep `f
 
 ## Persist user-edited layouts
 
-`perspective-config-update` re-dispatches from the panel whenever the user edits the workspace —
-drags a panel, changes a view, filters. Bind it to an endpoint to persist the edit:
+`perspective-config-update` re-dispatches whenever the user edits the workspace —
+drags a panel, changes a view, filters. Save the whole workspace before sending it to your endpoint:
 
 ```python
-from spaday import CallEndpoint, event_value
+from spaday import CallEndpoint, Invoke, Sequence, by_id, field
 
-panel.on("perspective-config-update", CallEndpoint("POST", "/api/layout", event_value()))
+panel.on(
+    "perspective-config-update",
+    Sequence(
+        Invoke(by_id("workspace"), "saveWorkspace", result="saved_workspace"),
+        CallEndpoint("POST", "/api/layout", field("saved_workspace")),
+    ),
+)
 ```
 
-Serve the stored config back through `config["layout"]` on the next load. `panel.save()` (JS)
-returns the same whole-element shape on demand.
+Give the wrapper `id="workspace"`. Serve the stored token back through `config["workspace"]` on
+the next load.
 
 ## Mirror a table into a local worker
 
@@ -271,14 +277,14 @@ For tables that are read-heavy in the browser, mirror them client-side with a pe
 architecture — reads (scrolls, sorts, filters) stop round-tripping to Python:
 
 ```python
-panel = PerspectivePanel(
+panel = PerspectiveViewer(
     config={
         "ws_url": "/perspective",
         "tables": [
             {"name": "trades", "architecture": "client-server", "index": "symbol"},
             "orders",  # plain entries stay on the server
         ],
-        "layout": layout,
+        "workspace": layout,
     }
 )
 ```

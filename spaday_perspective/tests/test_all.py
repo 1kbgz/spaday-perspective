@@ -6,7 +6,15 @@ from pathlib import Path
 from spaday import element, generate
 from spaday.bootstrap import bootstrap
 
-from spaday_perspective import THEMES, TOKENS, PerspectivePanel, package
+from spaday_perspective import THEMES, TOKENS, PerspectivePanel, PerspectiveViewer, package
+
+
+def test_perspective_viewer_preserves_the_panel_binding_and_canonical_config():
+    assert PerspectiveViewer is PerspectivePanel
+    config = {"workspace": {"panels": {}}, "panel_defaults": {"trades": {}}, "restore_selected_tabs_only": True}
+    node = PerspectiveViewer(config=config).to_node()
+    assert node["tag"] == "perspective-panel"
+    assert set(node["props"]["config"]["Map"]) == set(config)
 
 
 def test_perspective_panel_serializes_config_and_theme():

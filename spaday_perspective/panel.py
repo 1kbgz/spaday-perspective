@@ -6,7 +6,7 @@ from .config import validate_config, validate_theme
 
 
 class PerspectivePanel(GeneratedPanel):
-    """Perspective panel with validation of literal configuration at serialization."""
+    """Perspective workspace with validation of literal configuration at serialization."""
 
     def to_node(self) -> dict:
         validate_row_actions(self._props.get("rowActions"))

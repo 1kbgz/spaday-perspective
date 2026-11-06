@@ -80,6 +80,11 @@ def _panel(panel, path):
             raise ValueError(f"{target}: expected {'nonnegative' if key == 'zebra_rows' else 'positive'} number")
 
 
+def _aliases(value, canonical, legacy, path):
+    if canonical in value and legacy in value and value[canonical] != value[legacy]:
+        raise ValueError(f"{path}.{canonical}: conflicts with {path}.{legacy}")
+
+
 def _workspace(value, path):
     if isinstance(value, str):
         try:
@@ -87,11 +92,12 @@ def _workspace(value, path):
         except ValueError as error:
             raise ValueError(f"{path}: invalid JSON") from error
     _check(value, "object", path)
-    for section in ("panels", "viewers", "closed_channels"):
+    for section in ("panels", "viewers", "retained_panel_configs_by_table", "closed_channels"):
         if section in value and value[section] is not None:
             _check(value[section], "object", f"{path}.{section}")
             for name, panel in value[section].items():
                 _panel(panel, f"{path}.{section}.{name}")
+    _aliases(value, "retained_panel_configs_by_table", "closed_channels", path)
 
 
 def validate_config(config):
@@ -101,7 +107,7 @@ def validate_config(config):
     remain upstream-owned; table-dependent filter expressions are validated by Perspective.
     """
     _check(config, "object", "config")
-    for key in ("local", "wait_for_table", "single_tab"):
+    for key in ("local", "wait_for_table", "restore_selected_tabs_only", "single_tab"):
         if key in config:
             _check(config[key], "boolean", f"config.{key}")
     for key in ("ws_url", "master_theme"):
@@ -126,9 +132,14 @@ def validate_config(config):
                 raise ValueError(f"{path}.limit: expected positive integer")
             if "index" in table and "limit" in table:
                 raise ValueError(f"{path}: index and limit are mutually exclusive")
-    if config.get("layout") is not None:
-        _workspace(config["layout"], "config.layout")
-    if "channels" in config:
-        _check(config["channels"], "object", "config.channels")
-        for name, panel in config["channels"].items():
-            _panel(panel, f"config.channels.{name}")
+    for key in ("workspace", "layout"):
+        if config.get(key) is not None:
+            _workspace(config[key], f"config.{key}")
+    for key in ("panel_defaults", "channels"):
+        if key in config:
+            _check(config[key], "object", f"config.{key}")
+            for name, panel in config[key].items():
+                _panel(panel, f"config.{key}.{name}")
+    _aliases(config, "workspace", "layout", "config")
+    _aliases(config, "panel_defaults", "channels", "config")
+    _aliases(config, "restore_selected_tabs_only", "single_tab", "config")

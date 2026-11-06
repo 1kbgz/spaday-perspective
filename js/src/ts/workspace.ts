@@ -2,6 +2,10 @@ export interface PanelConfig {
   table: string;
   title?: string;
   theme?: string;
+  columns_config?: Record<
+    string,
+    { column_size_override?: unknown; [key: string]: unknown }
+  >;
   plugin_config?: {
     columns?: Record<string, { column_size_override?: unknown }>;
     [key: string]: unknown;
@@ -23,6 +27,8 @@ export interface Workspace {
   panels?: Record<string, PanelConfig>;
   masters?: string[];
   active?: string | null;
+  retained_panel_configs_by_table?: Record<string, PanelConfig>;
+  /** Compatibility metadata key used by save() and saveClean(). */
   closed_channels?: Record<string, PanelConfig>;
   [key: string]: unknown;
 }

@@ -17,7 +17,7 @@ import perspective
 import uvicorn
 from perspective.handlers.starlette import PerspectiveStarletteHandler
 from spaday.backends.starlette import serve
-from spaday_perspective import PerspectivePanel
+from spaday_perspective import PerspectiveViewer
 from starlette.routing import WebSocketRoute
 from starlette.websockets import WebSocket
 
@@ -58,11 +58,11 @@ layout = {
     },
 }
 
-panel = PerspectivePanel(
+panel = PerspectiveViewer(
     config={
         "ws_url": "/perspective",
         "tables": ["trades"],
-        "layout": layout,
+        "workspace": layout,
     },
     theme="light",
     style="height: 32rem",
@@ -81,5 +81,5 @@ if __name__ == "__main__":
 Run `python market_app.py`, then open `http://127.0.0.1:8000`. You should see both rows in a Perspective
 datagrid.
 
-You now have a live data channel and a serializable workspace configuration. Continue with
+You now have a live Perspective table and a serializable workspace configuration. Continue with
 [Stream data and change layouts](how-to.md), or run the polished [complete market example](../../spaday_perspective/example.py).
