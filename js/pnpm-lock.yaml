@@ -9,20 +9,20 @@ importers:
   .:
     dependencies:
       '@perspective-dev/client':
-        specifier: 5.8.0
-        version: 5.8.0
+        specifier: 5.9.0
+        version: 5.9.0
       '@perspective-dev/server':
-        specifier: 5.8.0
-        version: 5.8.0
+        specifier: 5.9.0
+        version: 5.9.0
       '@perspective-dev/viewer':
-        specifier: 5.8.0
-        version: 5.8.0
+        specifier: 5.9.0
+        version: 5.9.0
       '@perspective-dev/viewer-charts':
-        specifier: 5.8.0
-        version: 5.8.0
+        specifier: 5.9.0
+        version: 5.9.0
       '@perspective-dev/viewer-datagrid':
-        specifier: 5.8.0
-        version: 5.8.0
+        specifier: 5.9.0
+        version: 5.9.0
     devDependencies:
       '@awesome.me/webawesome':
         specifier: 3.12.0
@@ -524,8 +524,8 @@ packages:
   '@parse5/tools@0.3.0':
     resolution: {integrity: sha512-zxRyTHkqb7WQMV8kTNBKWb1BeOFUKXBXTBWuxg9H9hfvQB3IwP6Iw2U75Ia5eyRxPNltmY7E8YAlz6zWwUnjKg==}
 
-  '@perspective-dev/client@5.8.0':
-    resolution: {integrity: sha512-gnpyzG5QuUjhAowKuSdho/ysKB3juUyDKzbRSG2nITTN8qwWCvscSTQeFBaIwL4/4GyzZAxK5vtnjgXkJ98zHQ==}
+  '@perspective-dev/client@5.9.0':
+    resolution: {integrity: sha512-EBY+0kePQFH3v+VrPYanefDIUmxWmZdxOtRKMtsHku2+azbw6LKirmeenufHWzfdjAQer4sVVz4xs8uaiTKdHw==}
     engines: {node: '>=22'}
     peerDependencies:
       '@clickhouse/client-web': ^1.12.0
@@ -536,17 +536,17 @@ packages:
       '@duckdb/duckdb-wasm':
         optional: true
 
-  '@perspective-dev/server@5.8.0':
-    resolution: {integrity: sha512-kF7UgSKA1HLxYyfSsFwnKHZDjyNPlovixWjhz7bvOTqbDzphVY1EnZAGZUtJ7IB8wjty9lk0kMSp1AvtpfFyTw==}
+  '@perspective-dev/server@5.9.0':
+    resolution: {integrity: sha512-r5w8Q/bB89jMlm8yOOv6/zuDTKBTHgtyH9VUXjXFOSv6ND1mb/E3W8rp/Lihc5u3UbiA7+NfLUa0UsxjOXiK4w==}
 
-  '@perspective-dev/viewer-charts@5.8.0':
-    resolution: {integrity: sha512-PzTbPfBZBC1zLTDLToADdJCHdVV6BOEV51ibp3AvFn96sSXNMYRtbHhBuHcEGNG8oGRC9hX1oobldoB0lJUhhw==}
+  '@perspective-dev/viewer-charts@5.9.0':
+    resolution: {integrity: sha512-iqM4a7mTstFnxROPOPC566yShL+Sa9wjbuEbEe8D0+cy8yDnba6Yj4bcDgLMG9JvIsVL93uUq7/CMEWMIub75w==}
 
-  '@perspective-dev/viewer-datagrid@5.8.0':
-    resolution: {integrity: sha512-kUXXUNsF0Df1VMF4gyOmDs71dFjeQL6vb5S+1kqa6nFhzyOoBQdFcoUr0wi0wvdherROqCTffcpMTR+eIEmRKg==}
+  '@perspective-dev/viewer-datagrid@5.9.0':
+    resolution: {integrity: sha512-WcGlET/8Ni38R59ubL1XP8wUDw554XXe53DbKH6JErtP3LwdU1Np1bavC1zVXB22UdeLxlfB347JMLgLqN7XAw==}
 
-  '@perspective-dev/viewer@5.8.0':
-    resolution: {integrity: sha512-ingmewOrX+E/NVpNfzPFJ1l6xadBV7My3vsIjPxrBJD72P1JFBmS/SaQS56LMWuYG4BoDe0xhEBtXuGkFSfr6A==}
+  '@perspective-dev/viewer@5.9.0':
+    resolution: {integrity: sha512-7LwP/9H3R8jFgfxZjBe5xgjTLBU+2aQsMbdoc0FxJS1Kt5rzBoXVwn+xTZM44QF3Ss2NWXR18tbIw5HjUtNEnQ==}
 
   '@playwright/test@1.63.0':
     resolution: {integrity: sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ==}
@@ -2017,23 +2017,23 @@ snapshots:
     dependencies:
       parse5: 7.3.0
 
-  '@perspective-dev/client@5.8.0':
+  '@perspective-dev/client@5.9.0':
     dependencies:
-      '@perspective-dev/server': 5.8.0
+      '@perspective-dev/server': 5.9.0
       stoppable: 1.1.0
       ws: 8.22.1
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@perspective-dev/server@5.8.0': {}
+  '@perspective-dev/server@5.9.0': {}
 
-  '@perspective-dev/viewer-charts@5.8.0': {}
+  '@perspective-dev/viewer-charts@5.9.0': {}
 
-  '@perspective-dev/viewer-datagrid@5.8.0':
+  '@perspective-dev/viewer-datagrid@5.9.0':
     dependencies:
-      '@perspective-dev/client': 5.8.0
-      '@perspective-dev/viewer': 5.8.0
+      '@perspective-dev/client': 5.9.0
+      '@perspective-dev/viewer': 5.9.0
       regular-table: 0.9.2
     transitivePeerDependencies:
       - '@clickhouse/client-web'
@@ -2041,9 +2041,9 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@perspective-dev/viewer@5.8.0':
+  '@perspective-dev/viewer@5.9.0':
     dependencies:
-      '@perspective-dev/client': 5.8.0
+      '@perspective-dev/client': 5.9.0
       pro_self_extracting_wasm: 0.0.11
       regular-layout: 0.7.0
     transitivePeerDependencies:

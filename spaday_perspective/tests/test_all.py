@@ -156,14 +156,14 @@ def test_panel_serializes_channel_controls_and_restore_options():
         config={
             "channels": {"trades": {"title": "Trades", "columns": ["price"]}},
             "single_tab": True,
-            "master_theme": "light",
+            "wait_for_table": True,
         },
     ).to_node()
     assert node["props"]["toolbar"] == {"Bool": True}
     config = node["props"]["config"]["Map"]
     assert config["channels"]["Map"]["trades"]["Map"]["title"] == {"Str": "Trades"}
     assert config["single_tab"] == {"Bool": True}
-    assert config["master_theme"] == {"Str": "light"}
+    assert config["wait_for_table"] == {"Bool": True}
 
 
 def test_share_icon_is_accepted_in_python_policy_validation():

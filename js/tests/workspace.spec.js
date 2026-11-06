@@ -382,86 +382,6 @@ for (const declared of [false, true]) {
   });
 }
 
-test("master theme overrides survive restoration and live application theme changes", async ({
-  page,
-}) => {
-  await mountChannels(page, {
-    master_theme: "light",
-    layout: {
-      layout: {
-        type: "split-layout",
-        orientation: "horizontal",
-        sizes: [1, 3],
-        children: [
-          { type: "tab-layout", tabs: ["filter"] },
-          { type: "tab-layout", tabs: ["detail"] },
-        ],
-      },
-      panels: {
-        filter: { table: "quotes", theme: "Pro Dark" },
-        detail: { table: "orders", theme: "Pro Light" },
-      },
-      masters: ["filter"],
-      global_filters: [["symbol", "==", "NVDA"]],
-    },
-  });
-  const check = async () =>
-    page.evaluate(async () => {
-      const panel = document.querySelector("#workspace");
-      const saved = await panel.save();
-      await panel.viewer.flush();
-      return {
-        master: saved.panels[saved.masters[0]].theme,
-        detail: Object.values(saved.panels).find((p) => p.table === "orders")
-          .theme,
-        filters: saved.global_filters,
-        backgrounds: [...panel.querySelectorAll("perspective-viewer-datagrid")]
-          .map((grid) => getComputedStyle(grid).backgroundColor)
-          .filter(Boolean),
-      };
-    });
-  expect(await check()).toMatchObject({
-    master: "Pro Light",
-    detail: "Pro Dark",
-    filters: [["symbol", "==", "NVDA"]],
-  });
-  expect((await check()).backgrounds.sort()).toEqual(
-    ["rgb(255, 255, 255)", "rgb(36, 37, 38)"].sort(),
-  );
-  await page.evaluate(async () => {
-    const panel = document.querySelector("#workspace");
-    panel.autopause = true;
-    await panel.save();
-    panel.style.display = "none";
-  });
-  await page.waitForTimeout(200);
-  await page.evaluate(async () => {
-    const panel = document.querySelector("#workspace");
-    panel.theme = "light";
-    panel.theme = "dark";
-    await panel.save();
-    panel.style.display = "block";
-  });
-  expect(await check()).toMatchObject({
-    master: "Pro Light",
-    detail: "Pro Dark",
-  });
-  await page.evaluate(() => {
-    document.querySelector("#workspace").theme = "light";
-  });
-  expect(await check()).toMatchObject({
-    master: "Pro Light",
-    detail: "Pro Light",
-  });
-  await page.evaluate(() => {
-    document.querySelector("#workspace").theme = "dark";
-  });
-  expect(await check()).toMatchObject({
-    master: "Pro Light",
-    detail: "Pro Dark",
-  });
-});
-
 for (const theme of ["dark", "light"]) {
   test(`restores saved layouts in ${theme} mode without painting the saved theme`, async ({
     page,
@@ -558,7 +478,7 @@ for (const theme of ["dark", "light"]) {
 test("hidden workspaces accept repeated theme changes with auto-pause enabled", async ({
   page,
 }) => {
-  await mountChannels(page, { master_theme: "light" });
+  await mountChannels(page);
   await page.evaluate(async () => {
     const panel = document.querySelector("#workspace");
     panel.autopause = true;
@@ -666,14 +586,16 @@ for (const fixture of legacyLayouts) {
     const result = await page.evaluate(async (input) => {
       const { migrateLayout } = await import("/dist/cdn/index.js");
       const panel = document.querySelector("#workspace");
-      const converted = migrateLayout(input);
+      const converted = await migrateLayout(input);
       const saved = await panel.save();
       panel.config = { ...panel.config, layout: saved };
       return {
         converted,
         saved,
         roundtrip: await panel.save(),
-        unchanged: migrateLayout(converted) === converted,
+        unchanged:
+          JSON.stringify(await migrateLayout(converted)) ===
+          JSON.stringify(converted),
       };
     }, fixture.input);
     expect(result.converted.layout).toEqual(fixture.layout);
@@ -714,6 +636,48 @@ for (const fixture of legacyLayouts) {
     }
   });
 }
+
+test("information a layout upgrade would drop is rejected by pointer and the current layout stays", async ({
+  page,
+}) => {
+  await mountChannels(page);
+  const result = await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    const errors = [];
+    panel.addEventListener("perspective-error", (event) =>
+      errors.push(String(event.detail?.message ?? event.detail)),
+    );
+    const before = await panel.save();
+    let rejected;
+    try {
+      panel.config = {
+        ...panel.config,
+        layout: {
+          viewers: { grid: { table: "quotes", linked: true } },
+          detail: {
+            main: { type: "tab-area", widgets: ["grid"], currentIndex: 0 },
+          },
+          mode: "linked",
+        },
+      };
+    } catch (error) {
+      rejected = error.message;
+    }
+    const after = await panel.save();
+    return {
+      errors,
+      rejected,
+      same: JSON.stringify(after.panels) === JSON.stringify(before.panels),
+    };
+  });
+  // the setter rejects it synchronously, before the viewer is touched
+  expect(result.errors).toEqual([]);
+  expect(result.rejected).toContain(
+    "config.layout/mode: dropped by ws.drop_linked",
+  );
+  expect(result.rejected).toContain("config.layout/viewers/grid/linked");
+  expect(result.same).toBe(true);
+});
 
 for (const tables of [
   ["quotes", "orders"],
@@ -889,45 +853,12 @@ test("restorePanel serializes partial updates with layout changes and isolates s
   expect(result.errors).toHaveLength(5);
   expect(result.errors[0]).toContain("Unknown panel: first");
   expect(result.errors[1]).toContain("Unknown panel: toString");
-  expect(result.errors[2]).toContain("config.plugin_config.edit_mode");
-  expect(result.errors[3]).toContain("config: expected object");
+  // the viewer's own verdict on the plugin setting; the schema's on a patch that is no object
+  expect(result.errors[2]).toContain("Invalid `plugin_config.edit_mode`");
+  expect(result.errors[3]).toContain("config: invalid config at");
   expect(result.recovered.panels.second.filter).toEqual([
     ["symbol", "==", "AAPL"],
   ]);
-});
-
-test("restorePanel validates plugin config against the panel's effective plugin", async ({
-  page,
-}) => {
-  await mountChannels(page, {
-    layout: {
-      layout: { type: "tab-layout", tabs: ["chart"] },
-      panels: {
-        chart: {
-          table: "quotes",
-          plugin: "Y Bar",
-          columns: ["price"],
-          group_by: ["symbol"],
-        },
-      },
-    },
-  });
-  const result = await page.evaluate(async () => {
-    const panel = document.querySelector("#workspace");
-    await panel.restorePanel("chart", { plugin_config: {} });
-    let error;
-    try {
-      await panel.restorePanel("chart", {
-        plugin: "Datagrid",
-        plugin_config: { edit_mode: "invalid" },
-      });
-    } catch (reason) {
-      error = String(reason);
-    }
-    return { error, workspace: await panel.save() };
-  });
-  expect(result.error).toContain("config.plugin_config.edit_mode");
-  expect(result.workspace.panels.chart.plugin).toBe("Y Bar");
 });
 
 test("showTable reuses a detail panel and replaces only supplied filter columns", async ({

@@ -76,98 +76,17 @@ test("copying a trade fills the form without submitting it", async ({
   );
 });
 
-test("main example deletes a trade through its Python endpoint", async ({
-  page,
-}) => {
-  await page.goto("http://127.0.0.1:8015");
-  const deleted = page.waitForResponse((response) =>
-    response.url().endsWith("/api/trades/delete"),
-  );
-  await page
-    .getByRole("button", { name: "Delete trade", exact: true })
-    .first()
-    .click();
-  const dialog = page.getByRole("dialog", {
-    name: "Delete trade?",
-    exact: true,
-  });
-  await expect(dialog).toBeVisible();
-  await expect(
-    dialog.getByRole("button", { name: "Cancel", exact: true }),
-  ).toBeFocused();
-  const selectedKey = Number(await dialog.locator("strong").textContent());
-  await page.evaluate(() =>
-    document
-      .querySelector("perspective-panel")
-      .viewer.restore({ sort: [["id", "asc"]] }),
-  );
-  await dialog
-    .getByRole("button", { name: "Delete trade", exact: true })
-    .click();
-  await expect(dialog).not.toBeVisible();
-  const response = await deleted;
-  expect(response.status()).toBe(200);
-  const key = response.request().postDataJSON().id;
-  expect(key).toBe(selectedKey);
-  await expect(page.locator(".order-status")).toHaveText(
-    `Deleted trade ${key}`,
-  );
-  await expect
-    .poll(() =>
-      page.evaluate(async (key) => {
-        const panel = document.querySelector("perspective-panel");
-        const table = await panel.viewer.getTable({ wait: false });
-        const view = await table.view({ filter: [["id", "==", key]] });
-        try {
-          return await view.to_json();
-        } finally {
-          await view.delete();
-        }
-      }, key),
-    )
-    .toEqual([]);
-  await expect
-    .poll(() =>
-      page.evaluate(async () => {
-        const table = await document
-          .querySelector("perspective-panel")
-          .viewer.getTable({ wait: false });
-        const view = await table.view({ sort: [["id", "desc"]] });
-        try {
-          const rows = await view.to_json();
-          const metrics = [...document.querySelectorAll(".metrics strong")].map(
-            (node) => node.textContent,
-          );
-          const notional = rows.reduce(
-            (sum, row) => sum + row.quantity * row.price,
-            0,
-          );
-          return (
-            Number(metrics[0].replaceAll(",", "")) === rows.length &&
-            metrics[1] ===
-              (rows[0]?.price ?? 0).toLocaleString("en-US", {
-                style: "currency",
-                currency: "USD",
-              }) &&
-            Math.abs(Number(metrics[2].replace(/[$,]/g, "")) - notional) <= 0.51
-          );
-        } finally {
-          await view.delete();
-        }
-      }),
-    )
-    .toBe(true);
-});
+// These share the example server's newest trade: run them one at a time
+test.describe("delete dialog", () => {
+  test.describe.configure({ mode: "default" });
 
-for (const dismiss of ["Cancel", "Escape"]) {
-  test(`${dismiss} dismisses row deletion without calling the endpoint`, async ({
+  test("main example deletes a trade through its Python endpoint", async ({
     page,
   }) => {
     await page.goto("http://127.0.0.1:8015");
-    const requests = [];
-    page.on("request", (request) => {
-      if (request.url().endsWith("/api/trades/delete")) requests.push(request);
-    });
+    const deleted = page.waitForResponse((response) =>
+      response.url().endsWith("/api/trades/delete"),
+    );
     await page
       .getByRole("button", { name: "Delete trade", exact: true })
       .first()
@@ -177,27 +96,117 @@ for (const dismiss of ["Cancel", "Escape"]) {
       exact: true,
     });
     await expect(dialog).toBeVisible();
-    const key = Number(await dialog.locator("strong").textContent());
-    if (dismiss === "Escape") await page.keyboard.press("Escape");
-    else
-      await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
-    await expect(dialog).not.toBeVisible();
-    const retained = await page.evaluate(async (key) => {
-      const table = await document
+    await expect(
+      dialog.getByRole("button", { name: "Cancel", exact: true }),
+    ).toBeFocused();
+    const selectedKey = Number(await dialog.locator("strong").textContent());
+    await page.evaluate(() =>
+      document
         .querySelector("perspective-panel")
-        .viewer.getTable({ wait: false });
-      const view = await table.view({ filter: [["id", "==", key]] });
-      try {
-        return (await view.to_json()).length;
-      } finally {
-        await view.delete();
-      }
-    }, key);
-    expect(retained).toBe(1);
-    expect(requests).toEqual([]);
-    await expect(page.locator(".order-status")).toHaveText("");
+        .viewer.restore({ sort: [["id", "asc"]] }),
+    );
+    await dialog
+      .getByRole("button", { name: "Delete trade", exact: true })
+      .click();
+    await expect(dialog).not.toBeVisible();
+    const response = await deleted;
+    expect(response.status()).toBe(200);
+    const key = response.request().postDataJSON().id;
+    expect(key).toBe(selectedKey);
+    await expect(page.locator(".order-status")).toHaveText(
+      `Deleted trade ${key}`,
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(async (key) => {
+          const panel = document.querySelector("perspective-panel");
+          const table = await panel.viewer.getTable({ wait: false });
+          const view = await table.view({ filter: [["id", "==", key]] });
+          try {
+            return await view.to_json();
+          } finally {
+            await view.delete();
+          }
+        }, key),
+      )
+      .toEqual([]);
+    await expect
+      .poll(() =>
+        page.evaluate(async () => {
+          const table = await document
+            .querySelector("perspective-panel")
+            .viewer.getTable({ wait: false });
+          const view = await table.view({ sort: [["id", "desc"]] });
+          try {
+            const rows = await view.to_json();
+            const metrics = [
+              ...document.querySelectorAll(".metrics strong"),
+            ].map((node) => node.textContent);
+            const notional = rows.reduce(
+              (sum, row) => sum + row.quantity * row.price,
+              0,
+            );
+            return (
+              Number(metrics[0].replaceAll(",", "")) === rows.length &&
+              metrics[1] ===
+                (rows[0]?.price ?? 0).toLocaleString("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                }) &&
+              Math.abs(Number(metrics[2].replace(/[$,]/g, "")) - notional) <=
+                0.51
+            );
+          } finally {
+            await view.delete();
+          }
+        }),
+      )
+      .toBe(true);
   });
-}
+
+  for (const dismiss of ["Cancel", "Escape"]) {
+    test(`${dismiss} dismisses row deletion without calling the endpoint`, async ({
+      page,
+    }) => {
+      await page.goto("http://127.0.0.1:8015");
+      const requests = [];
+      page.on("request", (request) => {
+        if (request.url().endsWith("/api/trades/delete"))
+          requests.push(request);
+      });
+      await page
+        .getByRole("button", { name: "Delete trade", exact: true })
+        .first()
+        .click();
+      const dialog = page.getByRole("dialog", {
+        name: "Delete trade?",
+        exact: true,
+      });
+      await expect(dialog).toBeVisible();
+      const key = Number(await dialog.locator("strong").textContent());
+      if (dismiss === "Escape") await page.keyboard.press("Escape");
+      else
+        await dialog
+          .getByRole("button", { name: "Cancel", exact: true })
+          .click();
+      await expect(dialog).not.toBeVisible();
+      const retained = await page.evaluate(async (key) => {
+        const table = await document
+          .querySelector("perspective-panel")
+          .viewer.getTable({ wait: false });
+        const view = await table.view({ filter: [["id", "==", key]] });
+        try {
+          return (await view.to_json()).length;
+        } finally {
+          await view.delete();
+        }
+      }, key);
+      expect(retained).toBe(1);
+      expect(requests).toEqual([]);
+      await expect(page.locator(".order-status")).toHaveText("");
+    });
+  }
+});
 
 test("Python row actions delete through the server and update two browsers", async ({
   page,

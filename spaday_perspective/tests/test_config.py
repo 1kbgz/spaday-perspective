@@ -28,9 +28,11 @@ def test_perspective_owned_settings_pass_through():
     # the viewer and the plugin check these when they are applied, not Python
     for config in (
         {"tables": [{"name": "t", "index": [], "limit": -1}]},
-        {"channels": {"t": {"plugin": 1, "plugin_config": {"edit_mode": "wrong", "scroll_mode": True}}}},
+        {"channels": {"t": {"plugin": "Nope", "theme": " ", "plugin_config": {"edit_mode": "wrong", "scroll_mode": True}}}},
+        {"layout": {"panels": {"grid": {"table": "t", "columns": ["absent"], "filter": [["absent", "==", 1]]}}}},
     ):
         validate_config(config)
+    PerspectivePanel(theme=" ", themes=["", "dark"]).to_node()
 
 
 def test_enums_serialize_as_strings():
@@ -42,12 +44,6 @@ def test_enums_serialize_as_strings():
     assert node["props"]["theme"] == {"Str": "dark"}
     assert "SELECT_REGION" in json.dumps(node)
     assert '"center"' in json.dumps(node)
-
-
-@pytest.mark.parametrize("props", [{"theme": " "}, {"themes": "dark"}, {"themes": ["dark", ""]}])
-def test_invalid_theme_names(props):
-    with pytest.raises(ValueError, match="theme"):
-        PerspectivePanel(**props).to_node()
 
 
 def test_custom_themes_and_fluent_prop_updates():

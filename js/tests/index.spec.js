@@ -727,31 +727,44 @@ test("warns, naming what it serves, when another copy registered its elements fi
   ).toContain("@perspective-dev/client ");
 });
 
-test("a stored layout with unknown keys reports perspective-error", async ({
+test("a stored layout with unknown keys is rejected by the config setter", async ({
   page,
 }) => {
   await page.goto("/dist/index.html");
   await page.waitForFunction(() => !!globalThis.__spadayPerspective);
-  const errors = await page.evaluate(async () => {
+  const result = await page.evaluate(async () => {
     const worker = await globalThis.__spadayPerspective.worker();
     await worker.table([{ id: 1 }], { name: "unknown-keys" });
     const panel = document.createElement("perspective-panel");
+    panel.config = { local: true };
+    document.body.append(panel);
+    await new Promise((resolve) =>
+      panel.addEventListener("perspective-ready", resolve, { once: true }),
+    );
     const errors = [];
     panel.addEventListener("perspective-error", (event) =>
       errors.push(String(event.detail)),
     );
-    panel.config = {
-      local: true,
-      layout: {
-        layout: { type: "tab-layout", tabs: ["main"] },
-        panels: { main: { table: "unknown-keys", bogus: true } },
-      },
-    };
-    document.body.append(panel);
+    let rejected;
+    try {
+      panel.config = {
+        local: true,
+        layout: {
+          layout: { type: "tab-layout", tabs: ["main"] },
+          panels: { main: { table: "unknown-keys", bogus: true } },
+        },
+      };
+    } catch (error) {
+      rejected = error.message;
+    }
     await panel.save().catch(() => {});
-    return errors;
+    return { rejected, errors, config: panel.config };
   });
-  expect(errors.some((text) => text.includes("Unknown config keys"))).toBe(
-    true,
+  // Perspective's schema check runs in the setter, so the viewer is never asked
+  expect(result.rejected).toContain(
+    "config.layout: migrated config is invalid",
   );
+  expect(result.rejected).toContain("Unknown config keys");
+  expect(result.errors).toEqual([]);
+  expect(result.config).toEqual({ local: true });
 });

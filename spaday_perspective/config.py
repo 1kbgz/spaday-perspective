@@ -6,7 +6,12 @@ is checked in the browser against the plugin's own settings schema when it is ap
 """
 
 import json
+import warnings
 from enum import StrEnum
+
+import perspective
+
+from .workspace import describe_notice, migrate_workspace
 
 
 class EditMode(StrEnum):
@@ -48,16 +53,15 @@ def _check(value, kind, path):
         raise ValueError(f"{path}: expected {kind}")
 
 
-def validate_theme(value, path="theme"):
-    """Require a nonempty theme name; application-defined names remain supported."""
-    _check(value, "string", path)
-
-
 def _panels(value, path):
-    """A mapping of panel configurations the wrapper walks itself."""
+    """A mapping of panel configurations keyed by table name, each checked as the panel it opens as."""
     _check(value, "object", path)
     for name, panel in value.items():
         _check(panel, "object", f"{path}.{name}")
+        try:
+            perspective.validate("panel", {**panel, "table": name})
+        except perspective.PerspectiveError as error:
+            raise ValueError(f"{path}.{name}: {error}") from error
 
 
 def _aliases(value, canonical, legacy, path):
@@ -72,10 +76,18 @@ def _workspace(value, path):
         except ValueError as error:
             raise ValueError(f"{path}: invalid JSON") from error
     _check(value, "object", path)
-    for section in ("panels", "viewers", "retained_panel_configs_by_table", "closed_channels"):
+    for section in ("retained_panel_configs_by_table", "closed_channels"):
         if value.get(section) is not None:
             _panels(value[section], f"{path}.{section}")
     _aliases(value, "retained_panel_configs_by_table", "closed_channels", path)
+    try:
+        _, notices = migrate_workspace(value)
+    except perspective.PerspectiveError as error:
+        raise ValueError(f"{path}: {error}") from error
+    for notice in notices:
+        if notice["kind"] == "Dropped":
+            raise ValueError(f"{path}{notice['pointer']}: {describe_notice(notice)}")
+        warnings.warn(f"{path}{notice['pointer']}: {describe_notice(notice)}", stacklevel=3)
 
 
 def validate_config(config):
@@ -88,9 +100,8 @@ def validate_config(config):
     for key in ("local", "wait_for_table", "restore_selected_tabs_only", "single_tab"):
         if key in config:
             _check(config[key], "boolean", f"config.{key}")
-    for key in ("ws_url", "master_theme"):
-        if config.get(key) is not None:
-            _check(config[key], "string", f"config.{key}")
+    if config.get("ws_url") is not None:
+        _check(config["ws_url"], "string", "config.ws_url")
     if "default_architecture" in config and config["default_architecture"] not in ("server", "client-server"):
         raise ValueError("config.default_architecture: expected server or client-server")
     if "tables" in config:
