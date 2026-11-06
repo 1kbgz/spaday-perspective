@@ -47,7 +47,7 @@ must use its own theme, set `config.master_theme` and list its panel ID in the l
 
 ## Select and filter a table
 
-Use `focusTable` to select a table's detail panel and update filters in one action:
+Use `showTable` to select a table's detail panel and update filters in one action:
 
 ```python
 from spaday import Invoke, by_id, element
@@ -55,8 +55,8 @@ from spaday import Invoke, by_id, element
 element("button").text("Buy trades").on(
     "click",
     Invoke(
-        by_id("workspace"), "focusTable", "trades",
-        {"filter": [["side", "==", "Buy"]]}, result="focused",
+        by_id("workspace"), "showTable", "trades",
+        {"filter": [["side", "==", "Buy"]]}, result="shown",
     ),
 )
 ```

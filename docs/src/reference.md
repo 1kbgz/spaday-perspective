@@ -285,7 +285,7 @@ Channels are identified by table name, with one retained configuration per table
 multiple independent views of one table can continue using ordinary workspace panels; channel close
 acts on all views of its table. Native tab-close actions also retain the last edited configuration.
 
-`focusTable(name, options={})` selects the first existing non-master panel for the table, or
+`showTable(name, options={})` selects the first existing non-master panel for the table, or
 creates a detail panel from `config.channels[name]` (Datagrid for declared tables without defaults).
 It preserves other panel instances, configuration, and existing split proportions. New panels join
 the first detail tab stack; if none exists, a new detail stack is added beside the existing layout.
@@ -314,11 +314,11 @@ element("button").text("Open trades").on(
 )
 element("button").text("Buy trades").on(
     "click",
-    Invoke(by_id("workspace"), "focusTable", "trades", {"filter": [["side", "==", "Buy"]]}, result="focused"),
+    Invoke(by_id("workspace"), "showTable", "trades", {"filter": [["side", "==", "Buy"]]}, result="shown"),
 )
 ```
 
-This example selects a detail panel for `trades` and stores its ID in `focused`. The runnable market
+This example selects a detail panel for `trades` and stores its ID in `shown`. The runnable market
 example uses the returned ID to export rows without inspecting the workspace layout.
 
 The optional toolbar lists only entries in `config.channels` and uses these same methods. Its container has class `perspective-panel-titlebar`

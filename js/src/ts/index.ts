@@ -26,7 +26,7 @@ export { migrateLayout } from "./workspace.js";
 
 export type PerspectiveArchitecture = "server" | "client-server";
 
-export interface FocusTableOptions {
+export interface ShowTableOptions {
   filter?: [string, string, ...unknown[]][];
 }
 
@@ -947,9 +947,9 @@ class PerspectivePanel extends HTMLElement {
   }
 
   /** Select a detail panel and replace filters on the supplied columns. */
-  async focusTable(
+  async showTable(
     name: string,
-    options: FocusTableOptions = {},
+    options: ShowTableOptions = {},
   ): Promise<string> {
     const patch = structuredClone(options);
     return this.#enqueue(async () => {
@@ -995,7 +995,7 @@ class PerspectivePanel extends HTMLElement {
         const columns = new Set(patch.filter.map((clause) => clause[0]));
         update.filter = [
           ...(
-            (config.filter ?? []) as NonNullable<FocusTableOptions["filter"]>
+            (config.filter ?? []) as NonNullable<ShowTableOptions["filter"]>
           ).filter((clause) => !columns.has(clause[0])),
           ...patch.filter,
         ];

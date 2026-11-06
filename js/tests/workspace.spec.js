@@ -781,7 +781,7 @@ test("restorePanel validates plugin config against the panel's effective plugin"
   expect(result.workspace.panels.chart.plugin).toBe("Y Bar");
 });
 
-test("focusTable reuses a detail panel and replaces only supplied filter columns", async ({
+test("showTable reuses a detail panel and replaces only supplied filter columns", async ({
   page,
 }) => {
   await mountChannels(page, {
@@ -817,15 +817,15 @@ test("focusTable reuses a detail panel and replaces only supplied filter columns
     const plugins = [
       ...panel.viewer.querySelectorAll("perspective-viewer-datagrid"),
     ];
-    const id = await panel.focusTable("quotes", {
+    const id = await panel.showTable("quotes", {
       filter: [
         ["price", ">=", 150],
         ["price", "<=", 220],
       ],
     });
     const filtered = await panel.save();
-    await panel.focusTable("quotes");
-    await panel.focusTable("quotes", { filter: [] });
+    await panel.showTable("quotes");
+    await panel.showTable("quotes", { filter: [] });
     return {
       before,
       filtered,
@@ -848,7 +848,7 @@ test("focusTable reuses a detail panel and replaces only supplied filter columns
   expect(result.retained).toBe(3);
 });
 
-test("focusTable opens a configured detail beside a same-table master without replacing panels", async ({
+test("showTable opens a configured detail beside a same-table master without replacing panels", async ({
   page,
 }) => {
   await mountChannels(page, {
@@ -880,10 +880,10 @@ test("focusTable opens a configured detail beside a same-table master without re
     const plugins = [
       ...panel.viewer.querySelectorAll("perspective-viewer-datagrid"),
     ];
-    const id = await panel.focusTable("quotes", {
+    const id = await panel.showTable("quotes", {
       filter: [["symbol", "==", "AAPL"]],
     });
-    const again = await panel.focusTable("quotes");
+    const again = await panel.showTable("quotes");
     return {
       before,
       saved: await panel.save(),
@@ -915,7 +915,7 @@ test("focusTable opens a configured detail beside a same-table master without re
   expect(result.retained).toBe(2);
 });
 
-test("focusTable queues behind layout changes, snapshots options, and recovers from invalid calls", async ({
+test("showTable queues behind layout changes, snapshots options, and recovers from invalid calls", async ({
   page,
 }) => {
   await mountChannels(page);
@@ -929,9 +929,9 @@ test("focusTable queues behind layout changes, snapshots options, and recovers f
       },
     };
     const options = { filter: [["symbol", "==", "NVDA"]] };
-    const first = panel.focusTable("quotes", options);
+    const first = panel.showTable("quotes", options);
     options.filter[0][2] = "AAPL";
-    const second = panel.focusTable("quotes", {
+    const second = panel.showTable("quotes", {
       filter: [["price", ">", 100]],
     });
     const ids = await Promise.all([first, second]);
@@ -946,13 +946,13 @@ test("focusTable queues behind layout changes, snapshots options, and recovers f
       ["orders", { filter: [["missing", "==", 1]] }],
     ]) {
       try {
-        await panel.focusTable(name, options);
+        await panel.showTable(name, options);
       } catch (e) {
         errors.push(String(e));
       }
     }
     const afterErrors = await panel.save();
-    const id = await panel.focusTable("orders");
+    const id = await panel.showTable("orders");
     return {
       ids,
       saved,
@@ -975,7 +975,7 @@ test("focusTable queues behind layout changes, snapshots options, and recovers f
 });
 
 for (const mastersOnly of [false, true]) {
-  test(`focusTable creates a detail in ${mastersOnly ? "a master-only" : "an empty"} workspace`, async ({
+  test(`showTable creates a detail in ${mastersOnly ? "a master-only" : "an empty"} workspace`, async ({
     page,
   }) => {
     const masterLayout = {
@@ -1011,7 +1011,7 @@ for (const mastersOnly of [false, true]) {
       const plugins = [
         ...panel.viewer.querySelectorAll("perspective-viewer-datagrid"),
       ];
-      const id = await panel.focusTable("quotes", {
+      const id = await panel.showTable("quotes", {
         filter: [["price", ">", 190]],
       });
       return {
