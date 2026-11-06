@@ -781,7 +781,7 @@ test("restorePanel validates plugin config against the panel's effective plugin"
   expect(result.workspace.panels.chart.plugin).toBe("Y Bar");
 });
 
-test("focusChannel reuses a detail panel and replaces only supplied filter columns", async ({
+test("focusTable reuses a detail panel and replaces only supplied filter columns", async ({
   page,
 }) => {
   await mountChannels(page, {
@@ -817,15 +817,15 @@ test("focusChannel reuses a detail panel and replaces only supplied filter colum
     const plugins = [
       ...panel.viewer.querySelectorAll("perspective-viewer-datagrid"),
     ];
-    const id = await panel.focusChannel("quotes", {
+    const id = await panel.focusTable("quotes", {
       filter: [
         ["price", ">=", 150],
         ["price", "<=", 220],
       ],
     });
     const filtered = await panel.save();
-    await panel.focusChannel("quotes");
-    await panel.focusChannel("quotes", { filter: [] });
+    await panel.focusTable("quotes");
+    await panel.focusTable("quotes", { filter: [] });
     return {
       before,
       filtered,
@@ -848,7 +848,7 @@ test("focusChannel reuses a detail panel and replaces only supplied filter colum
   expect(result.retained).toBe(3);
 });
 
-test("focusChannel opens a configured detail beside a same-table master without replacing panels", async ({
+test("focusTable opens a configured detail beside a same-table master without replacing panels", async ({
   page,
 }) => {
   await mountChannels(page, {
@@ -880,10 +880,10 @@ test("focusChannel opens a configured detail beside a same-table master without 
     const plugins = [
       ...panel.viewer.querySelectorAll("perspective-viewer-datagrid"),
     ];
-    const id = await panel.focusChannel("quotes", {
+    const id = await panel.focusTable("quotes", {
       filter: [["symbol", "==", "AAPL"]],
     });
-    const again = await panel.focusChannel("quotes");
+    const again = await panel.focusTable("quotes");
     return {
       before,
       saved: await panel.save(),
@@ -915,7 +915,7 @@ test("focusChannel opens a configured detail beside a same-table master without 
   expect(result.retained).toBe(2);
 });
 
-test("focusChannel queues behind layout changes, snapshots options, and recovers from invalid calls", async ({
+test("focusTable queues behind layout changes, snapshots options, and recovers from invalid calls", async ({
   page,
 }) => {
   await mountChannels(page);
@@ -929,9 +929,9 @@ test("focusChannel queues behind layout changes, snapshots options, and recovers
       },
     };
     const options = { filter: [["symbol", "==", "NVDA"]] };
-    const first = panel.focusChannel("quotes", options);
+    const first = panel.focusTable("quotes", options);
     options.filter[0][2] = "AAPL";
-    const second = panel.focusChannel("quotes", {
+    const second = panel.focusTable("quotes", {
       filter: [["price", ">", 100]],
     });
     const ids = await Promise.all([first, second]);
@@ -946,13 +946,13 @@ test("focusChannel queues behind layout changes, snapshots options, and recovers
       ["orders", { filter: [["missing", "==", 1]] }],
     ]) {
       try {
-        await panel.focusChannel(name, options);
+        await panel.focusTable(name, options);
       } catch (e) {
         errors.push(String(e));
       }
     }
     const afterErrors = await panel.save();
-    const id = await panel.focusChannel("orders");
+    const id = await panel.focusTable("orders");
     return {
       ids,
       saved,
@@ -968,14 +968,14 @@ test("focusChannel queues behind layout changes, snapshots options, and recovers
     ["price", ">", 100],
   ]);
   expect(result.errors).toHaveLength(6);
-  expect(result.errors[0]).toContain("Unknown channel: unknown");
-  expect(result.errors[1]).toContain("Unknown channel: toString");
+  expect(result.errors[0]).toContain("Unknown table: unknown");
+  expect(result.errors[1]).toContain("Unknown table: toString");
   expect(result.afterErrors).toEqual(result.saved);
   expect(result.recovered.panels[result.id].table).toBe("orders");
 });
 
 for (const mastersOnly of [false, true]) {
-  test(`focusChannel creates a detail in ${mastersOnly ? "a master-only" : "an empty"} workspace`, async ({
+  test(`focusTable creates a detail in ${mastersOnly ? "a master-only" : "an empty"} workspace`, async ({
     page,
   }) => {
     const masterLayout = {
@@ -1011,7 +1011,7 @@ for (const mastersOnly of [false, true]) {
       const plugins = [
         ...panel.viewer.querySelectorAll("perspective-viewer-datagrid"),
       ];
-      const id = await panel.focusChannel("quotes", {
+      const id = await panel.focusTable("quotes", {
         filter: [["price", ">", 190]],
       });
       return {

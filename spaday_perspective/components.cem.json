@@ -187,11 +187,11 @@
               "return": { "type": { "text": "Promise<void>" } }
             },
             {
-              "name": "focusChannel",
-              "description": "Select an existing detail panel or open one from channel defaults, replacing filter clauses only on supplied columns. Preserves other panels and split proportions. Resolves to the selected panel ID through the lifecycle queue.",
+              "name": "focusTable",
+              "description": "Select an existing detail panel for a table or open one from its configured defaults, replacing filter clauses only on supplied columns. Preserves other panels and split proportions. Resolves to the selected panel ID through the lifecycle queue.",
               "parameters": [
                 { "name": "name", "type": { "text": "string" } },
-                { "name": "options", "type": { "text": "FocusChannelOptions" }, "optional": true }
+                { "name": "options", "type": { "text": "FocusTableOptions" }, "optional": true }
               ],
               "return": { "type": { "text": "Promise<string>" } }
             },

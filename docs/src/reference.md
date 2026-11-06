@@ -285,7 +285,7 @@ Channels are identified by table name, with one retained configuration per table
 multiple independent views of one table can continue using ordinary workspace panels; channel close
 acts on all views of its table. Native tab-close actions also retain the last edited configuration.
 
-`focusChannel(name, options={})` selects the first existing non-master panel for the table, or
+`focusTable(name, options={})` selects the first existing non-master panel for the table, or
 creates a detail panel from `config.channels[name]` (Datagrid for declared tables without defaults).
 It preserves other panel instances, configuration, and existing split proportions. New panels join
 the first detail tab stack; if none exists, a new detail stack is added beside the existing layout.
@@ -296,7 +296,7 @@ existing clauses on those columns; filters on other columns remain. Omitting `fi
 empty list leaves filters unchanged. Use `restorePanel(id, {"filter": []})` to clear every filter.
 Arguments are snapshotted when called. Selection, creation, and filtering run together on the
 lifecycle queue; the returned promise resolves to the selected panel ID after rendering and action
-column refresh. Unknown channels, malformed options, and upstream restore failures reject without
+column refresh. Unknown tables, malformed options, and upstream restore failures reject without
 blocking later queued operations.
 
 `restorePanel(id, config)` applies a partial viewer configuration to an existing panel through the
@@ -314,7 +314,7 @@ element("button").text("Open trades").on(
 )
 element("button").text("Buy trades").on(
     "click",
-    Invoke(by_id("workspace"), "focusChannel", "trades", {"filter": [["side", "==", "Buy"]]}, result="focused"),
+    Invoke(by_id("workspace"), "focusTable", "trades", {"filter": [["side", "==", "Buy"]]}, result="focused"),
 )
 ```
 

@@ -26,7 +26,7 @@ export { migrateLayout } from "./workspace.js";
 
 export type PerspectiveArchitecture = "server" | "client-server";
 
-export interface FocusChannelOptions {
+export interface FocusTableOptions {
   filter?: [string, string, ...unknown[]][];
 }
 
@@ -947,13 +947,13 @@ class PerspectivePanel extends HTMLElement {
   }
 
   /** Select a detail panel and replace filters on the supplied columns. */
-  async focusChannel(
+  async focusTable(
     name: string,
-    options: FocusChannelOptions = {},
+    options: FocusTableOptions = {},
   ): Promise<string> {
     const patch = structuredClone(options);
     return this.#enqueue(async () => {
-      if (!this.#hasChannel(name)) throw new Error(`Unknown channel: ${name}`);
+      if (!this.#hasChannel(name)) throw new Error(`Unknown table: ${name}`);
       if (!this.#loaded || !this.#viewer)
         throw new Error("Perspective panel is not ready");
       if (!patch || typeof patch !== "object" || Array.isArray(patch))
@@ -995,7 +995,7 @@ class PerspectivePanel extends HTMLElement {
         const columns = new Set(patch.filter.map((clause) => clause[0]));
         update.filter = [
           ...(
-            (config.filter ?? []) as NonNullable<FocusChannelOptions["filter"]>
+            (config.filter ?? []) as NonNullable<FocusTableOptions["filter"]>
           ).filter((clause) => !columns.has(clause[0])),
           ...patch.filter,
         ];

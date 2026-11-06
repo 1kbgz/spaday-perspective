@@ -308,7 +308,7 @@ page = element(
                 .text(label)
                 .on(
                     "click",
-                    Invoke(by_id("market-grid"), "focusChannel", "trades", {"filter": filters}),
+                    Invoke(by_id("market-grid"), "focusTable", "trades", {"filter": filters}),
                 )
                 for label, filters in (("Buy trades", [["side", "==", "Buy"]]), ("All trades", [["side", "in", ["Buy", "Sell"]]]))
             ),
@@ -317,7 +317,7 @@ page = element(
             .on(
                 "click",
                 Sequence(
-                    Invoke(by_id("market-grid"), "focusChannel", "trades", result="trade_panel"),
+                    Invoke(by_id("market-grid"), "focusTable", "trades", result="trade_panel"),
                     Invoke(
                         by_id("market-grid"),
                         "exportData",
