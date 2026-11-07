@@ -67,7 +67,9 @@ test("runs the complete example in Pyodide with a local Perspective engine", asy
     .poll(async () => (await view()).filter)
     .toEqual([["side", "==", "Buy"]]);
   await page.getByRole("button", { name: "All trades", exact: true }).click();
-  await expect.poll(async () => (await view()).filter).toEqual([]);
+  await expect
+    .poll(async () => (await view()).filter)
+    .toEqual([["side", "in", ["Buy", "Sell"]]]);
 
   const panelBox = await page.locator("perspective-panel").boundingBox();
   await page.mouse.move(panelBox.x + panelBox.width / 2, panelBox.y + 120);

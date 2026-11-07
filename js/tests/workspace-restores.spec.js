@@ -10,7 +10,7 @@ async function mount(page, count = 48) {
       { name: "rows" },
     );
     const panel = document.createElement("perspective-panel");
-    panel.id = "profiles";
+    panel.id = "workspaces";
     panel.style.cssText = "width:1000px;height:500px";
     const names = Array.from({ length: count }, (_, i) => `panel-${i}`);
     panel.config = {
@@ -30,12 +30,12 @@ async function mount(page, count = 48) {
   }, count);
 }
 
-test("layout-only profiles retain inactive plugins and skip superseded queued restores", async ({
+test("layout-only workspaces retain inactive plugins and skip superseded queued restores", async ({
   page,
 }, testInfo) => {
   await mount(page);
   const result = await page.evaluate(async () => {
-    const panel = document.querySelector("#profiles");
+    const panel = document.querySelector("#workspaces");
     const base = await panel.save();
     const plugins = Array.from(
       panel.viewer.querySelectorAll("perspective-viewer-datagrid"),
@@ -77,68 +77,68 @@ test("layout-only profiles retain inactive plugins and skip superseded queued re
       count: plugins.length,
     };
   });
-  await testInfo.attach("profile-switch-timing", {
+  await testInfo.attach("workspace-switch-timing", {
     body: JSON.stringify(result, null, 2),
     contentType: "application/json",
   });
-  console.log("profile-switch", JSON.stringify(result));
+  console.log("workspace-switch", JSON.stringify(result));
   expect(result.selected).toBe(3);
   expect(result.restores).toEqual([3]);
   expect(result.fullRestores).toBe(0);
   expect(result.retained).toBe(48);
 });
 
-test("an in-flight profile finishes but queued intermediate profiles are skipped", async ({
+test("an in-flight workspace finishes but queued intermediate workspaces are skipped", async ({
   page,
 }) => {
   await mount(page, 3);
   await page.evaluate(async () => {
-    const panel = document.querySelector("#profiles");
+    const panel = document.querySelector("#workspaces");
     const base = await panel.save();
-    window.profileCalls = [];
+    window.workspaceCalls = [];
     const restore = panel.viewer.restoreWorkspace.bind(panel.viewer);
     Object.defineProperty(panel.viewer, "restoreWorkspace", {
       value: async (config, ...args) => {
-        window.profileCalls.push(config.layout.selected);
-        if (window.profileCalls.length === 1)
+        window.workspaceCalls.push(config.layout.selected);
+        if (window.workspaceCalls.length === 1)
           await new Promise((resolve) => {
-            window.releaseProfile = resolve;
+            window.releaseWorkspace = resolve;
           });
         return restore(config, ...args);
       },
     });
-    window.profileBase = base;
+    window.workspaceBase = base;
     panel.config = {
       local: true,
       layout: { ...base, layout: { ...base.layout, selected: 1 } },
     };
   });
   await expect
-    .poll(() => page.evaluate(() => !!window.releaseProfile))
+    .poll(() => page.evaluate(() => !!window.releaseWorkspace))
     .toBe(true);
   const result = await page.evaluate(async () => {
-    const panel = document.querySelector("#profiles");
+    const panel = document.querySelector("#workspaces");
     for (const selected of [0, 2])
       panel.config = {
         local: true,
         layout: {
-          ...window.profileBase,
-          layout: { ...window.profileBase.layout, selected },
+          ...window.workspaceBase,
+          layout: { ...window.workspaceBase.layout, selected },
         },
       };
-    window.releaseProfile();
-    return { saved: await panel.save(), calls: window.profileCalls };
+    window.releaseWorkspace();
+    return { saved: await panel.save(), calls: window.workspaceCalls };
   });
   expect(result.calls).toEqual([1, 2]);
   expect(result.saved.layout.selected).toBe(2);
 });
 
-test("restoring a saved profile resets live edits instead of reusing stale cached config", async ({
+test("restoring a saved workspace resets live edits instead of reusing stale cached config", async ({
   page,
 }) => {
   await mount(page, 3);
   const result = await page.evaluate(async () => {
-    const panel = document.querySelector("#profiles");
+    const panel = document.querySelector("#workspaces");
     const original = await panel.save();
     await panel.restorePanel("panel-1", {
       filter: [["id", "==", 7]],
@@ -164,7 +164,7 @@ test("restoring a saved profile resets live edits instead of reusing stale cache
 
 // Use enough data and visible stacks to exercise rendering as well as tab reuse.
 // Timings are report artifacts, never pass/fail thresholds tied to one machine.
-test("changed saved profiles reuse a large workspace and match full restoration", async ({
+test("changed saved workspaces reuse a large workspace and match full restoration", async ({
   page,
 }, testInfo) => {
   test.setTimeout(180_000);
@@ -185,7 +185,7 @@ test("changed saved profiles reuse a large workspace and match full restoration"
       { name: "trades", index: "id" },
     );
     const panel = document.createElement("perspective-panel");
-    panel.id = "profiles";
+    panel.id = "workspaces";
     panel.style.cssText = "width:1200px;height:700px";
     const names = Array.from({ length: 48 }, (_, i) => `panel-${i}`);
     panel.config = {
@@ -276,8 +276,8 @@ test("changed saved profiles reuse a large workspace and match full restoration"
     };
   });
   const { expected, actual, ...timing } = result;
-  console.log("large-profile-switch", JSON.stringify(timing));
-  await testInfo.attach("large-profile-switch-timing", {
+  console.log("large-workspace-switch", JSON.stringify(timing));
+  await testInfo.attach("large-workspace-switch-timing", {
     body: JSON.stringify(timing, null, 2),
     contentType: "application/json",
   });
@@ -292,10 +292,10 @@ test("changed saved profiles reuse a large workspace and match full restoration"
 });
 
 for (const change of ["partial", "removed", "style"])
-  test(`${change} profiles keep replacement semantics`, async ({ page }) => {
+  test(`${change} workspaces keep replacement semantics`, async ({ page }) => {
     await mount(page, 3);
     const result = await page.evaluate(async (change) => {
-      const panel = document.querySelector("#profiles");
+      const panel = document.querySelector("#workspaces");
       const saved = await panel.save();
       const plugins = [
         ...panel.viewer.querySelectorAll("perspective-viewer-datagrid"),

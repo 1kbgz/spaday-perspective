@@ -23,7 +23,7 @@ class PerspectivePanel(Component):
                 kind="boolean",
                 choices=(),
                 default=None,
-                description="Hide the viewer's internal tab strips and reclaim their space. False by default. Does not hide the wrapper toolbar or remove panels; applications provide channel navigation when needed.",
+                description="Hide the viewer's internal tab strips and reclaim their space. False by default. Does not hide the wrapper toolbar or remove panels; applications provide table navigation when needed.",
             ),
             PropertySchema(
                 name="find",
@@ -44,7 +44,7 @@ class PerspectivePanel(Component):
                 kind="boolean",
                 choices=(),
                 default=None,
-                description="Show the channel picker, close button, and Copy selection button. Channels are configured by table name in config.channels.",
+                description="Show the table picker, close table panels button, and Copy selection button. Panel defaults are keyed by table name in config.panel_defaults.",
             ),
             PropertySchema(name="config", kind="json", choices=(), default=None, description=None),
             PropertySchema(name="theme", kind="string", choices=(), default=None, description=None),

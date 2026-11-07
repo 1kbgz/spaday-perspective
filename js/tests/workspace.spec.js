@@ -11,6 +11,155 @@ const legacyLayouts = JSON.parse(
   ),
 );
 
+test("canonical and legacy workspace saves round-trip retained panel settings", async ({
+  page,
+}) => {
+  await mountChannels(page);
+  const result = await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    const { layout, channels, ...connection } = panel.config;
+    const errors = [];
+    panel.addEventListener("perspective-error", (event) =>
+      errors.push(String(event.detail)),
+    );
+    panel.config = {
+      ...connection,
+      workspace: layout,
+      panel_defaults: channels,
+    };
+    await panel.saveWorkspace();
+    await panel.restorePanel("quotes", {
+      columns: ["price"],
+      columns_config: { price: { column_size_override: 180, bold: true } },
+    });
+    await panel.restorePanel("orders", {
+      columns_config: { price: { column_size_override: 200, bold: true } },
+    });
+    await panel.closeTablePanels("quotes");
+    const canonical = await panel.saveWorkspace();
+    const portable = await panel.savePortableWorkspace();
+    const legacy = await panel.save();
+    const legacyPortable = await panel.saveClean();
+    const restored = [];
+    for (const workspace of [canonical, legacy, portable, legacyPortable]) {
+      panel.config = {
+        ...connection,
+        panel_defaults: channels,
+        workspace: JSON.stringify(workspace),
+      };
+      await panel.saveWorkspace();
+      await panel.openTablePanel("quotes");
+      restored.push(
+        Object.values((await panel.saveWorkspace()).panels).find(
+          (p) => p.table === "quotes",
+        ),
+      );
+    }
+    panel.config = { ...connection, channels, layout: JSON.stringify(legacy) };
+    await panel.save();
+    panel.config = { ...panel.config, layout: canonical };
+    await panel.openChannel("quotes");
+    return {
+      canonical,
+      errors,
+      portable,
+      legacy,
+      legacyPortable,
+      restored,
+      authored: panel.config,
+      final: await panel.save(),
+    };
+  });
+  const retained = result.canonical.retained_panel_configs_by_table.quotes;
+  expect(result.errors).toEqual([]);
+  expect(retained.theme).toBe("Pro Dark");
+  expect(retained.columns_config.price.column_size_override).toBe(180);
+  expect(result.canonical).not.toHaveProperty("closed_channels");
+  expect(result.legacy.closed_channels.quotes).toEqual(retained);
+  expect(result.legacy).not.toHaveProperty("retained_panel_configs_by_table");
+  const portable = result.portable.retained_panel_configs_by_table.quotes;
+  expect(portable).not.toHaveProperty("theme");
+  expect(portable.columns_config.price).not.toHaveProperty(
+    "column_size_override",
+  );
+  expect(portable.columns_config.price.bold).toBe(true);
+  expect(result.legacyPortable.closed_channels.quotes).toEqual(portable);
+  expect(
+    result.canonical.panels.orders.columns_config.price.column_size_override,
+  ).toBe(200);
+  expect(result.portable.panels.orders).not.toHaveProperty("theme");
+  expect(result.portable.panels.orders.columns_config.price).toEqual({
+    bold: true,
+  });
+  for (const restored of result.restored) {
+    expect(restored.columns).toEqual(["price"]);
+    expect(restored.filter).toEqual([["symbol", "==", "NVDA"]]);
+  }
+  expect(result.authored).not.toHaveProperty("workspace");
+  expect(
+    Object.values(result.final.panels).filter((p) => p.table === "quotes"),
+  ).toHaveLength(1);
+});
+
+test("canonical table operations close all panels and respect selected-tab restoration", async ({
+  page,
+}) => {
+  await mountChannels(page);
+  const result = await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    panel.config = {
+      local: true,
+      tables: ["quotes", "orders"],
+      panel_defaults: { quotes: { columns: ["price"] } },
+      workspace: {
+        layout: {
+          type: "tab-layout",
+          tabs: ["master", "quotes", "orders"],
+          selected: 2,
+        },
+        masters: ["master"],
+        panels: {
+          master: { table: "quotes", plugin: "Datagrid" },
+          quotes: { table: "quotes", plugin: "Datagrid" },
+          orders: { table: "orders", plugin: "Datagrid" },
+        },
+      },
+    };
+    await panel.saveWorkspace();
+    await panel.closeTablePanels("quotes");
+    const closed = await panel.saveWorkspace();
+    await panel.openChannel("quotes");
+    await panel.closeChannel("quotes");
+    const legacyClosed = await panel.saveWorkspace();
+    panel.config = { ...panel.config, restore_selected_tabs_only: true };
+    await panel.openTablePanel("quotes");
+    const selected = await panel.saveWorkspace();
+    const shown = await panel.showTable("orders");
+    return {
+      closed,
+      legacyClosed,
+      selected,
+      shown,
+      afterShow: await panel.saveWorkspace(),
+    };
+  });
+  expect(Object.keys(result.closed.panels)).toEqual(["orders"]);
+  expect(result.closed.masters ?? []).toEqual([]);
+  expect(result.closed.retained_panel_configs_by_table.quotes.table).toBe(
+    "quotes",
+  );
+  expect(Object.keys(result.legacyClosed.panels)).toEqual(["orders"]);
+  expect(Object.values(result.selected.panels).map((p) => p.table)).toEqual([
+    "quotes",
+  ]);
+  expect(
+    Object.values(result.afterShow.panels)
+      .map((p) => p.table)
+      .sort(),
+  ).toEqual(["orders", "quotes"]);
+  expect(result.afterShow.panels[result.shown].table).toBe("orders");
+});
+
 async function mountChannels(page, options = {}) {
   await page.goto("/dist/index.html");
   await page.evaluate(async (options) => {
@@ -90,7 +239,7 @@ test("failed restores can retry the same layout and channel operations recover a
   expect(Object.values(result.recovered.panels).map((p) => p.table)).toEqual([
     "late",
   ]);
-  expect(result.unknown).toBe("Unknown channel: unknown");
+  expect(result.unknown).toBe("Unknown table: unknown");
   expect(
     Object.values(result.final.panels)
       .map((p) => p.table)
@@ -142,7 +291,7 @@ test("channel controls retain edited configs through close, save, reload, and re
     filter: [["symbol", "==", "NVDA"]],
   });
   expect(closed.closed_channels.quotes).not.toHaveProperty("theme");
-  await page.getByLabel("Open channel").selectOption("quotes");
+  await page.getByLabel("Open table").selectOption("quotes");
   const reopened = await page.evaluate(() =>
     document.querySelector("perspective-panel").save(),
   );
@@ -154,7 +303,7 @@ test("channel controls retain edited configs through close, save, reload, and re
     sort: [["price", "desc"]],
   });
   expect(reopened.closed_channels).toBeUndefined();
-  await page.getByRole("button", { name: "Close channel" }).click();
+  await page.getByRole("button", { name: "Close table panels" }).click();
   expect(
     Object.values(
       (
@@ -176,7 +325,7 @@ test("single_tab prepares the selected layout before restore and retains hidden 
   expect(Object.values(initial.panels).map((p) => p.table)).toEqual(["orders"]);
   expect(initial.closed_channels.quotes.columns).toEqual(["symbol"]);
   await expect(page.locator("perspective-viewer-datagrid")).toHaveCount(1);
-  await page.getByLabel("Open channel").selectOption("quotes");
+  await page.getByLabel("Open table").selectOption("quotes");
   const switched = await page.evaluate(() =>
     document.querySelector("#workspace").saveClean(),
   );
@@ -185,12 +334,12 @@ test("single_tab prepares the selected layout before restore and retains hidden 
   ]);
   expect(switched.closed_channels.orders.table).toBe("orders");
   await expect(page.locator("perspective-viewer-datagrid")).toHaveCount(1);
-  await page.getByRole("button", { name: "Close channel" }).click();
+  await page.getByRole("button", { name: "Close table panels" }).click();
   expect(
     (await page.evaluate(() => document.querySelector("#workspace").save()))
       .panels,
   ).toEqual({});
-  await page.getByLabel("Open channel").selectOption("orders");
+  await page.getByLabel("Open table").selectOption("orders");
   expect(
     Object.values(
       (await page.evaluate(() => document.querySelector("#workspace").save()))
@@ -620,7 +769,7 @@ for (const tables of [
     expect(
       Object.values(result.defaults.panels).map((panel) => panel.plugin),
     ).toEqual(["Datagrid", "Datagrid"]);
-    expect(result.unknown).toBe("Unknown channel: toString");
+    expect(result.unknown).toBe("Unknown table: toString");
     // Declared tables do not implicitly add toolbar entries.
     await expect(
       page.locator(".perspective-panel-titlebar select option"),
@@ -780,3 +929,258 @@ test("restorePanel validates plugin config against the panel's effective plugin"
   expect(result.error).toContain("config.plugin_config.edit_mode");
   expect(result.workspace.panels.chart.plugin).toBe("Y Bar");
 });
+
+test("showTable reuses a detail panel and replaces only supplied filter columns", async ({
+  page,
+}) => {
+  await mountChannels(page, {
+    layout: {
+      layout: {
+        type: "split-layout",
+        orientation: "horizontal",
+        sizes: [2, 5],
+        children: [
+          { type: "tab-layout", tabs: ["master"] },
+          { type: "tab-layout", tabs: ["detail", "other"], selected: 1 },
+        ],
+      },
+      masters: ["master"],
+      panels: {
+        master: { table: "quotes", plugin: "Datagrid", group_by: ["symbol"] },
+        detail: {
+          table: "quotes",
+          plugin: "Datagrid",
+          filter: [
+            ["symbol", "==", "NVDA"],
+            ["price", ">", 100],
+            ["price", "<", 200],
+          ],
+        },
+        other: { table: "quotes", plugin: "Datagrid", columns: ["price"] },
+      },
+    },
+  });
+  const result = await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    const before = await panel.save();
+    const plugins = [
+      ...panel.viewer.querySelectorAll("perspective-viewer-datagrid"),
+    ];
+    const id = await panel.showTable("quotes", {
+      filter: [
+        ["price", ">=", 150],
+        ["price", "<=", 220],
+      ],
+    });
+    const filtered = await panel.save();
+    await panel.showTable("quotes");
+    await panel.showTable("quotes", { filter: [] });
+    return {
+      before,
+      filtered,
+      final: await panel.save(),
+      id,
+      initial: plugins.length,
+      retained: plugins.filter((p) => p.isConnected).length,
+    };
+  });
+  expect(result.id).toBe("detail");
+  expect(result.filtered.panels.detail.filter).toEqual([
+    ["symbol", "==", "NVDA"],
+    ["price", ">=", 150],
+    ["price", "<=", 220],
+  ]);
+  expect(result.filtered.panels.master).toEqual(result.before.panels.master);
+  expect(result.filtered.panels.other).toEqual(result.before.panels.other);
+  expect(result.filtered.layout.sizes).toEqual(result.before.layout.sizes);
+  expect(result.filtered.layout.children[1].selected).toBe(0);
+  expect(result.final).toEqual(result.filtered);
+  expect(result.retained).toBe(result.initial);
+});
+
+test("showTable opens a configured detail beside a same-table master without replacing panels", async ({
+  page,
+}) => {
+  await mountChannels(page, {
+    single_tab: true,
+    channels: {
+      quotes: { columns: ["price"], filter: [["price", ">", 100]] },
+      orders: {},
+    },
+    layout: {
+      layout: {
+        type: "split-layout",
+        orientation: "horizontal",
+        sizes: [1, 4],
+        children: [
+          { type: "tab-layout", tabs: ["master"] },
+          { type: "tab-layout", tabs: ["channel:quotes"] },
+        ],
+      },
+      masters: ["master"],
+      panels: {
+        master: { table: "quotes", plugin: "Datagrid", group_by: ["symbol"] },
+        "channel:quotes": { table: "orders", plugin: "Datagrid" },
+      },
+    },
+  });
+  const result = await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    const before = await panel.save();
+    const plugins = [
+      ...panel.viewer.querySelectorAll("perspective-viewer-datagrid"),
+    ];
+    const id = await panel.showTable("quotes", {
+      filter: [["symbol", "==", "AAPL"]],
+    });
+    const again = await panel.showTable("quotes");
+    return {
+      before,
+      saved: await panel.save(),
+      id,
+      again,
+      retained: plugins.filter((p) => p.isConnected).length,
+    };
+  });
+  expect(result.id).toBe("channel:quotes:");
+  expect(result.again).toBe(result.id);
+  for (const id of Object.keys(result.before.panels))
+    expect(result.saved.panels[id]).toEqual(result.before.panels[id]);
+  expect(result.saved.panels[result.id]).toMatchObject({
+    table: "quotes",
+    columns: ["price"],
+    group_by: [],
+    filter: [
+      ["price", ">", 100],
+      ["symbol", "==", "AAPL"],
+    ],
+    theme: "Pro Dark",
+  });
+  expect(result.saved.layout.sizes).toEqual(result.before.layout.sizes);
+  expect(result.saved.layout.children[1]).toMatchObject({
+    tabs: ["channel:quotes", result.id],
+    selected: 1,
+  });
+  expect(result.saved.masters).toEqual(["master"]);
+  expect(result.retained).toBe(2);
+});
+
+test("showTable queues behind layout changes, snapshots options, and recovers from invalid calls", async ({
+  page,
+}) => {
+  await mountChannels(page);
+  const result = await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    panel.config = {
+      ...panel.config,
+      layout: {
+        layout: { type: "tab-layout", tabs: ["renamed"] },
+        panels: { renamed: { table: "quotes", plugin: "Datagrid" } },
+      },
+    };
+    const options = { filter: [["symbol", "==", "NVDA"]] };
+    const first = panel.showTable("quotes", options);
+    options.filter[0][2] = "AAPL";
+    const second = panel.showTable("quotes", {
+      filter: [["price", ">", 100]],
+    });
+    const ids = await Promise.all([first, second]);
+    const saved = await panel.save();
+    const errors = [];
+    for (const [name, options] of [
+      ["unknown", {}],
+      ["toString", {}],
+      ["quotes", null],
+      ["quotes", { filter: "bad" }],
+      ["quotes", { filter: [[]] }],
+      ["orders", { filter: [["missing", "==", 1]] }],
+    ]) {
+      try {
+        await panel.showTable(name, options);
+      } catch (e) {
+        errors.push(String(e));
+      }
+    }
+    const afterErrors = await panel.save();
+    const id = await panel.showTable("orders");
+    return {
+      ids,
+      saved,
+      errors,
+      afterErrors,
+      id,
+      recovered: await panel.save(),
+    };
+  });
+  expect(result.ids).toEqual(["renamed", "renamed"]);
+  expect(result.saved.panels.renamed.filter).toEqual([
+    ["symbol", "==", "NVDA"],
+    ["price", ">", 100],
+  ]);
+  expect(result.errors).toHaveLength(6);
+  expect(result.errors[0]).toContain("Unknown table: unknown");
+  expect(result.errors[1]).toContain("Unknown table: toString");
+  expect(result.afterErrors).toEqual(result.saved);
+  expect(result.recovered.panels[result.id].table).toBe("orders");
+});
+
+for (const mastersOnly of [false, true]) {
+  test(`showTable creates a detail in ${mastersOnly ? "a master-only" : "an empty"} workspace`, async ({
+    page,
+  }) => {
+    const masterLayout = {
+      type: "split-layout",
+      orientation: "vertical",
+      sizes: [2, 3],
+      children: [
+        { type: "tab-layout", tabs: ["master-one"] },
+        { type: "tab-layout", tabs: ["master-two"] },
+      ],
+    };
+    await mountChannels(page, {
+      tables: ["quotes"],
+      channels: {},
+      layout: mastersOnly
+        ? {
+            layout: masterLayout,
+            masters: ["master-one", "master-two"],
+            panels: {
+              "master-one": { table: "quotes", plugin: "Datagrid" },
+              "master-two": {
+                table: "quotes",
+                plugin: "Datagrid",
+                group_by: ["symbol"],
+              },
+            },
+          }
+        : { panels: {}, layout: null },
+    });
+    const result = await page.evaluate(async () => {
+      const panel = document.querySelector("#workspace");
+      const before = await panel.save();
+      const plugins = [
+        ...panel.viewer.querySelectorAll("perspective-viewer-datagrid"),
+      ];
+      const id = await panel.showTable("quotes", {
+        filter: [["price", ">", 190]],
+      });
+      return {
+        id,
+        before,
+        saved: await panel.save(),
+        retained: plugins.filter((p) => p.isConnected).length,
+      };
+    });
+    expect(result.saved.panels[result.id]).toMatchObject({
+      table: "quotes",
+      filter: [["price", ">", 190]],
+    });
+    expect(result.saved.masters ?? []).not.toContain(result.id);
+    if (mastersOnly) {
+      expect(result.saved.layout.children[0]).toEqual(result.before.layout);
+      for (const id of result.saved.masters)
+        expect(result.saved.panels[id]).toEqual(result.before.panels[id]);
+      expect(result.retained).toBe(2);
+    } else expect(result.saved.layout.tabs).toEqual([result.id]);
+  });
+}

@@ -8,7 +8,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route, WebSocketRoute
 from starlette.websockets import WebSocketDisconnect
 
-from spaday_perspective import PerspectivePanel, package
+from spaday_perspective import PerspectiveViewer, package
 
 server = perspective.Server()
 client = server.new_local_client()
@@ -48,11 +48,11 @@ def page():
         "main",
         element("h1", "Row actions"),
         element("p", "Click × to request deletion. The server rejects locked orders. Open a second window to see shared updates."),
-        PerspectivePanel(
+        PerspectiveViewer(
             config={
                 "ws_url": "/perspective",
                 "tables": ["orders"],
-                "layout": {
+                "workspace": {
                     "layout": {"type": "tab-layout", "tabs": ["orders"]},
                     "panels": {"orders": {"table": "orders", "plugin": "Datagrid", "columns": ["id", "order", "locked"]}},
                 },

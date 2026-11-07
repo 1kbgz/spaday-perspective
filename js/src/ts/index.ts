@@ -5,7 +5,12 @@ import PRO from "@perspective-dev/viewer/dist/css/pro.css";
 import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
 import { styleWorkspace } from "./workspace-style.js";
 import { installClipboard, type ClipboardViewer } from "./clipboard.js";
-import { validateConfig, validatePanel, validateTheme } from "./config.js";
+import {
+  sameConfig,
+  validateConfig,
+  validatePanel,
+  validateTheme,
+} from "./config.js";
 import { installFind, type FindViewer } from "./find.js";
 import {
   installRowActions,
@@ -26,6 +31,10 @@ export { migrateLayout } from "./workspace.js";
 
 export type PerspectiveArchitecture = "server" | "client-server";
 
+export interface ShowTableOptions {
+  filter?: [string, string, ...unknown[]][];
+}
+
 export interface PerspectiveTableConfig {
   name: string;
   architecture?: PerspectiveArchitecture;
@@ -38,10 +47,16 @@ export interface PerspectiveConfig {
   local?: boolean;
   tables?: (string | PerspectiveTableConfig)[];
   default_architecture?: PerspectiveArchitecture;
+  workspace?: unknown;
+  /** Compatibility alias for workspace. */
   layout?: unknown;
   wait_for_table?: boolean;
   master_theme?: string;
+  panel_defaults?: Record<string, Partial<PanelConfig>>;
+  restore_selected_tabs_only?: boolean;
+  /** Compatibility alias for panel_defaults. */
   channels?: Record<string, Partial<PanelConfig>>;
+  /** Compatibility alias for restore_selected_tabs_only. */
   single_tab?: boolean;
 }
 
@@ -251,19 +266,6 @@ function injectStyles(): void {
   document.head.appendChild(style);
 }
 
-function sameConfig(a: unknown, b: unknown): boolean {
-  if (a === b) return true;
-  if (!a || !b || typeof a !== "object" || typeof b !== "object") return false;
-  if (Array.isArray(a) !== Array.isArray(b)) return false;
-  const left = a as Record<string, unknown>;
-  const right = b as Record<string, unknown>;
-  const keys = Object.keys(left);
-  return (
-    keys.length === Object.keys(right).length &&
-    keys.every((key) => hasOwn(right, key) && sameConfig(left[key], right[key]))
-  );
-}
-
 function wsUrl(url: string): string {
   if (/^wss?:\/\//.test(url)) return url;
   const scheme = location.protocol === "https:" ? "wss" : "ws";
@@ -294,7 +296,11 @@ type Viewer = ClipboardViewer &
       }>;
     }>;
     load(client: unknown): Promise<void>;
-    restore(config: unknown, options?: { panel?: string }): Promise<void>;
+    restore(
+      config: unknown,
+      options?: { panel?: string; wait_for_table?: boolean },
+    ): Promise<void>;
+    removePanel(id: string): Promise<unknown>;
     restoreWorkspace(
       config: unknown,
       options?: { wait_for_table?: boolean },
@@ -311,11 +317,12 @@ type Viewer = ClipboardViewer &
 class PerspectivePanel extends HTMLElement {
   #viewer: Viewer | null = null;
   #config: PerspectiveConfig = {};
+  #authoredConfig: PerspectiveConfig = {};
   #connectedUrl: string | null = null;
-  #lastLayout: string | null = null;
+  #lastWorkspace: string | null = null;
   #configGeneration = 0;
   #lastMasterTheme: string | undefined;
-  #lastSingleTab = false;
+  #lastSelectedTabsOnly = false;
   #lastMirrored: string | null = null;
   #localLoaded = false;
   #mirrors: string[] = [];
@@ -330,7 +337,7 @@ class PerspectivePanel extends HTMLElement {
   #throttle: number | null = null;
   #settings: boolean | null = null;
   #queue: Promise<unknown> = Promise.resolve();
-  #channelConfigs = new Map<string, PanelConfig>();
+  #retainedPanelConfigsByTable = new Map<string, PanelConfig>();
   #toolbar = false;
   #titlebar: HTMLElement | null = null;
   #toolbarResize: ResizeObserver | null = null;
@@ -355,7 +362,7 @@ class PerspectivePanel extends HTMLElement {
         const config = (
           event as CustomEvent<{ getConfig?: () => PanelConfig }>
         ).detail?.getConfig?.();
-        if (config && this.#hasChannel(config.table)) {
+        if (config && this.#hasTable(config.table)) {
           const source = event
             .composedPath()
             .find(
@@ -364,7 +371,7 @@ class PerspectivePanel extends HTMLElement {
                 node.parentElement === this.#viewer &&
                 !!node.slot,
             );
-          this.#channelConfigs.set(
+          this.#retainedPanelConfigsByTable.set(
             config.table,
             this.#actionColumns?.cleanConfig(config, source?.slot) ??
               structuredClone(config),
@@ -570,11 +577,18 @@ class PerspectivePanel extends HTMLElement {
 
   set config(config: PerspectiveConfig) {
     validateConfig(config ?? {});
-    this.#config = config || {};
+    this.#authoredConfig = config || {};
+    this.#config = {
+      ...config,
+      workspace: config?.workspace ?? config?.layout,
+      panel_defaults: config?.panel_defaults ?? config?.channels,
+      restore_selected_tabs_only:
+        config?.restore_selected_tabs_only ?? config?.single_tab,
+    };
     this.#apply();
   }
   get config(): PerspectiveConfig {
-    return this.#config;
+    return this.#authoredConfig;
   }
 
   get find(): boolean {
@@ -604,7 +618,7 @@ class PerspectivePanel extends HTMLElement {
     const key = JSON.stringify([
       this.#toolbar,
       this.#find,
-      this.#config.channels,
+      this.#config.panel_defaults,
     ]);
     if (key === this.#toolbarKey) return;
     this.#toolbarKey = key;
@@ -618,25 +632,27 @@ class PerspectivePanel extends HTMLElement {
     bar.style.cssText =
       "display:flex;flex-wrap:wrap;align-items:center;gap:.375rem;box-sizing:border-box;padding:.375rem .5rem;color:var(--spa-text,inherit);background:var(--spa-surface,inherit)";
     const select = document.createElement("select");
-    select.setAttribute("aria-label", "Open channel");
-    select.append(new Option("Open channel…", ""));
-    for (const [name, config] of Object.entries(this.#config.channels ?? {})) {
+    select.setAttribute("aria-label", "Open table");
+    select.append(new Option("Open table…", ""));
+    for (const [name, config] of Object.entries(
+      this.#config.panel_defaults ?? {},
+    )) {
       select.append(new Option(config.title ?? name, name));
     }
     const close = document.createElement("button");
     close.type = "button";
-    close.textContent = "Close channel";
+    close.textContent = "Close table panels";
     close.disabled = true;
     select.addEventListener("change", () => {
       close.disabled = !select.value;
       if (select.value)
-        void this.openChannel(select.value).catch((error) =>
+        void this.openTablePanel(select.value).catch((error) =>
           this.#reportError(error),
         );
     });
     close.addEventListener("click", () => {
       if (select.value)
-        void this.closeChannel(select.value).catch((error) =>
+        void this.closeTablePanels(select.value).catch((error) =>
           this.#reportError(error),
         );
       select.value = "";
@@ -768,10 +784,9 @@ class PerspectivePanel extends HTMLElement {
     return theme ? (THEMES[theme] ?? theme) : this.#theme;
   }
 
-  // Saved themes belong to the previous session. Resolve every panel before
-  // restoration so plugins never draw with a theme that needs correcting.
-  #themedLayout(layout: Workspace, config: PerspectiveConfig): Workspace {
-    const cloned = structuredClone(layout);
+  // Apply the wrapper's current theme policy before restored plugins render.
+  #themedWorkspace(workspace: Workspace, config: PerspectiveConfig): Workspace {
+    const cloned = structuredClone(workspace);
     for (const [id, panel] of Object.entries(cloned.panels ?? {})) {
       panel.theme = this.#panelTheme(
         cloned.masters?.includes(id) ?? false,
@@ -781,40 +796,48 @@ class PerspectivePanel extends HTMLElement {
     return cloned;
   }
 
-  #hasChannel(name: string, config = this.#config): boolean {
+  #hasTable(name: string, config = this.#config): boolean {
     return (
-      hasOwn(config.channels ?? {}, name) ||
+      hasOwn(config.panel_defaults ?? {}, name) ||
       (config.tables ?? []).some(
         (table) => (typeof table === "string" ? table : table.name) === name,
       )
     );
   }
 
-  #rememberChannels(workspace: Workspace, config = this.#config): void {
+  #rememberPanelConfigs(workspace: Workspace, config = this.#config): void {
     workspace = this.#actionColumns?.clean(workspace) ?? workspace;
     for (const panel of Object.values(workspace.panels ?? {})) {
-      if (this.#hasChannel(panel.table, config)) {
-        this.#channelConfigs.set(panel.table, structuredClone(panel));
+      if (this.#hasTable(panel.table, config)) {
+        this.#retainedPanelConfigsByTable.set(
+          panel.table,
+          structuredClone(panel),
+        );
       }
     }
   }
 
   async #restoreWorkspace(
-    workspace: Workspace,
+    workspace: Workspace | string,
     config = this.#config,
   ): Promise<void> {
     if (!this.#viewer) return;
-    const prepared = this.#themedLayout(migrateLayout(workspace), config);
+    const parsed =
+      typeof workspace === "string" ? JSON.parse(workspace) : workspace;
+    const prepared = this.#themedWorkspace(migrateLayout(parsed), config);
     for (const [name, cached] of Object.entries(
-      prepared.closed_channels ?? {},
+      prepared.retained_panel_configs_by_table ??
+        prepared.closed_channels ??
+        {},
     )) {
-      if (this.#hasChannel(name, config)) {
-        this.#channelConfigs.set(name, structuredClone(cached));
+      if (this.#hasTable(name, config)) {
+        this.#retainedPanelConfigsByTable.set(name, structuredClone(cached));
       }
     }
+    delete prepared.retained_panel_configs_by_table;
     delete prepared.closed_channels;
-    this.#rememberChannels(prepared, config);
-    if (config.single_tab && prepared.panels) {
+    this.#rememberPanelConfigs(prepared, config);
+    if (config.restore_selected_tabs_only && prepared.panels) {
       const keep = new Set<string>();
       for (const stack of tabStacks(prepared.layout)) {
         const selected = stack.tabs[stack.selected ?? 0] ?? stack.tabs[0];
@@ -829,7 +852,7 @@ class PerspectivePanel extends HTMLElement {
       if (prepared.active && !keep.has(prepared.active)) prepared.active = null;
     }
     // Supplying `panels` replaces every plugin in Perspective 5.6, including
-    // hidden tabs. Compare LIVE state so restoring a profile resets user edits.
+    // hidden tabs. Compare LIVE state so restoring a saved workspace resets user edits.
     // Only complete saved configs on the same tables/plugins can be applied as
     // updates. Plugin/style buckets merge on restore, so changes there must
     // retain replacement semantics too.
@@ -888,14 +911,14 @@ class PerspectivePanel extends HTMLElement {
     }
   }
 
-  /** Open a named table using its last channel configuration or configured defaults. */
-  openChannel(name: string): Promise<void> {
+  /** Open or select a table panel using its retained configuration or defaults. */
+  openTablePanel(name: string): Promise<void> {
     return this.#enqueue(async () => {
-      if (!this.#hasChannel(name)) throw new Error(`Unknown channel: ${name}`);
+      if (!this.#hasTable(name)) throw new Error(`Unknown table: ${name}`);
       if (!this.#loaded || !this.#viewer)
         throw new Error("Perspective panel is not ready");
       const workspace = (await this.#viewer.saveWorkspace()) as Workspace;
-      this.#rememberChannels(workspace);
+      this.#rememberPanelConfigs(workspace);
       const existing = Object.entries(workspace.panels ?? {}).find(
         ([, panel]) => panel.table === name,
       )?.[0];
@@ -911,9 +934,9 @@ class PerspectivePanel extends HTMLElement {
       let id = `channel:${name}`;
       while (hasOwn(panels, id)) id += ":";
       panels[id] = structuredClone(
-        this.#channelConfigs.get(name) ?? {
-          ...(hasOwn(this.#config.channels ?? {}, name)
-            ? this.#config.channels![name]
+        this.#retainedPanelConfigsByTable.get(name) ?? {
+          ...(hasOwn(this.#config.panel_defaults ?? {}, name)
+            ? this.#config.panel_defaults![name]
             : { plugin: "Datagrid" }),
           table: name,
         },
@@ -938,14 +961,114 @@ class PerspectivePanel extends HTMLElement {
     });
   }
 
-  /** Close a channel, retaining its configuration for reopen and saveClean(). */
-  closeChannel(name: string): Promise<void> {
+  /** Select a detail panel and replace filters on the supplied columns. */
+  async showTable(
+    name: string,
+    options: ShowTableOptions = {},
+  ): Promise<string> {
+    const patch = structuredClone(options);
     return this.#enqueue(async () => {
-      if (!this.#hasChannel(name)) throw new Error(`Unknown channel: ${name}`);
+      if (!this.#hasTable(name)) throw new Error(`Unknown table: ${name}`);
+      if (!this.#loaded || !this.#viewer)
+        throw new Error("Perspective panel is not ready");
+      if (!patch || typeof patch !== "object" || Array.isArray(patch))
+        throw new TypeError("options: expected object");
+      if (
+        patch.filter !== undefined &&
+        (!Array.isArray(patch.filter) ||
+          patch.filter.some(
+            (clause) =>
+              !Array.isArray(clause) ||
+              clause.length < 2 ||
+              typeof clause[0] !== "string" ||
+              typeof clause[1] !== "string",
+          ))
+      )
+        throw new TypeError("options.filter: expected filter clauses");
+      const workspace = (await this.#viewer.saveWorkspace()) as Workspace;
+      const panels = workspace.panels ?? {};
+      let id = Object.keys(panels).find(
+        (id) => panels[id].table === name && !workspace.masters?.includes(id),
+      );
+      const existing = id !== undefined;
+      if (!id) {
+        id = `channel:${name}`;
+        while (hasOwn(panels, id)) id += ":";
+      }
+      const config = existing
+        ? panels[id]
+        : {
+            plugin: "Datagrid",
+            ...(hasOwn(this.#config.panel_defaults ?? {}, name)
+              ? structuredClone(this.#config.panel_defaults![name])
+              : {}),
+            table: name,
+            theme: this.#panelTheme(false),
+          };
+      const update: Partial<PanelConfig> = existing ? {} : config;
+      if (patch.filter?.length) {
+        const columns = new Set(patch.filter.map((clause) => clause[0]));
+        update.filter = [
+          ...(
+            (config.filter ?? []) as NonNullable<ShowTableOptions["filter"]>
+          ).filter((clause) => !columns.has(clause[0])),
+          ...patch.filter,
+        ];
+      }
+      if (Object.keys(update).length) {
+        try {
+          await this.#viewer.restore(update, {
+            panel: id,
+            wait_for_table: this.#config.wait_for_table,
+          });
+        } catch (error) {
+          if (!existing) await this.#viewer.removePanel(id);
+          throw error;
+        }
+      }
+      // Finish the initial panel render before restoring its tab placement.
+      await this.#viewer.flush();
+      let stack = tabStacks(workspace.layout).find((stack) =>
+        stack.tabs.includes(id),
+      );
+      if (!stack) {
+        stack = tabStacks(workspace.layout).find((stack) =>
+          stack.tabs.some((tab) => !workspace.masters?.includes(tab)),
+        );
+        if (stack) stack.tabs.push(id);
+        else {
+          stack = { type: "tab-layout", tabs: [id] };
+          workspace.layout = workspace.layout
+            ? {
+                type: "split-layout",
+                orientation: "horizontal",
+                sizes: [1, 3],
+                children: [workspace.layout, stack],
+              }
+            : stack;
+        }
+      }
+      stack.selected = stack.tabs.indexOf(id);
+      await this.#viewer.restoreWorkspace({
+        layout: workspace.layout,
+      });
+      await this.#viewer.flush();
+      await this.#actionColumns?.refresh();
+      this.#rememberPanelConfigs(
+        (await this.#viewer.saveWorkspace()) as Workspace,
+      );
+      return id;
+    });
+  }
+
+  /** Close every panel for a table, retaining the last configuration for reopening. */
+  closeTablePanels(name: string): Promise<void> {
+    return this.#enqueue(async () => {
+      if (!this.#hasTable(name)) throw new Error(`Unknown table: ${name}`);
       if (!this.#loaded || !this.#viewer)
         throw new Error("Perspective panel is not ready");
       const workspace = (await this.#viewer.saveWorkspace()) as Workspace;
-      this.#rememberChannels(workspace);
+      this.#rememberPanelConfigs(workspace);
       const panels = Object.fromEntries(
         Object.entries(workspace.panels ?? {}).filter(
           ([, panel]) => panel.table !== name,
@@ -962,6 +1085,16 @@ class PerspectivePanel extends HTMLElement {
     });
   }
 
+  /** Compatibility alias for openTablePanel(). */
+  openChannel(name: string): Promise<void> {
+    return this.openTablePanel(name);
+  }
+
+  /** Compatibility alias for closeTablePanels(). */
+  closeChannel(name: string): Promise<void> {
+    return this.closeTablePanels(name);
+  }
+
   /** Apply a partial viewer configuration to one panel through the lifecycle queue. */
   async restorePanel(id: string, config: Partial<PanelConfig>): Promise<void> {
     validateTheme(id, "panel");
@@ -976,7 +1109,9 @@ class PerspectivePanel extends HTMLElement {
       await this.#viewer.restore(patch, { panel: id });
       await this.#viewer.flush();
       await this.#actionColumns?.refresh();
-      this.#rememberChannels((await this.#viewer.saveWorkspace()) as Workspace);
+      this.#rememberPanelConfigs(
+        (await this.#viewer.saveWorkspace()) as Workspace,
+      );
     });
   }
 
@@ -1051,16 +1186,21 @@ class PerspectivePanel extends HTMLElement {
             this.#loaded = true;
           }
           if (generation !== this.#configGeneration) return;
-          if (this.#loaded && config.layout) {
-            const layout = JSON.stringify(config.layout);
-            if (layout !== this.#lastLayout) {
+          if (this.#loaded && config.workspace) {
+            const workspace = JSON.stringify(config.workspace);
+            if (workspace !== this.#lastWorkspace) {
               // Perspective 5.5 errors on a `table` no loaded client hosts; `wait_for_table`
               // restores the earlier behavior, a pending panel that fills once it is created
-              this.#channelConfigs.clear();
-              this.#lastLayout = null;
-              await this.#restoreWorkspace(config.layout as Workspace, config);
-              this.#lastLayout = layout;
-            } else if (!!config.single_tab !== this.#lastSingleTab) {
+              this.#retainedPanelConfigsByTable.clear();
+              this.#lastWorkspace = null;
+              await this.#restoreWorkspace(
+                config.workspace as Workspace | string,
+                config,
+              );
+              this.#lastWorkspace = workspace;
+            } else if (
+              !!config.restore_selected_tabs_only !== this.#lastSelectedTabsOnly
+            ) {
               await this.#restoreWorkspace(
                 (await this.#viewer.saveWorkspace()) as Workspace,
                 config,
@@ -1071,7 +1211,7 @@ class PerspectivePanel extends HTMLElement {
           }
           if (generation !== this.#configGeneration) return;
           this.#lastMasterTheme = config.master_theme;
-          this.#lastSingleTab = !!config.single_tab;
+          this.#lastSelectedTabsOnly = !!config.restore_selected_tabs_only;
           this.#renderToolbar();
           // one-shot readiness: connected, tables loaded, and the initial workspace
           // config (when the config carries one) applied and rendered — the stable
@@ -1101,7 +1241,7 @@ class PerspectivePanel extends HTMLElement {
       !this.isConnected ||
       !this.#loaded ||
       !this.#viewer ||
-      (this.#config.layout && this.#lastLayout === null) ||
+      (this.#config.workspace && this.#lastWorkspace === null) ||
       this.#actionColumns?.isValid() === false
     )
       return;
@@ -1119,7 +1259,7 @@ class PerspectivePanel extends HTMLElement {
   }
 
   /** The whole-element workspace config (layout tree + per-panel viewer configs). */
-  async save(): Promise<unknown> {
+  async saveWorkspace(): Promise<unknown> {
     await this.#queue.catch(() => {});
     await this.#actionColumns?.refresh();
     const workspace = (await this.#viewer?.saveWorkspace()) as
@@ -1127,37 +1267,59 @@ class PerspectivePanel extends HTMLElement {
       | undefined;
     if (!workspace) return workspace;
     const clean = this.#actionColumns?.clean(workspace) ?? workspace;
-    this.#rememberChannels(clean);
+    this.#rememberPanelConfigs(clean);
     const open = new Set(
       Object.values(clean.panels ?? {}).map((panel) => panel.table),
     );
     const closed = Object.fromEntries(
-      [...this.#channelConfigs].filter(
-        ([name]) => this.#hasChannel(name) && !open.has(name),
+      [...this.#retainedPanelConfigsByTable].filter(
+        ([name]) => this.#hasTable(name) && !open.has(name),
       ),
     );
     if (Object.keys(closed).length)
-      clean.closed_channels = structuredClone(closed);
+      clean.retained_panel_configs_by_table = structuredClone(closed);
     return clean;
   }
 
-  /** `save()` minus per-session transient state — panel themes and column size overrides — so the
-   * result is portable across sessions and themes: the shape to persist or export. Made for
-   * spaday's `Invoke` action: `Invoke(by_id("workspace"), "saveClean", result="custom_layout")`. */
-  async saveClean(): Promise<unknown> {
-    const layout = (await this.save()) as Workspace | null;
-    if (!layout) return layout;
-    const cleaned = structuredClone(layout);
+  /** Compatibility workspace save using the historical closed_channels metadata key. */
+  async save(): Promise<unknown> {
+    const workspace = (await this.saveWorkspace()) as Workspace | undefined;
+    if (workspace?.retained_panel_configs_by_table) {
+      workspace.closed_channels = workspace.retained_panel_configs_by_table;
+      delete workspace.retained_panel_configs_by_table;
+    }
+    return workspace;
+  }
+
+  /** Save a workspace without panel themes and column width overrides. */
+  async savePortableWorkspace(): Promise<unknown> {
+    const workspace = (await this.saveWorkspace()) as Workspace | undefined;
+    if (!workspace) return workspace;
     for (const panel of [
-      ...Object.values(cleaned.panels ?? {}),
-      ...Object.values(cleaned.closed_channels ?? {}),
+      ...Object.values(workspace.panels ?? {}),
+      ...Object.values(workspace.retained_panel_configs_by_table ?? {}),
     ]) {
       delete panel.theme;
-      for (const column of Object.values(panel.plugin_config?.columns ?? {})) {
+      for (const column of [
+        ...Object.values(panel.columns_config ?? {}),
+        ...Object.values(panel.plugin_config?.columns ?? {}),
+      ]) {
         delete column.column_size_override;
       }
     }
-    return cleaned;
+    return workspace;
+  }
+
+  /** Compatibility portable save using the historical closed_channels metadata key. */
+  async saveClean(): Promise<unknown> {
+    const workspace = (await this.savePortableWorkspace()) as
+      | Workspace
+      | undefined;
+    if (workspace?.retained_panel_configs_by_table) {
+      workspace.closed_channels = workspace.retained_panel_configs_by_table;
+      delete workspace.retained_panel_configs_by_table;
+    }
+    return workspace;
   }
 }
 

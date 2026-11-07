@@ -1,8 +1,9 @@
 # API reference
 
-## `PerspectivePanel`
+## `PerspectiveViewer`
 
-Tag: `<perspective-panel>`.
+Tag: `<perspective-panel>`. `PerspectiveViewer` aliases the existing validated `PerspectivePanel`
+class; both imports serialize to the same tag. The wrapper manages a multi-panel workspace.
 
 | Prop        | Type        | Description                                                                       |
 | ----------- | ----------- | --------------------------------------------------------------------------------- |
@@ -13,35 +14,67 @@ Tag: `<perspective-panel>`.
 | `autopause` | `bool`      | Pause rendering while not visible (on by default).                                |
 | `throttle`  | `int`       | Render throttle in milliseconds; unset restores adaptive throttling.              |
 | `settings`  | `bool`      | Whether the settings sidebar is open.                                             |
-| `toolbar`   | `bool`      | Show channel controls and Copy selection (default `False`).                       |
+| `toolbar`   | `bool`      | Show table controls and Copy selection (default `False`).                         |
 | `hide_tabs` | `bool`      | Hide internal viewer tab strips and reclaim their space (default `False`).        |
 | `find`      | `bool`      | Enable focused-grid Ctrl+F / Cmd+F and the toolbar Find button (default `False`). |
 
 ```{eval-rst}
-.. autoclass:: spaday_perspective.PerspectivePanel
+.. autoclass:: spaday_perspective.PerspectiveViewer
    :members:
 ```
+
+## Terminology and compatibility
+
+A **table** holds data. A **view** defines a query over a table. A **panel** displays a view in a
+workspace. A **workspace** contains the layout tree and panel configurations.
+
+The following legacy names remain supported:
+
+| Canonical name                      | Compatibility name   |
+| ----------------------------------- | -------------------- |
+| `PerspectiveViewer`                 | `PerspectivePanel`   |
+| `config.workspace`                  | `config.layout`      |
+| `config.panel_defaults`             | `config.channels`    |
+| `config.restore_selected_tabs_only` | `config.single_tab`  |
+| `openTablePanel(name)`              | `openChannel(name)`  |
+| `closeTablePanels(name)`            | `closeChannel(name)` |
+| `saveWorkspace()`                   | `save()`             |
+| `savePortableWorkspace()`           | `saveClean()`        |
+
+Supplying both config names requires structurally equal values; conflicting values raise an error.
+The config getter preserves the supplied keys. Workspace JSON strings are accepted; when supplying
+both workspace aliases, their values must use the same representation.
+
+Canonical save methods write the wrapper extension `retained_panel_configs_by_table`. Legacy save
+methods keep writing `closed_channels`; restores accept either key and reject conflicting mappings.
+Both mappings store one last panel configuration per table, only for tables without open panels.
+The wrapper removes this metadata before calling native `restoreWorkspace()`. Panel IDs are opaque;
+existing `channel:` prefixes remain valid.
+
+These methods are wrapper conveniences. Native `viewer.save()` saves an individual panel;
+`viewer.saveWorkspace()` saves the workspace. Native `addPanel`/`removePanel` operate on panel IDs,
+while `closeTablePanels` removes every panel for a table, including master panels.
 
 ## Configuration
 
 `hide_tabs` hides every internal tab strip without changing the saved workspace or its panels.
-It does not hide the wrapper toolbar. For multiple channels, provide navigation through the toolbar
-or your own buttons calling `openChannel`; hidden tabs cannot be selected or dragged by the user.
+It does not hide the wrapper toolbar. For multiple tables, provide navigation through the toolbar
+or your own buttons calling `openTablePanel`; hidden tabs cannot be selected or dragged by the user.
 The browser property is `hideTabs`.
 
-| Key                    | Type    | Description                                                                                                                                                                                                             |
-| ---------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ws_url`               | `str`   | Perspective websocket URL; relative URLs use the current host.                                                                                                                                                          |
-| `local`                | `bool`  | Load the shared in-browser Perspective worker instead of opening a websocket.                                                                                                                                           |
-| `tables`               | `list`  | Table names (`str`), or `{name, architecture, index, limit}` mappings for per-table architecture.                                                                                                                       |
-| `default_architecture` | `str`   | `server` (default) or `client-server`, applied to `tables` entries without their own `architecture`.                                                                                                                    |
-| `layout`               | mapping | Workspace config accepted by `<perspective-viewer>.restoreWorkspace()`, plus optional `closed_channels`.                                                                                                                |
-| `wait_for_table`       | `bool`  | Leave a panel whose `table` no loaded client hosts yet empty and pending until it is created, instead of erroring (the default).                                                                                        |
-| `master_theme`         | `str`   | Theme for filter-source panels listed in `masters`. Accepts `light`, `dark`, or a registered theme name. Defaults to the application theme.                                                                             |
-| `channels`             | mapping | Table name to default panel configuration, such as `{"trades": {"title": "Trades", "columns": ["price"]}}`. Supplies the channel picker and default configs; declared tables also support `openChannel`/`closeChannel`. |
-| `single_tab`           | `bool`  | Keep only the selected tab in each stack before restoring it. Hidden configured channels retain their settings for reopening. Default `False`.                                                                          |
+| Key                          | Type    | Description                                                                                                                                                                                                                  |
+| ---------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ws_url`                     | `str`   | Perspective websocket URL; relative URLs use the current host.                                                                                                                                                               |
+| `local`                      | `bool`  | Load the shared in-browser Perspective worker instead of opening a websocket.                                                                                                                                                |
+| `tables`                     | `list`  | Table names (`str`), or `{name, architecture, index, limit}` mappings for per-table architecture.                                                                                                                            |
+| `default_architecture`       | `str`   | `server` (default) or `client-server`, applied to `tables` entries without their own `architecture`.                                                                                                                         |
+| `workspace`                  | mapping | Workspace config accepted by `<perspective-viewer>.restoreWorkspace()`, plus optional `retained_panel_configs_by_table`.                                                                                                     |
+| `wait_for_table`             | `bool`  | Leave a panel whose `table` no loaded client hosts yet empty and pending until it is created, instead of erroring (the default).                                                                                             |
+| `master_theme`               | `str`   | Theme for filter-source panels listed in `masters`. Accepts `light`, `dark`, or a registered theme name. Defaults to the application theme.                                                                                  |
+| `panel_defaults`             | mapping | Table name to default panel configuration, such as `{"trades": {"title": "Trades", "columns": ["price"]}}`. Supplies the table picker and default configs; declared tables also support `openTablePanel`/`closeTablePanels`. |
+| `restore_selected_tabs_only` | `bool`  | Keep only the selected tab in each stack before restoring it. Hidden configured tables retain their settings for reopening. Default `False`.                                                                                 |
 
-Changing `ws_url` opens a new client connection. Changing the serialized `layout` restores the viewer's panels.
+Changing `ws_url` opens a new client connection. Changing the serialized `workspace` restores the viewer's panels.
 The wrapper queues asynchronous changes in assignment order.
 
 For a `client-server` mirror, omitting both `index` and `limit` inherits the source table's index.
@@ -49,14 +82,14 @@ An explicit index or limit takes precedence; unindexed sources remain unindexed.
 
 ### Validation and enums
 
-The public `spaday_perspective.PerspectivePanel` validates literal configuration when serialized
+The public `spaday_perspective.PerspectiveViewer` validates literal configuration when serialized
 with `to_node()` (including through `serve()` or a widget). This includes `.prop("config", ...)`
 updates. `validate_config(config)` performs the same check explicitly and raises `ValueError`
-with a path such as `config.layout.panels.trades.plugin_config.edit_mode`. Browser property setters
+with a path such as `config.workspace.panels.trades.plugin_config.edit_mode`. Browser property setters
 validate reactive config updates before accepting them. Computed expressions are checked when
 their result reaches the browser, not while authoring the expression.
 
-Validation covers wrapper flags, table descriptors, panel/channel mappings, theme-name types, and
+Validation covers wrapper flags, table descriptors, panel defaults, theme-name types, and
 the pinned Datagrid's plugin settings. Unknown Datagrid settings are rejected. Custom plugins,
 per-column style payloads, and table-dependent filter/expression validity remain upstream-owned.
 Unknown wrapper/workspace extension fields are preserved. This is not a complete validator for
@@ -90,9 +123,9 @@ The application theme overrides saved panel themes before restoration. `master_t
 that choice for filter-source panels, including during live application theme changes. Input layouts
 are copied before preparation. Restoring a saved layout does not require a second theme restore.
 
-Changing `master_theme` or `single_tab` with an unchanged layout applies to the current workspace,
-preserving user edits. Turning `single_tab` off permits additional tabs; it does not reopen closed
-channels. Replacing `layout` starts a new workspace and replaces its retained channel configurations.
+Changing `master_theme` or `restore_selected_tabs_only` with an unchanged layout applies to the current workspace,
+preserving user edits. Turning `restore_selected_tabs_only` off permits additional tabs; it does not reopen closed
+panels. Replacing `workspace` starts a new workspace and replaces its retained panel configurations.
 
 `local=True` expects named tables to be created through `globalThis.__spadayPerspective.worker()` before the panel loads. It is intended for browser-only hosts such as the bundled Pyodide example; normal Python deployments should keep bulk data on Perspective's websocket.
 
@@ -115,13 +148,13 @@ server architecture avoids that cost for large or frequently changing tables.
 `row_actions` (JavaScript `rowActions`) maps table names to indexed-column button descriptions:
 
 ```python
-PerspectivePanel(row_actions={"orders": {"id": {"action": "delete", "label": "Delete order", "text": "×"}}})
+PerspectiveViewer(row_actions={"orders": {"id": {"action": "delete", "label": "Delete order", "text": "×"}}})
 ```
 
 A column accepts one description or a list, rendered in order in the same cell:
 
 ```python
-PerspectivePanel(row_actions={"orders": {"id": [
+PerspectiveViewer(row_actions={"orders": {"id": [
     {"action": "delete", "label": "Delete order"},
     {"action": "copy", "label": "Copy order to form", "text": "⧉"},
 ]}})
@@ -130,7 +163,7 @@ PerspectivePanel(row_actions={"orders": {"id": [
 Dedicated columns use identifiers starting with `@` and do not replace the real index column:
 
 ```python
-PerspectivePanel(row_actions={"orders": {
+PerspectiveViewer(row_actions={"orders": {
     "@copy": {
         "header": "Copy", "position": "start",
         "buttons": [{"action": "copy", "label": "Copy order", "icon": "copy"}],
@@ -146,11 +179,11 @@ Any number of dedicated columns may appear at either end, in mapping insertion o
 each position. Each accepts multiple buttons. Headers must be unique and must not collide with
 source columns or user expressions. An empty button list removes the generated column.
 View-level expressions provide the record keys; source tables are unchanged. The wrapper's
-`save()` and `saveClean()` omit those expressions and columns, which are recreated from
+`saveWorkspace()` and `savePortableWorkspace()` omit those expressions and columns, which are recreated from
 `row_actions` on restoration. Direct calls to `viewer.saveWorkspace()` include them and are not
-portable to a fresh wrapper with the same action policy; use wrapper `save()` or `saveClean()`
+portable to a fresh wrapper with the same action policy; use wrapper `saveWorkspace()` or `savePortableWorkspace()`
 for persistence. Matching expression text alone does not establish wrapper ownership.
-Replace a panel's table through `config.layout`. Partial table swaps through the raw viewer API
+Replace a panel's table through `config.workspace`. Partial table swaps through the raw viewer API
 can retain the old table's expressions, including generated action fields; the wrapper does not
 assume ownership of expressions on a different table.
 In dedicated-column events, `column` is the stable `@` identifier, not its display header.
@@ -185,7 +218,7 @@ keys disable the button. Other plugins do not display dedicated columns.
 `rowActions` supports computed bindings, including nested labels:
 
 ```python
-PerspectivePanel().compute("rowActions", obj({"orders": obj({"id": obj({
+PerspectiveViewer().compute("rowActions", obj({"orders": obj({"id": obj({
     "action": "copy", "label": field("copy_label"), "icon": "copy",
 })})}))
 ```
@@ -211,8 +244,9 @@ Perspective's viewer events do not bubble, so the panel re-dispatches the observ
 bubbling DOM events usable from spaday's `.on(...)`: `perspective-click`, `perspective-select`,
 `perspective-global-filter`, `perspective-global-filter-update`, `perspective-config-update`,
 `perspective-toggle-settings`, `perspective-statusbar-pointerdown`, and `perspective-table-delete`.
-`perspective-config-update` fires on user edits (layout drags, view changes, filters) — bind it to
-persist user-edited workspaces. Two panel-level lifecycle events complete the picture:
+`perspective-config-update` fires on user edits (layout drags, view changes, filters). A handler can
+call `saveWorkspace()` to capture the whole workspace for persistence; the event payload is not a
+workspace token. Two wrapper lifecycle events complete the picture:
 `perspective-ready` fires once, after the panel has connected, loaded its tables, and applied and
 rendered its initial workspace config — the signal to dismiss a branded startup overlay — and
 `perspective-error` fires when a config apply fails (connection, mirror, or restore), with the error
@@ -263,30 +297,46 @@ the adapter blocks that menu's copy action and emits `perspective-copy-error`. C
 keyboard copying can still use the fallback where browser policy permits it; otherwise Export remains
 available. Secure-context native-menu writes are not intercepted by the adapter.
 
-`save()` waits for pending connection and restore work, then returns the whole-element workspace
-config (`saveWorkspace()` under the hood — a `layout` tree plus per-panel viewer configs).
+`saveWorkspace()` waits for pending connection and restore work, then returns the whole-element workspace
+config (a `layout` tree plus per-panel viewer configs).
 
-For configured channels and declared tables, `save()` also includes `closed_channels`, a mapping from table name
-to its last panel configuration. `saveClean()` returns the same shape with themes and datagrid column
-size overrides removed from both open and closed channels. Both results can be assigned to
-`config.layout`. Storage and downloads remain application-owned.
+For tables in `panel_defaults` or `tables`, `saveWorkspace()` also includes `retained_panel_configs_by_table`, a mapping from table name
+to its last panel configuration. `savePortableWorkspace()` returns the same shape with themes and datagrid column
+size overrides removed from both displayed and retained panel configurations. Width removal covers
+Perspective's `columns_config` and the older `plugin_config.columns` format, preserving other styles.
+These are durable presentation settings; use `saveWorkspace()` to retain them. Both results can be assigned to
+`config.workspace`. Storage and downloads remain application-owned.
 
-`openChannel(name)` accepts names from `config.channels` or `config.tables` (string and object entries).
-It opens the table using its retained configuration, then defaults from `config.channels`, or Datagrid
-when no channel defaults exist. Declaring a table does not create it; it must be available from the
-connected client. If already open, the first matching panel is selected. New channels join the
-first detail tab stack; with `single_tab=True`, they replace that stack's selected channel. Master
-stacks remain in place. `closeChannel(name)` closes panels for that table and retains their last
+`openTablePanel(name)` accepts names from `config.panel_defaults` or `config.tables` (string and object entries).
+It opens the table using its retained configuration, then defaults from `config.panel_defaults`, or Datagrid
+when no panel defaults exist. Declaring a table does not create it; it must be available from the
+connected client. If already open, the first matching panel is selected, including a master panel. New panels join the
+first detail tab stack; with `restore_selected_tabs_only=True`, they replace that stack's selected tab. Master
+stacks remain in place. `closeTablePanels(name)` closes panels for that table and retains their last
 configuration, including when closing the final panel. Both methods return promises and share the
 wrapper's lifecycle queue. Undeclared names and calls without a loaded client reject. Calls queued behind an initial load wait
 for that load to finish.
 
-Channels are identified by table name, with one retained configuration per table. Applications with
-multiple independent views of one table can continue using ordinary workspace panels; channel close
+Tables are identified by table name, with one retained configuration per table. Applications with
+multiple independent views of one table can continue using ordinary workspace panels; closing table panels
 acts on all views of its table. Native tab-close actions also retain the last edited configuration.
 
+`showTable(name, options={})` selects the first existing non-master panel for the table, or
+creates a detail panel from `config.panel_defaults[name]` (Datagrid for declared tables without defaults).
+It preserves other panel instances, configuration, and existing split proportions. New panels join
+the first detail tab stack; if none exists, a new detail stack is added beside the existing layout.
+This operation retains other tabs even with `restore_selected_tabs_only=True`.
+
+`options.filter` accepts Perspective filter clauses. Clauses on the supplied columns replace all
+existing clauses on those columns; filters on other columns remain. Omitting `filter` or passing an
+empty list leaves filters unchanged. Use `restorePanel(id, {"filter": []})` to clear every filter.
+Arguments are snapshotted when called. Selection, creation, and filtering run together on the
+lifecycle queue; the returned promise resolves to the selected panel ID after rendering and action
+column refresh. Unknown tables, malformed options, and upstream restore failures reject without
+blocking later queued operations.
+
 `restorePanel(id, config)` applies a partial viewer configuration to an existing panel through the
-same lifecycle queue. `id` is a key in `save().panels`, not a table name. Unspecified settings and
+same lifecycle queue. `id` is a key in `saveWorkspace().panels`, not a table name. Unspecified settings and
 other panels remain unchanged. The method snapshots its arguments when called, validates against the
 panel's effective plugin, and refreshes synthetic action columns after restoring. It returns a promise
 that rejects for missing panels, invalid configurations, or an upstream restore failure. Later queued
@@ -296,18 +346,18 @@ operations can still run after a rejection. Panel existence is checked when the 
 from spaday import Invoke, by_id, element
 
 element("button").text("Open trades").on(
-    "click", Invoke(by_id("workspace"), "openChannel", "trades")
+    "click", Invoke(by_id("workspace"), "openTablePanel", "trades")
 )
 element("button").text("Buy trades").on(
     "click",
-    Invoke(by_id("workspace"), "restorePanel", "market", {"filter": [["side", "==", "Buy"]]}),
+    Invoke(by_id("workspace"), "showTable", "trades", {"filter": [["side", "==", "Buy"]]}, result="shown"),
 )
 ```
 
-This example targets a panel declared as `market` in `config.layout.panels`. The runnable market
-example also handles reopening a closed channel by reading its panel ID from the saved layout.
+This example selects a detail panel for `trades` and stores its ID in `shown`. The runnable market
+example uses the returned ID to export rows without inspecting the workspace layout.
 
-The optional toolbar lists only entries in `config.channels` and uses these same methods. Its container has class `perspective-panel-titlebar`
+The optional toolbar lists only entries in `config.panel_defaults` and uses these same methods. Its container has class `perspective-panel-titlebar`
 and inherits `--spa-text` and `--spa-surface`. Custom design-kit controls can call the methods through
 Spaday `Invoke` without enabling the toolbar or accessing the viewer's shadow DOM.
 
@@ -325,7 +375,7 @@ or dragging a divider. Defaults follow Perspective's inactive border and active 
 dark themes. These do not replace Perspective's grid themes.
 
 ```python
-PerspectivePanel().css(
+PerspectiveViewer().css(
     spa_perspective_divider_color="#666",
     spa_perspective_divider_hover_color="#0af",
 )
@@ -347,7 +397,7 @@ so a theme an application registers is selected by its name.
 `spaday_perspective.package` is named `perspective`. Its browser asset defines `<perspective-panel>`
 and the Perspective themes, and loads Perspective's own client, viewer, datagrid and charts modules,
 which the package serves under `vendor/` beside their WASM binaries. Its `components` collection
-contains `PerspectivePanel`; `catalog` returns the wrapper's property, event, and slot schema.
+contains `PerspectiveViewer`; `catalog` returns the wrapper's property, event, and slot schema.
 
 `package.imports` publishes those modules under Perspective's bare specifiers, which spaday emits as
 the page's import map:
@@ -361,22 +411,22 @@ the page's import map:
 
 Any other module on the page that imports them gets the same copy.
 
-## Profile switching
+## Restoring saved workspaces
 
 Config updates skip superseded work that has not started. An already-running upstream restore
 finishes before the newest config applies. Imperative methods remain queued in order.
 
-Saved profiles with the same panel IDs, tables, plugins, and style settings reuse existing plugins,
+Saved workspaces with the same panel IDs, tables, plugins, and style settings reuse existing plugins,
 including inactive tabs. Only panels whose view configuration changed are restored; unchanged panels
-receive no per-panel restore. Comparison uses live state, so restoring a profile resets user edits.
+receive no per-panel restore. Comparison uses live state, so restoring a saved workspace resets user edits.
 
 Reuse requires complete saved configurations and unchanged derived tables. Incomplete configurations,
 added or removed panels, table/plugin/style changes, and row-action policies use a full restore.
 Perspective merges plugin and column styles during per-panel updates; full restoration preserves the
-replacement semantics of saved profiles in those cases.
+replacement semantics of saved workspaces in those cases.
 
-`js/tests/profile-switching.spec.js` measures layout-only changes on 48 panels and changed saved
-profiles on 48 Datagrid panels over 100,000 synthetic trade rows. The larger fixture has four visible
+`js/tests/workspace-restores.spec.js` measures layout-only changes on 48 panels and changed saved
+workspaces on 48 Datagrid panels over 100,000 synthetic trade rows. The larger fixture has four visible
 stacks, inactive tabs, grouping, sorting, and filters. It compares a full restore with changes to four
 existing panels and checks that the saved results match. Timing, long tasks, restore calls, and
 retained plugin counts are attached to the Playwright report without machine-dependent thresholds.

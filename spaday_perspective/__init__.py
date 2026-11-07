@@ -10,6 +10,8 @@ from .workspace import migrate_layout
 
 __version__ = "0.8.4"
 
+PerspectiveViewer = PerspectivePanel
+
 # the exact version of each JS library the package serves, written by its JS build
 _VERSIONS = Path(__file__).parent / "extension" / "versions.json"
 
@@ -47,7 +49,7 @@ TOKENS: dict[str, tuple[str, str]] = {
 #: Perspective unchanged, which is how an application selects a theme of its own once the page
 #: carries its CSS::
 #:
-#:     PerspectivePanel(...).compute("theme", cond(field("dark"), "Acme Dark", "Acme Light"))
+#:     PerspectiveViewer(...).compute("theme", cond(field("dark"), "Acme Dark", "Acme Light"))
 THEMES = {"light": "Pro Light", "dark": "Pro Dark"}
 
 __all__ = [
@@ -56,6 +58,7 @@ __all__ = [
     "Alignment",
     "EditMode",
     "PerspectivePanel",
+    "PerspectiveViewer",
     "Theme",
     "migrate_layout",
     "package",

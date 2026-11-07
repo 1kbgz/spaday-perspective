@@ -204,6 +204,8 @@ test("Python controls reopen a channel and update its filter without resetting g
     .poll(async () => (await state())?.filter)
     .toEqual([["side", "==", "Buy"]]);
   await page.getByRole("button", { name: "All trades", exact: true }).click();
-  await expect.poll(async () => (await state()).filter).toEqual([]);
+  await expect
+    .poll(async () => (await state()).filter)
+    .toEqual([["side", "in", ["Buy", "Sell"]]]);
   expect((await state()).group_by).toEqual(["symbol", "side"]);
 });
