@@ -18,7 +18,7 @@ if not IS_PYODIDE:
     from starlette.routing import WebSocketRoute
     from starlette.websockets import WebSocket, WebSocketDisconnect
 
-from spaday_perspective import EditMode, PerspectivePanel, package
+from spaday_perspective import EditMode, PerspectiveViewer, package
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -201,7 +201,7 @@ def layout(*, grouped: bool = False) -> dict:
 
 
 panel = (
-    PerspectivePanel(
+    PerspectiveViewer(
         id="market-grid",
         toolbar=True,
         hide_tabs=True,
@@ -249,15 +249,12 @@ panel = (
             {
                 **({"local": True} if IS_PYODIDE else {"ws_url": "/perspective"}),
                 "tables": ["trades"],
-                "channels": {"trades": layout()["panels"]["market"]},
-                "layout": cond(eq(field("view"), "grouped"), layout(grouped=True), layout()),
+                "panel_defaults": {"trades": layout()["panels"]["market"]},
+                "workspace": cond(eq(field("view"), "grouped"), layout(grouped=True), layout()),
             }
         ),
     )
 )
-
-# A reopened channel gets a new panel ID; both controls and export use the current one.
-trade_panel_id = cond(field("trade_workspace.panels.market"), "market", "channel:trades")
 
 page = element(
     "main",
@@ -305,31 +302,26 @@ page = element(
             "div",
             element("button").text("Live blotter").on("click", SetField("view", "blotter")),
             element("button").text("Group by symbol").on("click", SetField("view", "grouped")),
-            element("button").text("Open trades").on("click", Invoke(by_id("market-grid"), "openChannel", "trades")),
+            element("button").text("Open trades").on("click", Invoke(by_id("market-grid"), "openTablePanel", "trades")),
             *(
                 element("button")
                 .text(label)
                 .on(
                     "click",
-                    Sequence(
-                        Invoke(by_id("market-grid"), "openChannel", "trades"),
-                        Invoke(by_id("market-grid"), "save", result="trade_workspace"),
-                        Invoke(by_id("market-grid"), "restorePanel", trade_panel_id, {"filter": filters}),
-                    ),
+                    Invoke(by_id("market-grid"), "showTable", "trades", {"filter": filters}),
                 )
-                for label, filters in (("Buy trades", [["side", "==", "Buy"]]), ("All trades", []))
+                for label, filters in (("Buy trades", [["side", "==", "Buy"]]), ("All trades", [["side", "in", ["Buy", "Sell"]]]))
             ),
             element("button")
             .text("Export CSV")
             .on(
                 "click",
                 Sequence(
-                    Invoke(by_id("market-grid"), "openChannel", "trades"),
-                    Invoke(by_id("market-grid"), "save", result="trade_workspace"),
+                    Invoke(by_id("market-grid"), "showTable", "trades", result="trade_panel"),
                     Invoke(
                         by_id("market-grid"),
                         "exportData",
-                        obj({"panel": trade_panel_id, "format": "csv"}),
+                        obj({"panel": field("trade_panel"), "format": "csv"}),
                         result="exported_trades",
                     ),
                     Download("trades.csv", field("exported_trades"), "text/csv"),

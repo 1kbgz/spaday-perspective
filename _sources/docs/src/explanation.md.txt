@@ -1,4 +1,4 @@
-# Why Perspective uses its own data channel
+# Why Perspective uses its own data connection
 
 Perspective is a columnar analytics engine, not a conventional DOM table. Its websocket protocol moves
 table updates into a browser worker and supports views, aggregations, and incremental computation without
@@ -14,7 +14,7 @@ path. A spaday store or transports model can still carry compact application sta
 layout preset or summary metrics.
 
 Sending every row through spaday would duplicate storage and serialization work before Perspective could
-process the same data again. Keeping the native channel also means existing Perspective server code can be
+process the same data again. Keeping the native connection also means existing Perspective server code can be
 used unchanged. The wrapper only adapts lifecycle, theme, and workspace configuration to spaday.
 
 The standalone Pyodide example has no Python server to connect to. It creates the same named table in Perspective's browser worker, transfers initial rows from Python once, and sends incremental rows directly to that worker. This preserves Perspective's columnar execution model without emulating a websocket server in the page.

@@ -27,7 +27,7 @@
     <script src="../../_static/js/custom.js?v=956e5d78"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Why Perspective uses its own data channel" href="explanation.html" />
+    <link rel="next" title="Why Perspective uses its own data connection" href="explanation.html" />
     <link rel="prev" title="How to stream data and change layouts" href="how-to.html" />
     <script>
       (function () {
@@ -94,7 +94,7 @@
   </li>
   <li class="fd-tree-item">
     <a class="fd-link" href="explanation.html">
-      <span class="fd-link-text">Why Perspective uses its own data channel</span>
+      <span class="fd-link-text">Why Perspective uses its own data connection</span>
     </a>
   </li>
 </ul>
@@ -119,13 +119,13 @@
     </button>
     <div id="fd-toc-mobile" hidden><ul class="fd-toc-list">
   <li class="fd-toc-item" data-depth="1">
-    <a href="#perspectivepanel">PerspectivePanel</a>
+    <a href="#perspectiveviewer">PerspectiveViewer</a>
   </li>
   <li class="fd-toc-item" data-depth="2">
-    <a href="#spaday_perspective.PerspectivePanel">PerspectivePanel</a>
+    <a href="#spaday_perspective.PerspectiveViewer">PerspectiveViewer</a>
   </li>
-  <li class="fd-toc-item" data-depth="3">
-    <a href="#spaday_perspective.PerspectivePanel.to_node">PerspectivePanel.to_node()</a>
+  <li class="fd-toc-item" data-depth="1">
+    <a href="#terminology-and-compatibility">Terminology and compatibility</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
     <a href="#configuration">Configuration</a>
@@ -152,7 +152,7 @@
     <a href="#package">package</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
-    <a href="#profile-switching">Profile switching</a>
+    <a href="#restoring-saved-workspaces">Restoring saved workspaces</a>
   </li>
 </ul>
 </div>
@@ -163,9 +163,10 @@
       <div class="fd-prose">
   <section class="tex2jax_ignore mathjax_ignore" id="api-reference">
 <h1>API reference<a class="headerlink" href="#api-reference" title="Link to this heading">¶</a></h1>
-<section id="perspectivepanel">
-<h2><code class="docutils literal notranslate"><span class="pre">PerspectivePanel</span></code><a class="headerlink" href="#perspectivepanel" title="Link to this heading">¶</a></h2>
-<p>Tag: <code class="docutils literal notranslate"><span class="pre">&lt;perspective-panel&gt;</span></code>.</p>
+<section id="perspectiveviewer">
+<h2><code class="docutils literal notranslate"><span class="pre">PerspectiveViewer</span></code><a class="headerlink" href="#perspectiveviewer" title="Link to this heading">¶</a></h2>
+<p>Tag: <code class="docutils literal notranslate"><span class="pre">&lt;perspective-panel&gt;</span></code>. <code class="docutils literal notranslate"><span class="pre">PerspectiveViewer</span></code> aliases the existing validated <code class="docutils literal notranslate"><span class="pre">PerspectivePanel</span></code>
+class; both imports serialize to the same tag. The wrapper manages a multi-panel workspace.</p>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Prop</p></th>
@@ -204,7 +205,7 @@
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">toolbar</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
-<td><p>Show channel controls and Copy selection (default <code class="docutils literal notranslate"><span class="pre">False</span></code>).</p></td>
+<td><p>Show table controls and Copy selection (default <code class="docutils literal notranslate"><span class="pre">False</span></code>).</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">hide_tabs</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
@@ -216,25 +217,68 @@
 </tr>
 </tbody>
 </table>
-<dl class="py class">
-<dt class="sig sig-object py" id="spaday_perspective.PerspectivePanel">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">spaday_perspective.</span></span><span class="sig-name descname"><span class="pre">PerspectivePanel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">children</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Component</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hideTabs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">find</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rowActions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">toolbar</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theme</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">themes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">autosize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">autopause</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">throttle</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">settings</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">props</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/spaday_perspective/panel.html#PerspectivePanel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spaday_perspective.PerspectivePanel" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">PerspectivePanel</span></code></p>
-<p>Perspective panel with validation of literal configuration at serialization.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="spaday_perspective.PerspectivePanel.to_node">
-<span class="sig-name descname"><span class="pre">to_node</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="../../_modules/spaday_perspective/panel.html#PerspectivePanel.to_node"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#spaday_perspective.PerspectivePanel.to_node" title="Link to this definition">¶</a></dt>
-<dd><p>The node as the core’s JSON-ready dict (empty fields omitted, like the Rust core).</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="spaday_perspective.PerspectiveViewer">
+<span class="sig-prename descclassname"><span class="pre">spaday_perspective.</span></span><span class="sig-name descname"><span class="pre">PerspectiveViewer</span></span><a class="headerlink" href="#spaday_perspective.PerspectiveViewer" title="Link to this definition">¶</a></dt>
+<dd><p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">PerspectivePanel</span></code></p>
 </dd></dl>
 
-</dd></dl>
-
+</section>
+<section id="terminology-and-compatibility">
+<h2>Terminology and compatibility<a class="headerlink" href="#terminology-and-compatibility" title="Link to this heading">¶</a></h2>
+<p>A <strong>table</strong> holds data. A <strong>view</strong> defines a query over a table. A <strong>panel</strong> displays a view in a
+workspace. A <strong>workspace</strong> contains the layout tree and panel configurations.</p>
+<p>The following legacy names remain supported:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Canonical name</p></th>
+<th class="head"><p>Compatibility name</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PerspectiveViewer</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PerspectivePanel</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">config.workspace</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">config.layout</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">config.panel_defaults</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">config.channels</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">config.restore_selected_tabs_only</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">config.single_tab</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">openTablePanel(name)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">openChannel(name)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">closeTablePanels(name)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">closeChannel(name)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">save()</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">savePortableWorkspace()</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">saveClean()</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>Supplying both config names requires structurally equal values; conflicting values raise an error.
+The config getter preserves the supplied keys. Workspace JSON strings are accepted; when supplying
+both workspace aliases, their values must use the same representation.</p>
+<p>Canonical save methods write the wrapper extension <code class="docutils literal notranslate"><span class="pre">retained_panel_configs_by_table</span></code>. Legacy save
+methods keep writing <code class="docutils literal notranslate"><span class="pre">closed_channels</span></code>; restores accept either key and reject conflicting mappings.
+Both mappings store one last panel configuration per table, only for tables without open panels.
+The wrapper removes this metadata before calling native <code class="docutils literal notranslate"><span class="pre">restoreWorkspace()</span></code>. Panel IDs are opaque;
+existing <code class="docutils literal notranslate"><span class="pre">channel:</span></code> prefixes remain valid.</p>
+<p>These methods are wrapper conveniences. Native <code class="docutils literal notranslate"><span class="pre">viewer.save()</span></code> saves an individual panel;
+<code class="docutils literal notranslate"><span class="pre">viewer.saveWorkspace()</span></code> saves the workspace. Native <code class="docutils literal notranslate"><span class="pre">addPanel</span></code>/<code class="docutils literal notranslate"><span class="pre">removePanel</span></code> operate on panel IDs,
+while <code class="docutils literal notranslate"><span class="pre">closeTablePanels</span></code> removes every panel for a table, including master panels.</p>
 </section>
 <section id="configuration">
 <h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">hide_tabs</span></code> hides every internal tab strip without changing the saved workspace or its panels.
-It does not hide the wrapper toolbar. For multiple channels, provide navigation through the toolbar
-or your own buttons calling <code class="docutils literal notranslate"><span class="pre">openChannel</span></code>; hidden tabs cannot be selected or dragged by the user.
+It does not hide the wrapper toolbar. For multiple tables, provide navigation through the toolbar
+or your own buttons calling <code class="docutils literal notranslate"><span class="pre">openTablePanel</span></code>; hidden tabs cannot be selected or dragged by the user.
 The browser property is <code class="docutils literal notranslate"><span class="pre">hideTabs</span></code>.</p>
 <table class="docutils align-default">
 <thead>
@@ -260,9 +304,9 @@ The browser property is <code class="docutils literal notranslate"><span class="
 <td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">server</span></code> (default) or <code class="docutils literal notranslate"><span class="pre">client-server</span></code>, applied to <code class="docutils literal notranslate"><span class="pre">tables</span></code> entries without their own <code class="docutils literal notranslate"><span class="pre">architecture</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">layout</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">workspace</span></code></p></td>
 <td><p>mapping</p></td>
-<td><p>Workspace config accepted by <code class="docutils literal notranslate"><span class="pre">&lt;perspective-viewer&gt;.restoreWorkspace()</span></code>, plus optional <code class="docutils literal notranslate"><span class="pre">closed_channels</span></code>.</p></td>
+<td><p>Workspace config accepted by <code class="docutils literal notranslate"><span class="pre">&lt;perspective-viewer&gt;.restoreWorkspace()</span></code>, plus optional <code class="docutils literal notranslate"><span class="pre">retained_panel_configs_by_table</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">wait_for_table</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
@@ -272,29 +316,29 @@ The browser property is <code class="docutils literal notranslate"><span class="
 <td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
 <td><p>Theme for filter-source panels listed in <code class="docutils literal notranslate"><span class="pre">masters</span></code>. Accepts <code class="docutils literal notranslate"><span class="pre">light</span></code>, <code class="docutils literal notranslate"><span class="pre">dark</span></code>, or a registered theme name. Defaults to the application theme.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">channels</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">panel_defaults</span></code></p></td>
 <td><p>mapping</p></td>
-<td><p>Table name to default panel configuration, such as <code class="docutils literal notranslate"><span class="pre">{&quot;trades&quot;:</span> <span class="pre">{&quot;title&quot;:</span> <span class="pre">&quot;Trades&quot;,</span> <span class="pre">&quot;columns&quot;:</span> <span class="pre">[&quot;price&quot;]}}</span></code>. Supplies the channel picker and default configs; declared tables also support <code class="docutils literal notranslate"><span class="pre">openChannel</span></code>/<code class="docutils literal notranslate"><span class="pre">closeChannel</span></code>.</p></td>
+<td><p>Table name to default panel configuration, such as <code class="docutils literal notranslate"><span class="pre">{&quot;trades&quot;:</span> <span class="pre">{&quot;title&quot;:</span> <span class="pre">&quot;Trades&quot;,</span> <span class="pre">&quot;columns&quot;:</span> <span class="pre">[&quot;price&quot;]}}</span></code>. Supplies the table picker and default configs; declared tables also support <code class="docutils literal notranslate"><span class="pre">openTablePanel</span></code>/<code class="docutils literal notranslate"><span class="pre">closeTablePanels</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">single_tab</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">restore_selected_tabs_only</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
-<td><p>Keep only the selected tab in each stack before restoring it. Hidden configured channels retain their settings for reopening. Default <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></td>
+<td><p>Keep only the selected tab in each stack before restoring it. Hidden configured tables retain their settings for reopening. Default <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
-<p>Changing <code class="docutils literal notranslate"><span class="pre">ws_url</span></code> opens a new client connection. Changing the serialized <code class="docutils literal notranslate"><span class="pre">layout</span></code> restores the viewer’s panels.
+<p>Changing <code class="docutils literal notranslate"><span class="pre">ws_url</span></code> opens a new client connection. Changing the serialized <code class="docutils literal notranslate"><span class="pre">workspace</span></code> restores the viewer’s panels.
 The wrapper queues asynchronous changes in assignment order.</p>
 <p>For a <code class="docutils literal notranslate"><span class="pre">client-server</span></code> mirror, omitting both <code class="docutils literal notranslate"><span class="pre">index</span></code> and <code class="docutils literal notranslate"><span class="pre">limit</span></code> inherits the source table’s index.
 An explicit index or limit takes precedence; unindexed sources remain unindexed.</p>
 <section id="validation-and-enums">
 <h3>Validation and enums<a class="headerlink" href="#validation-and-enums" title="Link to this heading">¶</a></h3>
-<p>The public <code class="docutils literal notranslate"><span class="pre">spaday_perspective.PerspectivePanel</span></code> validates literal configuration when serialized
+<p>The public <code class="docutils literal notranslate"><span class="pre">spaday_perspective.PerspectiveViewer</span></code> validates literal configuration when serialized
 with <code class="docutils literal notranslate"><span class="pre">to_node()</span></code> (including through <code class="docutils literal notranslate"><span class="pre">serve()</span></code> or a widget). This includes <code class="docutils literal notranslate"><span class="pre">.prop(&quot;config&quot;,</span> <span class="pre">...)</span></code>
 updates. <code class="docutils literal notranslate"><span class="pre">validate_config(config)</span></code> performs the same check explicitly and raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>
-with a path such as <code class="docutils literal notranslate"><span class="pre">config.layout.panels.trades.plugin_config.edit_mode</span></code>. Browser property setters
+with a path such as <code class="docutils literal notranslate"><span class="pre">config.workspace.panels.trades.plugin_config.edit_mode</span></code>. Browser property setters
 validate reactive config updates before accepting them. Computed expressions are checked when
 their result reaches the browser, not while authoring the expression.</p>
-<p>Validation covers wrapper flags, table descriptors, panel/channel mappings, theme-name types, and
+<p>Validation covers wrapper flags, table descriptors, panel defaults, theme-name types, and
 the pinned Datagrid’s plugin settings. Unknown Datagrid settings are rejected. Custom plugins,
 per-column style payloads, and table-dependent filter/expression validity remain upstream-owned.
 Unknown wrapper/workspace extension fields are preserved. This is not a complete validator for
@@ -322,9 +366,9 @@ through unchanged. The browser bundle exports the mapping-only equivalent, <code
 <p>The application theme overrides saved panel themes before restoration. <code class="docutils literal notranslate"><span class="pre">master_theme</span></code> overrides
 that choice for filter-source panels, including during live application theme changes. Input layouts
 are copied before preparation. Restoring a saved layout does not require a second theme restore.</p>
-<p>Changing <code class="docutils literal notranslate"><span class="pre">master_theme</span></code> or <code class="docutils literal notranslate"><span class="pre">single_tab</span></code> with an unchanged layout applies to the current workspace,
-preserving user edits. Turning <code class="docutils literal notranslate"><span class="pre">single_tab</span></code> off permits additional tabs; it does not reopen closed
-channels. Replacing <code class="docutils literal notranslate"><span class="pre">layout</span></code> starts a new workspace and replaces its retained channel configurations.</p>
+<p>Changing <code class="docutils literal notranslate"><span class="pre">master_theme</span></code> or <code class="docutils literal notranslate"><span class="pre">restore_selected_tabs_only</span></code> with an unchanged layout applies to the current workspace,
+preserving user edits. Turning <code class="docutils literal notranslate"><span class="pre">restore_selected_tabs_only</span></code> off permits additional tabs; it does not reopen closed
+panels. Replacing <code class="docutils literal notranslate"><span class="pre">workspace</span></code> starts a new workspace and replaces its retained panel configurations.</p>
 <p><code class="docutils literal notranslate"><span class="pre">local=True</span></code> expects named tables to be created through <code class="docutils literal notranslate"><span class="pre">globalThis.__spadayPerspective.worker()</span></code> before the panel loads. It is intended for browser-only hosts such as the bundled Pyodide example; normal Python deployments should keep bulk data on Perspective’s websocket.</p>
 </section>
 </section>
@@ -344,18 +388,18 @@ server architecture avoids that cost for large or frequently changing tables.</p
 <section id="row-actions">
 <h2>Row actions<a class="headerlink" href="#row-actions" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">row_actions</span></code> (JavaScript <code class="docutils literal notranslate"><span class="pre">rowActions</span></code>) maps table names to indexed-column button descriptions:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectivePanel</span><span class="p">(</span><span class="n">row_actions</span><span class="o">=</span><span class="p">{</span><span class="s2">"orders"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"action"</span><span class="p">:</span> <span class="s2">"delete"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Delete order"</span><span class="p">,</span> <span class="s2">"text"</span><span class="p">:</span> <span class="s2">"×"</span><span class="p">}}})</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectiveViewer</span><span class="p">(</span><span class="n">row_actions</span><span class="o">=</span><span class="p">{</span><span class="s2">"orders"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"action"</span><span class="p">:</span> <span class="s2">"delete"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Delete order"</span><span class="p">,</span> <span class="s2">"text"</span><span class="p">:</span> <span class="s2">"×"</span><span class="p">}}})</span>
 </pre></div>
 </div>
 <p>A column accepts one description or a list, rendered in order in the same cell:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectivePanel</span><span class="p">(</span><span class="n">row_actions</span><span class="o">=</span><span class="p">{</span><span class="s2">"orders"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="p">[</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectiveViewer</span><span class="p">(</span><span class="n">row_actions</span><span class="o">=</span><span class="p">{</span><span class="s2">"orders"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="p">[</span>
     <span class="p">{</span><span class="s2">"action"</span><span class="p">:</span> <span class="s2">"delete"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Delete order"</span><span class="p">},</span>
     <span class="p">{</span><span class="s2">"action"</span><span class="p">:</span> <span class="s2">"copy"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Copy order to form"</span><span class="p">,</span> <span class="s2">"text"</span><span class="p">:</span> <span class="s2">"⧉"</span><span class="p">},</span>
 <span class="p">]}})</span>
 </pre></div>
 </div>
 <p>Dedicated columns use identifiers starting with <code class="docutils literal notranslate"><span class="pre">&#64;</span></code> and do not replace the real index column:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectivePanel</span><span class="p">(</span><span class="n">row_actions</span><span class="o">=</span><span class="p">{</span><span class="s2">"orders"</span><span class="p">:</span> <span class="p">{</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectiveViewer</span><span class="p">(</span><span class="n">row_actions</span><span class="o">=</span><span class="p">{</span><span class="s2">"orders"</span><span class="p">:</span> <span class="p">{</span>
     <span class="s2">"@copy"</span><span class="p">:</span> <span class="p">{</span>
         <span class="s2">"header"</span><span class="p">:</span> <span class="s2">"Copy"</span><span class="p">,</span> <span class="s2">"position"</span><span class="p">:</span> <span class="s2">"start"</span><span class="p">,</span>
         <span class="s2">"buttons"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"action"</span><span class="p">:</span> <span class="s2">"copy"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Copy order"</span><span class="p">,</span> <span class="s2">"icon"</span><span class="p">:</span> <span class="s2">"copy"</span><span class="p">}],</span>
@@ -371,11 +415,11 @@ server architecture avoids that cost for large or frequently changing tables.</p
 each position. Each accepts multiple buttons. Headers must be unique and must not collide with
 source columns or user expressions. An empty button list removes the generated column.
 View-level expressions provide the record keys; source tables are unchanged. The wrapper’s
-<code class="docutils literal notranslate"><span class="pre">save()</span></code> and <code class="docutils literal notranslate"><span class="pre">saveClean()</span></code> omit those expressions and columns, which are recreated from
+<code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> and <code class="docutils literal notranslate"><span class="pre">savePortableWorkspace()</span></code> omit those expressions and columns, which are recreated from
 <code class="docutils literal notranslate"><span class="pre">row_actions</span></code> on restoration. Direct calls to <code class="docutils literal notranslate"><span class="pre">viewer.saveWorkspace()</span></code> include them and are not
-portable to a fresh wrapper with the same action policy; use wrapper <code class="docutils literal notranslate"><span class="pre">save()</span></code> or <code class="docutils literal notranslate"><span class="pre">saveClean()</span></code>
+portable to a fresh wrapper with the same action policy; use wrapper <code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> or <code class="docutils literal notranslate"><span class="pre">savePortableWorkspace()</span></code>
 for persistence. Matching expression text alone does not establish wrapper ownership.
-Replace a panel’s table through <code class="docutils literal notranslate"><span class="pre">config.layout</span></code>. Partial table swaps through the raw viewer API
+Replace a panel’s table through <code class="docutils literal notranslate"><span class="pre">config.workspace</span></code>. Partial table swaps through the raw viewer API
 can retain the old table’s expressions, including generated action fields; the wrapper does not
 assume ownership of expressions on a different table.
 In dedicated-column events, <code class="docutils literal notranslate"><span class="pre">column</span></code> is the stable <code class="docutils literal notranslate"><span class="pre">&#64;</span></code> identifier, not its display header.</p>
@@ -402,7 +446,7 @@ style references. Saved layouts omit those references with the generated columns
 string or safe-integer key are enabled. Grouped views, non-index columns, and missing/unsupported
 keys disable the button. Other plugins do not display dedicated columns.</p>
 <p><code class="docutils literal notranslate"><span class="pre">rowActions</span></code> supports computed bindings, including nested labels:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectivePanel</span><span class="p">()</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="s2">"rowActions"</span><span class="p">,</span> <span class="n">obj</span><span class="p">({</span><span class="s2">"orders"</span><span class="p">:</span> <span class="n">obj</span><span class="p">({</span><span class="s2">"id"</span><span class="p">:</span> <span class="n">obj</span><span class="p">({</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectiveViewer</span><span class="p">()</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="s2">"rowActions"</span><span class="p">,</span> <span class="n">obj</span><span class="p">({</span><span class="s2">"orders"</span><span class="p">:</span> <span class="n">obj</span><span class="p">({</span><span class="s2">"id"</span><span class="p">:</span> <span class="n">obj</span><span class="p">({</span>
     <span class="s2">"action"</span><span class="p">:</span> <span class="s2">"copy"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">:</span> <span class="n">field</span><span class="p">(</span><span class="s2">"copy_label"</span><span class="p">),</span> <span class="s2">"icon"</span><span class="p">:</span> <span class="s2">"copy"</span><span class="p">,</span>
 <span class="p">})})}))</span>
 </pre></div>
@@ -425,8 +469,9 @@ before click. Listeners and rendered buttons are removed when annotations or the
 bubbling DOM events usable from spaday’s <code class="docutils literal notranslate"><span class="pre">.on(...)</span></code>: <code class="docutils literal notranslate"><span class="pre">perspective-click</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-select</span></code>,
 <code class="docutils literal notranslate"><span class="pre">perspective-global-filter</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-global-filter-update</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-config-update</span></code>,
 <code class="docutils literal notranslate"><span class="pre">perspective-toggle-settings</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-statusbar-pointerdown</span></code>, and <code class="docutils literal notranslate"><span class="pre">perspective-table-delete</span></code>.
-<code class="docutils literal notranslate"><span class="pre">perspective-config-update</span></code> fires on user edits (layout drags, view changes, filters) — bind it to
-persist user-edited workspaces. Two panel-level lifecycle events complete the picture:
+<code class="docutils literal notranslate"><span class="pre">perspective-config-update</span></code> fires on user edits (layout drags, view changes, filters). A handler can
+call <code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> to capture the whole workspace for persistence; the event payload is not a
+workspace token. Two wrapper lifecycle events complete the picture:
 <code class="docutils literal notranslate"><span class="pre">perspective-ready</span></code> fires once, after the panel has connected, loaded its tables, and applied and
 rendered its initial workspace config — the signal to dismiss a branded startup overlay — and
 <code class="docutils literal notranslate"><span class="pre">perspective-error</span></code> fires when a config apply fails (connection, mirror, or restore), with the error
@@ -469,26 +514,40 @@ accepted by the operating system cannot be revoked.</p>
 the adapter blocks that menu’s copy action and emits <code class="docutils literal notranslate"><span class="pre">perspective-copy-error</span></code>. Copy selection and
 keyboard copying can still use the fallback where browser policy permits it; otherwise Export remains
 available. Secure-context native-menu writes are not intercepted by the adapter.</p>
-<p><code class="docutils literal notranslate"><span class="pre">save()</span></code> waits for pending connection and restore work, then returns the whole-element workspace
-config (<code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> under the hood — a <code class="docutils literal notranslate"><span class="pre">layout</span></code> tree plus per-panel viewer configs).</p>
-<p>For configured channels and declared tables, <code class="docutils literal notranslate"><span class="pre">save()</span></code> also includes <code class="docutils literal notranslate"><span class="pre">closed_channels</span></code>, a mapping from table name
-to its last panel configuration. <code class="docutils literal notranslate"><span class="pre">saveClean()</span></code> returns the same shape with themes and datagrid column
-size overrides removed from both open and closed channels. Both results can be assigned to
-<code class="docutils literal notranslate"><span class="pre">config.layout</span></code>. Storage and downloads remain application-owned.</p>
-<p><code class="docutils literal notranslate"><span class="pre">openChannel(name)</span></code> accepts names from <code class="docutils literal notranslate"><span class="pre">config.channels</span></code> or <code class="docutils literal notranslate"><span class="pre">config.tables</span></code> (string and object entries).
-It opens the table using its retained configuration, then defaults from <code class="docutils literal notranslate"><span class="pre">config.channels</span></code>, or Datagrid
-when no channel defaults exist. Declaring a table does not create it; it must be available from the
-connected client. If already open, the first matching panel is selected. New channels join the
-first detail tab stack; with <code class="docutils literal notranslate"><span class="pre">single_tab=True</span></code>, they replace that stack’s selected channel. Master
-stacks remain in place. <code class="docutils literal notranslate"><span class="pre">closeChannel(name)</span></code> closes panels for that table and retains their last
+<p><code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> waits for pending connection and restore work, then returns the whole-element workspace
+config (a <code class="docutils literal notranslate"><span class="pre">layout</span></code> tree plus per-panel viewer configs).</p>
+<p>For tables in <code class="docutils literal notranslate"><span class="pre">panel_defaults</span></code> or <code class="docutils literal notranslate"><span class="pre">tables</span></code>, <code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> also includes <code class="docutils literal notranslate"><span class="pre">retained_panel_configs_by_table</span></code>, a mapping from table name
+to its last panel configuration. <code class="docutils literal notranslate"><span class="pre">savePortableWorkspace()</span></code> returns the same shape with themes and datagrid column
+size overrides removed from both displayed and retained panel configurations. Width removal covers
+Perspective’s <code class="docutils literal notranslate"><span class="pre">columns_config</span></code> and the older <code class="docutils literal notranslate"><span class="pre">plugin_config.columns</span></code> format, preserving other styles.
+These are durable presentation settings; use <code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> to retain them. Both results can be assigned to
+<code class="docutils literal notranslate"><span class="pre">config.workspace</span></code>. Storage and downloads remain application-owned.</p>
+<p><code class="docutils literal notranslate"><span class="pre">openTablePanel(name)</span></code> accepts names from <code class="docutils literal notranslate"><span class="pre">config.panel_defaults</span></code> or <code class="docutils literal notranslate"><span class="pre">config.tables</span></code> (string and object entries).
+It opens the table using its retained configuration, then defaults from <code class="docutils literal notranslate"><span class="pre">config.panel_defaults</span></code>, or Datagrid
+when no panel defaults exist. Declaring a table does not create it; it must be available from the
+connected client. If already open, the first matching panel is selected, including a master panel. New panels join the
+first detail tab stack; with <code class="docutils literal notranslate"><span class="pre">restore_selected_tabs_only=True</span></code>, they replace that stack’s selected tab. Master
+stacks remain in place. <code class="docutils literal notranslate"><span class="pre">closeTablePanels(name)</span></code> closes panels for that table and retains their last
 configuration, including when closing the final panel. Both methods return promises and share the
 wrapper’s lifecycle queue. Undeclared names and calls without a loaded client reject. Calls queued behind an initial load wait
 for that load to finish.</p>
-<p>Channels are identified by table name, with one retained configuration per table. Applications with
-multiple independent views of one table can continue using ordinary workspace panels; channel close
+<p>Tables are identified by table name, with one retained configuration per table. Applications with
+multiple independent views of one table can continue using ordinary workspace panels; closing table panels
 acts on all views of its table. Native tab-close actions also retain the last edited configuration.</p>
+<p><code class="docutils literal notranslate"><span class="pre">showTable(name,</span> <span class="pre">options={})</span></code> selects the first existing non-master panel for the table, or
+creates a detail panel from <code class="docutils literal notranslate"><span class="pre">config.panel_defaults[name]</span></code> (Datagrid for declared tables without defaults).
+It preserves other panel instances, configuration, and existing split proportions. New panels join
+the first detail tab stack; if none exists, a new detail stack is added beside the existing layout.
+This operation retains other tabs even with <code class="docutils literal notranslate"><span class="pre">restore_selected_tabs_only=True</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">options.filter</span></code> accepts Perspective filter clauses. Clauses on the supplied columns replace all
+existing clauses on those columns; filters on other columns remain. Omitting <code class="docutils literal notranslate"><span class="pre">filter</span></code> or passing an
+empty list leaves filters unchanged. Use <code class="docutils literal notranslate"><span class="pre">restorePanel(id,</span> <span class="pre">{&quot;filter&quot;:</span> <span class="pre">[]})</span></code> to clear every filter.
+Arguments are snapshotted when called. Selection, creation, and filtering run together on the
+lifecycle queue; the returned promise resolves to the selected panel ID after rendering and action
+column refresh. Unknown tables, malformed options, and upstream restore failures reject without
+blocking later queued operations.</p>
 <p><code class="docutils literal notranslate"><span class="pre">restorePanel(id,</span> <span class="pre">config)</span></code> applies a partial viewer configuration to an existing panel through the
-same lifecycle queue. <code class="docutils literal notranslate"><span class="pre">id</span></code> is a key in <code class="docutils literal notranslate"><span class="pre">save().panels</span></code>, not a table name. Unspecified settings and
+same lifecycle queue. <code class="docutils literal notranslate"><span class="pre">id</span></code> is a key in <code class="docutils literal notranslate"><span class="pre">saveWorkspace().panels</span></code>, not a table name. Unspecified settings and
 other panels remain unchanged. The method snapshots its arguments when called, validates against the
 panel’s effective plugin, and refreshes synthetic action columns after restoring. It returns a promise
 that rejects for missing panels, invalid configurations, or an upstream restore failure. Later queued
@@ -496,17 +555,17 @@ operations can still run after a rejection. Panel existence is checked when the 
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday</span><span class="w"> </span><span class="kn">import</span> <span class="n">Invoke</span><span class="p">,</span> <span class="n">by_id</span><span class="p">,</span> <span class="n">element</span>
 
 <span class="n">element</span><span class="p">(</span><span class="s2">"button"</span><span class="p">)</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Open trades"</span><span class="p">)</span><span class="o">.</span><span class="n">on</span><span class="p">(</span>
-    <span class="s2">"click"</span><span class="p">,</span> <span class="n">Invoke</span><span class="p">(</span><span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"openChannel"</span><span class="p">,</span> <span class="s2">"trades"</span><span class="p">)</span>
+    <span class="s2">"click"</span><span class="p">,</span> <span class="n">Invoke</span><span class="p">(</span><span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"openTablePanel"</span><span class="p">,</span> <span class="s2">"trades"</span><span class="p">)</span>
 <span class="p">)</span>
 <span class="n">element</span><span class="p">(</span><span class="s2">"button"</span><span class="p">)</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Buy trades"</span><span class="p">)</span><span class="o">.</span><span class="n">on</span><span class="p">(</span>
     <span class="s2">"click"</span><span class="p">,</span>
-    <span class="n">Invoke</span><span class="p">(</span><span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"restorePanel"</span><span class="p">,</span> <span class="s2">"market"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"filter"</span><span class="p">:</span> <span class="p">[[</span><span class="s2">"side"</span><span class="p">,</span> <span class="s2">"=="</span><span class="p">,</span> <span class="s2">"Buy"</span><span class="p">]]}),</span>
+    <span class="n">Invoke</span><span class="p">(</span><span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"showTable"</span><span class="p">,</span> <span class="s2">"trades"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"filter"</span><span class="p">:</span> <span class="p">[[</span><span class="s2">"side"</span><span class="p">,</span> <span class="s2">"=="</span><span class="p">,</span> <span class="s2">"Buy"</span><span class="p">]]},</span> <span class="n">result</span><span class="o">=</span><span class="s2">"shown"</span><span class="p">),</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p>This example targets a panel declared as <code class="docutils literal notranslate"><span class="pre">market</span></code> in <code class="docutils literal notranslate"><span class="pre">config.layout.panels</span></code>. The runnable market
-example also handles reopening a closed channel by reading its panel ID from the saved layout.</p>
-<p>The optional toolbar lists only entries in <code class="docutils literal notranslate"><span class="pre">config.channels</span></code> and uses these same methods. Its container has class <code class="docutils literal notranslate"><span class="pre">perspective-panel-titlebar</span></code>
+<p>This example selects a detail panel for <code class="docutils literal notranslate"><span class="pre">trades</span></code> and stores its ID in <code class="docutils literal notranslate"><span class="pre">shown</span></code>. The runnable market
+example uses the returned ID to export rows without inspecting the workspace layout.</p>
+<p>The optional toolbar lists only entries in <code class="docutils literal notranslate"><span class="pre">config.panel_defaults</span></code> and uses these same methods. Its container has class <code class="docutils literal notranslate"><span class="pre">perspective-panel-titlebar</span></code>
 and inherits <code class="docutils literal notranslate"><span class="pre">--spa-text</span></code> and <code class="docutils literal notranslate"><span class="pre">--spa-surface</span></code>. Custom design-kit controls can call the methods through
 Spaday <code class="docutils literal notranslate"><span class="pre">Invoke</span></code> without enabling the toolbar or accessing the viewer’s shadow DOM.</p>
 <p><code class="docutils literal notranslate"><span class="pre">viewer</span></code> returns the underlying <code class="docutils literal notranslate"><span class="pre">&lt;perspective-viewer&gt;</span></code> element — the escape hatch for its
@@ -521,7 +580,7 @@ to set the corresponding <code class="docutils literal notranslate"><span class=
 panel borders and resize gaps; <code class="docutils literal notranslate"><span class="pre">spa_perspective_divider_hover_color</span></code> controls feedback while hovering
 or dragging a divider. Defaults follow Perspective’s inactive border and active colors in light and
 dark themes. These do not replace Perspective’s grid themes.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectivePanel</span><span class="p">()</span><span class="o">.</span><span class="n">css</span><span class="p">(</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectiveViewer</span><span class="p">()</span><span class="o">.</span><span class="n">css</span><span class="p">(</span>
     <span class="n">spa_perspective_divider_color</span><span class="o">=</span><span class="s2">"#666"</span><span class="p">,</span>
     <span class="n">spa_perspective_divider_hover_color</span><span class="o">=</span><span class="s2">"#0af"</span><span class="p">,</span>
 <span class="p">)</span>
@@ -543,7 +602,7 @@ so a theme an application registers is selected by its name.</p>
 <p><code class="docutils literal notranslate"><span class="pre">spaday_perspective.package</span></code> is named <code class="docutils literal notranslate"><span class="pre">perspective</span></code>. Its browser asset defines <code class="docutils literal notranslate"><span class="pre">&lt;perspective-panel&gt;</span></code>
 and the Perspective themes, and loads Perspective’s own client, viewer, datagrid and charts modules,
 which the package serves under <code class="docutils literal notranslate"><span class="pre">vendor/</span></code> beside their WASM binaries. Its <code class="docutils literal notranslate"><span class="pre">components</span></code> collection
-contains <code class="docutils literal notranslate"><span class="pre">PerspectivePanel</span></code>; <code class="docutils literal notranslate"><span class="pre">catalog</span></code> returns the wrapper’s property, event, and slot schema.</p>
+contains <code class="docutils literal notranslate"><span class="pre">PerspectiveViewer</span></code>; <code class="docutils literal notranslate"><span class="pre">catalog</span></code> returns the wrapper’s property, event, and slot schema.</p>
 <p><code class="docutils literal notranslate"><span class="pre">package.imports</span></code> publishes those modules under Perspective’s bare specifiers, which spaday emits as
 the page’s import map:</p>
 <table class="docutils align-default">
@@ -569,19 +628,19 @@ the page’s import map:</p>
 </table>
 <p>Any other module on the page that imports them gets the same copy.</p>
 </section>
-<section id="profile-switching">
-<h2>Profile switching<a class="headerlink" href="#profile-switching" title="Link to this heading">¶</a></h2>
+<section id="restoring-saved-workspaces">
+<h2>Restoring saved workspaces<a class="headerlink" href="#restoring-saved-workspaces" title="Link to this heading">¶</a></h2>
 <p>Config updates skip superseded work that has not started. An already-running upstream restore
 finishes before the newest config applies. Imperative methods remain queued in order.</p>
-<p>Saved profiles with the same panel IDs, tables, plugins, and style settings reuse existing plugins,
+<p>Saved workspaces with the same panel IDs, tables, plugins, and style settings reuse existing plugins,
 including inactive tabs. Only panels whose view configuration changed are restored; unchanged panels
-receive no per-panel restore. Comparison uses live state, so restoring a profile resets user edits.</p>
+receive no per-panel restore. Comparison uses live state, so restoring a saved workspace resets user edits.</p>
 <p>Reuse requires complete saved configurations and unchanged derived tables. Incomplete configurations,
 added or removed panels, table/plugin/style changes, and row-action policies use a full restore.
 Perspective merges plugin and column styles during per-panel updates; full restoration preserves the
-replacement semantics of saved profiles in those cases.</p>
-<p><code class="docutils literal notranslate"><span class="pre">js/tests/profile-switching.spec.js</span></code> measures layout-only changes on 48 panels and changed saved
-profiles on 48 Datagrid panels over 100,000 synthetic trade rows. The larger fixture has four visible
+replacement semantics of saved workspaces in those cases.</p>
+<p><code class="docutils literal notranslate"><span class="pre">js/tests/workspace-restores.spec.js</span></code> measures layout-only changes on 48 panels and changed saved
+workspaces on 48 Datagrid panels over 100,000 synthetic trade rows. The larger fixture has four visible
 stacks, inactive tabs, grouping, sorting, and filters. It compares a full restore with changes to four
 existing panels and checks that the saved results match. Timing, long tasks, restore calls, and
 retained plugin counts are attached to the Playwright report without machine-dependent thresholds.
@@ -600,10 +659,10 @@ Initial loads and structural changes still include upstream panel construction a
       <span class="fd-pagination-title">How to stream data and change layouts</span>
     </span>
   </a>
-  <a class="fd-pagination-card fd-pagination-next" href="explanation.html" title="Next: Why Perspective uses its own data channel">
+  <a class="fd-pagination-card fd-pagination-next" href="explanation.html" title="Next: Why Perspective uses its own data connection">
     <span class="fd-pagination-text">
       <span class="fd-pagination-label">Next</span>
-      <span class="fd-pagination-title">Why Perspective uses its own data channel</span>
+      <span class="fd-pagination-title">Why Perspective uses its own data connection</span>
     </span>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="fd-icon "><path d="m9 18 6-6-6-6"/></svg>
   </a>
@@ -624,13 +683,13 @@ Initial loads and structural changes still include upstream panel construction a
       <path class="fd-toc-thumb" fill="none" />
     </svg><ul class="fd-toc-list">
   <li class="fd-toc-item" data-depth="1">
-    <a href="#perspectivepanel">PerspectivePanel</a>
+    <a href="#perspectiveviewer">PerspectiveViewer</a>
   </li>
   <li class="fd-toc-item" data-depth="2">
-    <a href="#spaday_perspective.PerspectivePanel">PerspectivePanel</a>
+    <a href="#spaday_perspective.PerspectiveViewer">PerspectiveViewer</a>
   </li>
-  <li class="fd-toc-item" data-depth="3">
-    <a href="#spaday_perspective.PerspectivePanel.to_node">PerspectivePanel.to_node()</a>
+  <li class="fd-toc-item" data-depth="1">
+    <a href="#terminology-and-compatibility">Terminology and compatibility</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
     <a href="#configuration">Configuration</a>
@@ -657,7 +716,7 @@ Initial loads and structural changes still include upstream panel construction a
     <a href="#package">package</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
-    <a href="#profile-switching">Profile switching</a>
+    <a href="#restoring-saved-workspaces">Restoring saved workspaces</a>
   </li>
 </ul>
 

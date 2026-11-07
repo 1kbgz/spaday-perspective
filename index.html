@@ -93,7 +93,7 @@
   </li>
   <li class="fd-tree-item">
     <a class="fd-link" href="docs/src/explanation.html">
-      <span class="fd-link-text">Why Perspective uses its own data channel</span>
+      <span class="fd-link-text">Why Perspective uses its own data connection</span>
     </a>
   </li>
 </ul>
@@ -166,7 +166,7 @@ workspace element since Perspective 5), datagrid, themes, and viewer WASM.</p>
 <li><p><a class="reference internal" href="docs/src/how-to.html"><span class="std std-doc">Stream data and change layouts</span></a> — task-focused server and UI recipes.</p></li>
 <li><p><a class="reference internal" href="docs/src/how-to.html"><span class="std std-doc">Add row buttons</span></a> — indexed row events and server-side deletion.</p></li>
 <li><p><a class="reference internal" href="docs/src/reference.html"><span class="std std-doc">API reference</span></a> — component props, layout shape, and package descriptor.</p></li>
-<li><p><a class="reference internal" href="docs/src/explanation.html"><span class="std std-doc">Why Perspective uses its own data channel</span></a> — integration design and tradeoffs.</p></li>
+<li><p><a class="reference internal" href="docs/src/explanation.html"><span class="std std-doc">Why Perspective uses its own data connection</span></a> — integration design and tradeoffs.</p></li>
 </ul>
 </section>
 <section id="quick-example">
@@ -181,7 +181,7 @@ the select switches between flat and grouped layouts, and the checkbox changes t
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">spaday</span><span class="w"> </span><span class="kn">import</span> <span class="n">CallEndpoint</span><span class="p">,</span> <span class="n">cond</span><span class="p">,</span> <span class="n">element</span><span class="p">,</span> <span class="n">eq</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">obj</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">spaday.backends.starlette</span><span class="w"> </span><span class="kn">import</span> <span class="n">serve</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">spaday_perspective</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerspectivePanel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">spaday_perspective</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerspectiveViewer</span>
 
 <span class="n">server</span> <span class="o">=</span> <span class="n">perspective</span><span class="o">.</span><span class="n">Server</span><span class="p">()</span>
 <span class="n">client</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">new_local_client</span><span class="p">()</span>
@@ -226,7 +226,7 @@ the select switches between flat and grouped layouts, and the checkbox changes t
 
 
 <span class="n">panel</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="n">PerspectivePanel</span><span class="p">()</span>
+    <span class="n">PerspectiveViewer</span><span class="p">()</span>
     <span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="s2">"theme"</span><span class="p">,</span> <span class="n">cond</span><span class="p">(</span><span class="n">field</span><span class="p">(</span><span class="s2">"dark"</span><span class="p">),</span> <span class="s2">"dark"</span><span class="p">,</span> <span class="s2">"light"</span><span class="p">))</span>
     <span class="o">.</span><span class="n">compute</span><span class="p">(</span>
         <span class="s2">"config"</span><span class="p">,</span>
@@ -234,7 +234,7 @@ the select switches between flat and grouped layouts, and the checkbox changes t
             <span class="p">{</span>
                 <span class="s2">"ws_url"</span><span class="p">:</span> <span class="s2">"/perspective"</span><span class="p">,</span>
                 <span class="s2">"tables"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"trades"</span><span class="p">],</span>
-                <span class="s2">"layout"</span><span class="p">:</span> <span class="n">cond</span><span class="p">(</span><span class="n">eq</span><span class="p">(</span><span class="n">field</span><span class="p">(</span><span class="s2">"view"</span><span class="p">),</span> <span class="s2">"grouped"</span><span class="p">),</span> <span class="n">layout</span><span class="p">(</span><span class="n">grouped</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">layout</span><span class="p">()),</span>
+                <span class="s2">"workspace"</span><span class="p">:</span> <span class="n">cond</span><span class="p">(</span><span class="n">eq</span><span class="p">(</span><span class="n">field</span><span class="p">(</span><span class="s2">"view"</span><span class="p">),</span> <span class="s2">"grouped"</span><span class="p">),</span> <span class="n">layout</span><span class="p">(</span><span class="n">grouped</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">layout</span><span class="p">()),</span>
             <span class="p">}</span>
         <span class="p">),</span>
     <span class="p">)</span>

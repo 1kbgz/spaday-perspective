@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Why Perspective uses its own data channel &#8212; spaday-perspective v0.8.4</title>
+    <title>Why Perspective uses its own data connection &#8212; spaday-perspective v0.8.4</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/fuma.css?v=ca04d621" />
     <link rel="stylesheet" type="text/css" href="../../_static/fuma-code.css?v=a950e949" />
@@ -93,7 +93,7 @@
   </li>
   <li class="fd-tree-item">
     <a class="fd-link fd-current" href="#">
-      <span class="fd-link-text">Why Perspective uses its own data channel</span>
+      <span class="fd-link-text">Why Perspective uses its own data connection</span>
     </a>
   </li>
 </ul>
@@ -118,7 +118,7 @@
     </button>
     <div id="fd-toc-mobile" hidden><ul class="fd-toc-list">
   <li class="fd-toc-item" data-depth="1">
-    <a href="#">Why Perspective uses its own data channel</a>
+    <a href="#">Why Perspective uses its own data connection</a>
   </li>
 </ul>
 </div>
@@ -127,8 +127,8 @@
   <main id="fd-main">
     <article class="fd-page">
       <div class="fd-prose">
-  <section class="tex2jax_ignore mathjax_ignore" id="why-perspective-uses-its-own-data-channel">
-<h1>Why Perspective uses its own data channel<a class="headerlink" href="#why-perspective-uses-its-own-data-channel" title="Link to this heading">¶</a></h1>
+  <section class="tex2jax_ignore mathjax_ignore" id="why-perspective-uses-its-own-data-connection">
+<h1>Why Perspective uses its own data connection<a class="headerlink" href="#why-perspective-uses-its-own-data-connection" title="Link to this heading">¶</a></h1>
 <p>Perspective is a columnar analytics engine, not a conventional DOM table. Its websocket protocol moves
 table updates into a browser worker and supports views, aggregations, and incremental computation without
 serializing the full dataset through the component tree.</p>
@@ -141,7 +141,7 @@ serializing the full dataset through the component tree.</p>
 path. A spaday store or transports model can still carry compact application state, such as the selected
 layout preset or summary metrics.</p>
 <p>Sending every row through spaday would duplicate storage and serialization work before Perspective could
-process the same data again. Keeping the native channel also means existing Perspective server code can be
+process the same data again. Keeping the native connection also means existing Perspective server code can be
 used unchanged. The wrapper only adapts lifecycle, theme, and workspace configuration to spaday.</p>
 <p>The standalone Pyodide example has no Python server to connect to. It creates the same named table in Perspective’s browser worker, transfers initial rows from Python once, and sends incremental rows directly to that worker. This preserves Perspective’s columnar execution model without emulating a websocket server in the page.</p>
 </section>
@@ -173,7 +173,7 @@ used unchanged. The wrapper only adapts lifecycle, theme, and workspace configur
       <path class="fd-toc-thumb" fill="none" />
     </svg><ul class="fd-toc-list">
   <li class="fd-toc-item" data-depth="1">
-    <a href="#">Why Perspective uses its own data channel</a>
+    <a href="#">Why Perspective uses its own data connection</a>
   </li>
 </ul>
 
