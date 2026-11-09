@@ -9,9 +9,7 @@ import json
 import warnings
 from enum import StrEnum
 
-import perspective
-
-from .workspace import describe_notice, migrate_workspace
+from .workspace import describe_notice, migrate_workspace, perspective
 
 
 class EditMode(StrEnum):
@@ -58,6 +56,8 @@ def _panels(value, path):
     _check(value, "object", path)
     for name, panel in value.items():
         _check(panel, "object", f"{path}.{name}")
+        if perspective is None:
+            continue
         try:
             perspective.validate("panel", {**panel, "table": name})
         except perspective.PerspectiveError as error:
@@ -80,6 +80,8 @@ def _workspace(value, path):
         if value.get(section) is not None:
             _panels(value[section], f"{path}.{section}")
     _aliases(value, "retained_panel_configs_by_table", "closed_channels", path)
+    if perspective is None:
+        return
     try:
         _, notices = migrate_workspace(value)
     except perspective.PerspectiveError as error:

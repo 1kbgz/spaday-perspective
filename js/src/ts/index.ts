@@ -292,9 +292,7 @@ type Viewer = ClipboardViewer &
     toggleConfig(force?: boolean | null): Promise<unknown>;
   };
 
-function migrateConfigured(
-  authored: PerspectiveConfig,
-): Workspace | undefined {
+function migrateConfigured(authored: PerspectiveConfig): Workspace | undefined {
   const field = authored.workspace != null ? "workspace" : "layout";
   const workspace = authored[field];
   return workspace == null

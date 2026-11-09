@@ -1,5 +1,7 @@
 import json
 import re
+import subprocess
+import sys
 from copy import deepcopy
 from pathlib import Path
 
@@ -52,3 +54,14 @@ def test_custom_themes_and_fluent_prop_updates():
     panel.prop("config", {"channels": {"t": "trades"}})
     with pytest.raises(ValueError, match="config.channels.t"):
         panel.to_node()
+
+
+def test_the_package_imports_and_passes_layouts_through_without_perspective():
+    # the Pyodide example installs this package without perspective-python; the browser checks
+    script = (
+        "import sys; sys.modules['perspective'] = None\n"
+        "from spaday_perspective import migrate_layout, validate_config\n"
+        "validate_config({'layout': {'panels': []}, 'channels': {'t': {'plugin': 1}}})\n"
+        "assert migrate_layout({'viewers': {}}) == {'viewers': {}}\n"
+    )
+    subprocess.run([sys.executable, "-I", "-c", script], check=True, cwd=Path(__file__).parents[2])

@@ -5,7 +5,10 @@ import warnings
 from copy import deepcopy
 from typing import overload
 
-import perspective
+try:
+    import perspective
+except ImportError:  # the Pyodide example installs this package without the engine
+    perspective = None
 
 
 def describe_notice(notice: dict) -> str:
@@ -15,11 +18,9 @@ def describe_notice(notice: dict) -> str:
     return f"{notice['reason']} ({notice['step']})"
 
 
-def _written_by(layout: dict) -> str | None:
-    """The release an unstamped layout was written by, for ``migrate``'s ``from_version``."""
-    if "version" in layout or ("viewers" in layout and "panels" not in layout):
-        return None
-    return perspective.__version__
+def _unstamped(layout: dict) -> bool:
+    """Whether a current-shape layout carries no ``version``, so was written by the installed release."""
+    return "version" not in layout and not ("viewers" in layout and "panels" not in layout)
 
 
 # the wrapper's own workspace keys, which ``migrate`` does not know and so would drop
@@ -28,8 +29,11 @@ _METADATA = ("retained_panel_configs_by_table", "closed_channels")
 
 def migrate_workspace(layout: dict) -> tuple[dict, list[dict]]:
     """Upgrade a workspace mapping to the installed Perspective's schema."""
+    if perspective is None:
+        return deepcopy(layout), []
     rest = {key: value for key, value in layout.items() if key not in _METADATA}
-    result = perspective.migrate("workspace", rest, _written_by(layout))
+    written_by = perspective.__version__ if _unstamped(layout) else None
+    result = perspective.migrate("workspace", rest, written_by)
     value = result["value"]
     for key in _METADATA:
         if key in layout:
