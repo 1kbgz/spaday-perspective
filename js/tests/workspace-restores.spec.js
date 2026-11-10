@@ -144,7 +144,7 @@ test("restoring a saved workspace resets live edits instead of reusing stale cac
       filter: [["id", "==", 7]],
       sort: [["value", "desc"]],
       group_by: ["value"],
-      expressions: { doubled: '\"id\" * 2' },
+      expressions: { doubled: '"id" * 2' },
       columns: ["id", "doubled"],
       aggregates: { id: "avg" },
     });

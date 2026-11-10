@@ -1,103 +1,128 @@
-export interface PanelConfig {
-  table: string;
-  title?: string;
-  theme?: string;
-  columns_config?: Record<
-    string,
-    { column_size_override?: unknown; [key: string]: unknown }
-  >;
-  plugin_config?: {
-    columns?: Record<string, { column_size_override?: unknown }>;
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
-}
+import perspective from "@perspective-dev/client";
+import type { Validator } from "@perspective-dev/client";
+import type { WorkspaceConfigUpdate } from "@perspective-dev/viewer";
+import { errorMessage } from "./config.js";
+// The entry re-exports the workspace and viewer config types but not their constituents; these
+// are the same generated declarations, reached through the package's `./dist/*` export.
+import type { Layout } from "@perspective-dev/viewer/dist/ts-rs/Layout.d.ts";
+import type { ViewerConfigInitial } from "@perspective-dev/viewer/dist/ts-rs/ViewerConfigInitial.d.ts";
 
-export type Layout =
-  | { type: "tab-layout"; tabs: string[]; selected?: number }
-  | {
-      type: "split-layout";
-      children: Layout[];
-      sizes: number[];
-      orientation: string;
-    };
+export type { Layout };
 
-export interface Workspace {
+export type PanelConfig = ViewerConfigInitial;
+
+export type Workspace = Omit<
+  WorkspaceConfigUpdate,
+  "layout" | "panels" | "active"
+> & {
   layout?: Layout | null;
   panels?: Record<string, PanelConfig>;
-  masters?: string[];
   active?: string | null;
   retained_panel_configs_by_table?: Record<string, PanelConfig>;
   /** Compatibility metadata key used by save() and saveClean(). */
   closed_channels?: Record<string, PanelConfig>;
-  [key: string]: unknown;
+};
+
+export type MigrateNotice =
+  | { kind: "Dropped"; step: string; pointer: string; value: unknown }
+  | { kind: "Approximated"; step: string; pointer: string; reason: string };
+
+export interface MigratedWorkspace {
+  value: Workspace;
+  notices: MigrateNotice[];
 }
 
-interface LegacyNode {
-  type: string;
-  widgets?: string[];
-  currentIndex?: number;
-  children?: LegacyNode[];
-  sizes?: number[];
-  orientation?: string;
+export function describeNotice(notice: MigrateNotice): string {
+  return notice.kind === "Dropped"
+    ? `dropped by ${notice.step}, no current form for ${JSON.stringify(notice.value)}`
+    : `${notice.reason} (${notice.step})`;
 }
 
-function migrateNode(node: LegacyNode): Layout {
-  if (node.type === "tab-area")
-    return {
-      type: "tab-layout",
-      tabs: node.widgets ?? [],
-      selected: node.currentIndex ?? 0,
-    };
-  const children = (node.children ?? []).map(migrateNode);
-  return {
-    type: "split-layout",
-    orientation: node.orientation ?? "horizontal",
-    sizes: node.sizes?.length
-      ? node.sizes
-      : children.map(() => 1 / children.length),
-    children,
-  };
+declare const __PERSPECTIVE_VERSION__: string;
+
+// `migrate()` takes an unstamped layout as written by 2.0.0, which would rewrite a hand-written
+// current layout as a two-decade-old token (a chart's `plugin_config` emptied as pre-d3fc
+// leftovers). Only a Perspective 4 envelope is left to that default; its panels carry their own
+// stamps when they were ever saved.
+function writtenBy(layout: Record<string, unknown>): string | undefined {
+  if ("version" in layout || ("viewers" in layout && !("panels" in layout)))
+    return undefined;
+  return __PERSPECTIVE_VERSION__;
 }
 
-/** Convert a v4 workspace envelope; v5 configurations pass through unchanged. */
-export function migrateLayout(workspace: Workspace): Workspace {
-  if (!("viewers" in workspace) || "panels" in workspace) return workspace;
-  const { viewers, detail, master, sizes, ...rest } =
-    structuredClone(workspace);
-  const result: Workspace = {
-    ...rest,
-    panels: (viewers ?? {}) as Record<string, PanelConfig>,
-  };
-  const root = (detail as { main?: LegacyNode } | null)?.main;
-  if (root) result.layout = migrateNode(root);
-  const masters = master as { widgets?: string[]; sizes?: number[] } | null;
-  if (masters?.widgets?.length) {
-    result.masters = masters.widgets;
-    const masterLayout: Layout = {
-      type: "split-layout",
-      orientation: "vertical",
-      sizes: masters.sizes?.length
-        ? masters.sizes
-        : masters.widgets.map(() => 1 / masters.widgets!.length),
-      children: masters.widgets.map((id) => ({
-        type: "tab-layout",
-        tabs: [id],
-        selected: 0,
-      })),
-    };
-    result.layout = result.layout
-      ? {
-          type: "split-layout",
-          orientation: "horizontal",
-          sizes: (sizes as number[] | undefined)?.length
-            ? (sizes as number[])
-            : [0.25, 0.75],
-          children: [masterLayout, result.layout],
-        }
-      : masterLayout;
+// The wrapper's own workspace keys, which `migrate()` does not know and so would drop.
+const METADATA = [
+  "retained_panel_configs_by_table",
+  "closed_channels",
+] as const;
+
+// Perspective's schema check needs its `migrate` binary. Awaited at the top level, the fetch would
+// hold the bundle back past the page's `load` (see `ready` in the entry); instead the panel's
+// queue waits on it, and `config` checks a layout in the setter once it is here.
+export let validator: Validator | undefined;
+export const validatorReady: Promise<void> = perspective
+  .create_validator()
+  .then(
+    (loaded) => {
+      validator = loaded;
+    },
+    (error: unknown) => {
+      console.warn("perspective-panel: schema validation unavailable", error);
+    },
+  );
+
+function migrateNow(workspace: unknown): MigratedWorkspace {
+  const parsed: unknown =
+    typeof workspace === "string" ? JSON.parse(workspace) : workspace;
+  const plain =
+    parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Workspace)
+      : undefined;
+  if (!validator)
+    return { value: structuredClone(parsed) as Workspace, notices: [] };
+  const rest = { ...plain };
+  for (const key of METADATA) delete rest[key];
+  const { value, notices } = validator.migrate<Workspace>(
+    "workspace",
+    plain ? rest : parsed,
+    plain && writtenBy(plain),
+  );
+  for (const key of METADATA)
+    if (plain && key in plain) value[key] = structuredClone(plain[key]);
+  return { value, notices };
+}
+
+export async function migrateWorkspace(
+  workspace: unknown,
+): Promise<MigratedWorkspace> {
+  await validatorReady;
+  return migrateNow(workspace);
+}
+
+export async function migrateLayout(layout: unknown): Promise<Workspace> {
+  const { value, notices } = await migrateWorkspace(layout);
+  for (const notice of notices)
+    console.warn(`layout${notice.pointer}: ${describeNotice(notice)}`);
+  return value;
+}
+
+export function migrateConfig(workspace: unknown, path: string): Workspace {
+  let migrated: MigratedWorkspace;
+  try {
+    migrated = migrateNow(workspace);
+  } catch (error) {
+    throw new TypeError(`${path}: ${errorMessage(error)}`);
   }
-  return result;
+  const dropped = migrated.notices.filter((n) => n.kind === "Dropped");
+  if (dropped.length)
+    throw new TypeError(
+      dropped
+        .map((n) => `${path}${n.pointer}: ${describeNotice(n)}`)
+        .join("; "),
+    );
+  for (const notice of migrated.notices)
+    console.warn(`${path}${notice.pointer}: ${describeNotice(notice)}`);
+  return migrated.value;
 }
 
 /** Remove closed panels while retaining the selected tab and split proportions. */

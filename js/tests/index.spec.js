@@ -617,11 +617,6 @@ test("saveClean strips per-session transient state from the workspace config", a
     return {
       sameShape: typeof clean === "object" && "panels" in clean,
       themes: cleanedPanels.map((p) => "theme" in p),
-      overrides: cleanedPanels.flatMap((p) =>
-        Object.values(p.plugin_config?.columns ?? {}).map(
-          (c) => "column_size_override" in c,
-        ),
-      ),
       originalUntouched:
         Object.values((await panel.save()).panels ?? {}).length ===
         cleanedPanels.length,
@@ -629,7 +624,6 @@ test("saveClean strips per-session transient state from the workspace config", a
   });
   expect(r.sameShape).toBe(true);
   expect(r.themes.every((present) => present === false)).toBe(true);
-  expect(r.overrides.every((present) => present === false)).toBe(true);
   expect(r.originalUntouched).toBe(true);
 });
 
@@ -731,4 +725,46 @@ test("warns, naming what it serves, when another copy registered its elements fi
   expect(
     warnings.find((text) => text.includes("<perspective-viewer>")),
   ).toContain("@perspective-dev/client ");
+});
+
+test("a stored layout with unknown keys is rejected by the config setter", async ({
+  page,
+}) => {
+  await page.goto("/dist/index.html");
+  await page.waitForFunction(() => !!globalThis.__spadayPerspective);
+  const result = await page.evaluate(async () => {
+    const worker = await globalThis.__spadayPerspective.worker();
+    await worker.table([{ id: 1 }], { name: "unknown-keys" });
+    const panel = document.createElement("perspective-panel");
+    panel.config = { local: true };
+    document.body.append(panel);
+    await new Promise((resolve) =>
+      panel.addEventListener("perspective-ready", resolve, { once: true }),
+    );
+    const errors = [];
+    panel.addEventListener("perspective-error", (event) =>
+      errors.push(String(event.detail)),
+    );
+    let rejected;
+    try {
+      panel.config = {
+        local: true,
+        layout: {
+          layout: { type: "tab-layout", tabs: ["main"] },
+          panels: { main: { table: "unknown-keys", bogus: true } },
+        },
+      };
+    } catch (error) {
+      rejected = error.message;
+    }
+    await panel.save().catch(() => {});
+    return { rejected, errors, config: panel.config };
+  });
+  // Perspective's schema check runs in the setter, so the viewer is never asked
+  expect(result.rejected).toContain(
+    "config.layout: migrated config is invalid",
+  );
+  expect(result.rejected).toContain("Unknown config keys");
+  expect(result.errors).toEqual([]);
+  expect(result.config).toEqual({ local: true });
 });

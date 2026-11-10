@@ -24,7 +24,7 @@
             {
               "name": "rowActions",
               "type": { "text": "unknown" },
-              "description": "Table-name to row actions. Indexed columns accept {action, label, text?, icon?} or a list. Dedicated @ identifiers accept {header, position: start|end, buttons: [...]}. Icons: copy, delete, add, share. Buttons emit perspective-row-action; applications own confirmation, authorization and mutations. Grouped/split or unindexed rows are disabled."
+              "description": "Table-name to row actions. Indexed columns accept {action, label, text?, icon?} or a list. Dedicated @ identifiers accept {header, position: start|end, buttons: [...]}. Icons: copy, delete, add, share. Buttons emit perspective-row-action with the row's index value as key, a list of values for a multi-column index; applications own confirmation, authorization and mutations. Grouped/split or unindexed rows are disabled."
             },
             {
               "name": "toolbar",
@@ -83,63 +83,71 @@
             {
               "name": "perspective-row-action",
               "type": { "text": "CustomEvent" },
-              "description": "A row button was activated. Detail contains action, panel, table, column, and typed record key. No data is mutated automatically."
+              "description": "A row button was activated. Detail contains action, panel, table, column, and the typed record key: the row's index value, or a list of its index values for a multi-column index. No data is mutated automatically."
             },
             {
               "name": "perspective-click",
               "type": {
-                "text": "CustomEvent"
+                "text": "CustomEvent<PerspectiveClickEventDetail>"
               },
-              "description": "A datapoint was clicked; detail carries the row context."
+              "description": "Fires when a plugin's grid or chart is clicked, with the clicked row and a `config` whose filters reproduce it.",
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
             },
             {
               "name": "perspective-select",
               "type": {
-                "text": "CustomEvent"
+                "text": "CustomEvent<PerspectiveSelectDetail>"
               },
-              "description": "The selection changed."
+              "description": "Fires when a plugin's selection changes, with the configs whose filters to insert and remove.",
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
             },
             {
               "name": "perspective-global-filter",
               "type": {
-                "text": "CustomEvent"
+                "text": "CustomEvent<PerspectiveSelectDetail>"
               },
-              "description": "A cross-panel global filter was applied from a selection."
+              "description": "Fires on a master panel's selection, before it is applied to the global filter set.",
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
             },
             {
               "name": "perspective-global-filter-update",
               "type": {
-                "text": "CustomEvent"
+                "text": "CustomEvent<Filter[]>"
               },
-              "description": "The global filter set changed; detail carries the filters."
+              "description": "Fires whenever the global filter set changes, with the new `Filter[]`.",
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
             },
             {
               "name": "perspective-config-update",
               "type": {
-                "text": "CustomEvent"
+                "text": "CustomEvent<PerspectiveConfigUpdateEventDetail>"
               },
-              "description": "The viewer configuration changed (layout drag, view edit, filter); use to persist user-edited workspaces."
+              "description": "Fires after a panel's view config changes, with a deferred `getConfig()` accessor valid only during dispatch.",
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
             },
             {
               "name": "perspective-toggle-settings",
               "type": {
-                "text": "CustomEvent"
+                "text": "CustomEvent<boolean>"
               },
-              "description": "The settings sidebar opened or closed."
+              "description": "Fires after the settings sidebar opens or closes, with the new open state.",
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
             },
             {
               "name": "perspective-statusbar-pointerdown",
               "type": {
-                "text": "CustomEvent"
+                "text": "CustomEvent<PointerEvent>"
               },
-              "description": "The status bar was clicked."
+              "description": "Fires with the original `pointerdown` as its detail when the status bar is pressed.",
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
             },
             {
               "name": "perspective-table-delete",
               "type": {
-                "text": "CustomEvent"
+                "text": "CustomEvent<undefined>"
               },
-              "description": "A bound table was deleted on the server."
+              "description": "Fires after a panel's `Table` is deleted and the panel unloaded.",
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
             },
             {
               "name": "perspective-ready",
@@ -162,47 +170,63 @@
             }
           ],
           "slots": [],
-          "methods": [
+          "members": [
             {
+              "kind": "method",
+              "privacy": "public",
               "name": "saveWorkspace",
               "description": "Save the whole workspace with retained_panel_configs_by_table metadata after queued work completes.",
               "return": { "type": { "text": "Promise<unknown>" } }
             },
             {
+              "kind": "method",
+              "privacy": "public",
               "name": "save",
               "description": "Compatibility workspace save using legacy closed_channels metadata.",
               "return": { "type": { "text": "Promise<unknown>" } }
             },
             {
+              "kind": "method",
+              "privacy": "public",
               "name": "exportData",
               "description": "Export CSV (default) or JSON text without synthetic action value columns. Options: panel (defaults to active panel), format (csv or json). Retains filtering, sorting, grouping and expressions; exports the configured view, not a selected block. The temporary view is deleted after export.",
               "parameters": [{ "name": "options", "optional": true, "type": { "text": "unknown" } }],
               "return": { "type": { "text": "Promise<string>" } }
             },
             {
+              "kind": "method",
+              "privacy": "public",
               "name": "openFind",
               "description": "Open the column/value filter prompt for the active panel when find is enabled.",
               "parameters": [],
               "return": { "type": { "text": "Promise<void>" } }
             },
             {
+              "kind": "method",
+              "privacy": "public",
               "name": "copySelection",
               "description": "Copy the focused grid's selected text. Call directly from a user gesture. Resolves true on success, false on cancellation, no selection, or failure.",
               "return": { "type": { "text": "Promise<boolean>" } }
             },
             {
+              "kind": "method",
+              "privacy": "public",
               "name": "openTablePanel",
               "description": "Open or select a panel for a configured table using its retained panel configuration or defaults.",
               "parameters": [{ "name": "name", "type": { "text": "string" } }],
               "return": { "type": { "text": "Promise<void>" } }
             },
             {
+              "kind": "method",
+              "privacy": "public",
               "name": "openChannel",
               "description": "Compatibility alias for openTablePanel().",
               "parameters": [{ "name": "name", "type": { "text": "string" } }],
               "return": { "type": { "text": "Promise<void>" } }
             },
             {
+              "kind": "method",
+              "privacy": "public",
               "name": "showTable",
               "description": "Select an existing detail panel for a table or open one from its configured defaults, replacing filter clauses only on supplied columns. Preserves other panels and split proportions. Resolves to the selected panel ID through the lifecycle queue.",
               "parameters": [
@@ -212,18 +236,24 @@
               "return": { "type": { "text": "Promise<string>" } }
             },
             {
+              "kind": "method",
+              "privacy": "public",
               "name": "closeTablePanels",
               "description": "Close every panel for a table, including master panels, retaining one last panel configuration per table.",
               "parameters": [{ "name": "name", "type": { "text": "string" } }],
               "return": { "type": { "text": "Promise<void>" } }
             },
             {
+              "kind": "method",
+              "privacy": "public",
               "name": "closeChannel",
               "description": "Compatibility alias for closeTablePanels().",
               "parameters": [{ "name": "name", "type": { "text": "string" } }],
               "return": { "type": { "text": "Promise<void>" } }
             },
             {
+              "kind": "method",
+              "privacy": "public",
               "name": "restorePanel",
               "description": "Apply a partial viewer configuration to one existing panel through the lifecycle queue. Rejects unknown panel IDs and invalid configurations.",
               "parameters": [
@@ -233,6 +263,8 @@
               "return": { "type": { "text": "Promise<void>" } }
             },
             {
+              "kind": "method",
+              "privacy": "public",
               "name": "savePortableWorkspace",
               "description": "Save the workspace without panel themes or column width overrides, using retained_panel_configs_by_table metadata.",
               "return": {
@@ -242,6 +274,8 @@
               }
             },
             {
+              "kind": "method",
+              "privacy": "public",
               "name": "saveClean",
               "description": "Compatibility alias for savePortableWorkspace(), writing legacy closed_channels metadata.",
               "return": {

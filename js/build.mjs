@@ -18,7 +18,7 @@ const PERSPECTIVE_VERSION = JSON.parse(
 // spaday_perspective/__init__.py): a library on the page that imports Perspective gets this copy
 // instead of registering the same custom elements a second time. The bundle imports them the same way.
 const VENDORED = {
-  client: ["dist/cdn/*.js"],
+  client: ["dist/cdn/*.js", "dist/wasm/perspective-migrate.wasm"],
   server: ["dist/wasm/*.wasm"],
   viewer: ["dist/cdn/*.js", "dist/wasm/perspective-viewer.wasm"],
   "viewer-datagrid": ["dist/cdn/*.js"],

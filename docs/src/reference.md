@@ -70,7 +70,6 @@ The browser property is `hideTabs`.
 | `default_architecture`       | `str`   | `server` (default) or `client-server`, applied to `tables` entries without their own `architecture`.                                                                                                                         |
 | `workspace`                  | mapping | Workspace config accepted by `<perspective-viewer>.restoreWorkspace()`, plus optional `retained_panel_configs_by_table`.                                                                                                     |
 | `wait_for_table`             | `bool`  | Leave a panel whose `table` no loaded client hosts yet empty and pending until it is created, instead of erroring (the default).                                                                                             |
-| `master_theme`               | `str`   | Theme for filter-source panels listed in `masters`. Accepts `light`, `dark`, or a registered theme name. Defaults to the application theme.                                                                                  |
 | `panel_defaults`             | mapping | Table name to default panel configuration, such as `{"trades": {"title": "Trades", "columns": ["price"]}}`. Supplies the table picker and default configs; declared tables also support `openTablePanel`/`closeTablePanels`. |
 | `restore_selected_tabs_only` | `bool`  | Keep only the selected tab in each stack before restoring it. Hidden configured tables retain their settings for reopening. Default `False`.                                                                                 |
 
@@ -85,20 +84,23 @@ An explicit index or limit takes precedence; unindexed sources remain unindexed.
 The public `spaday_perspective.PerspectiveViewer` validates literal configuration when serialized
 with `to_node()` (including through `serve()` or a widget). This includes `.prop("config", ...)`
 updates. `validate_config(config)` performs the same check explicitly and raises `ValueError`
-with a path such as `config.workspace.panels.trades.plugin_config.edit_mode`. Browser property setters
+with a path such as `config.layout` or `config.panel_defaults.trades`. Browser property setters
 validate reactive config updates before accepting them. Computed expressions are checked when
 their result reaches the browser, not while authoring the expression.
 
-Validation covers wrapper flags, table descriptors, panel defaults, theme-name types, and
-the pinned Datagrid's plugin settings. Unknown Datagrid settings are rejected. Custom plugins,
-per-column style payloads, and table-dependent filter/expression validity remain upstream-owned.
-Unknown wrapper/workspace extension fields are preserved. This is not a complete validator for
-every Perspective plugin or layout tree.
+The wrapper checks its own settings: flags, table descriptors, and the aliases. Perspective's
+`migrate` checks the layout and each configured panel (`panel_defaults`, retained configurations)
+against its schema ahead of time, naming the offending value by JSON pointer, such as
+`` config.layout: migrated config is invalid at `/panels/grid`: … ``. Information a layout upgrade
+would drop is rejected the same way. Plugin settings, theme names, and table and column names are
+the viewer's to check when the layout is applied; it reports through `perspective-error`, for
+example `` Invalid `plugin_config.edit_mode`: … ``. The Python enums below are checked against the
+installed Datagrid's declarations.
 
-The shared Datagrid contract is checked against the installed plugin's live settings schema and
-TypeScript enum declarations. An upstream field, type, or enum change fails those tests. Positive
-finite font sizes and row heights are accepted, including values outside the settings UI's slider
-ranges; `zebra_rows` accepts nonnegative finite numbers, which Perspective rounds down.
+In the browser, the schema check needs Perspective's `migrate` binary, which the bundle loads
+alongside the viewer. A layout assigned before it arrives is checked when it is applied and
+reported through `perspective-error`; from then on `config` throws `TypeError` as it does for the
+wrapper's own settings. Any panel's `perspective-ready` follows that load.
 
 Python string enums are exported for configuration:
 
@@ -106,24 +108,26 @@ Python string enums are exported for configuration:
 - `Alignment`: `TOP_LEFT`, `TOP`, `TOP_RIGHT`, `LEFT`, `CENTER`, `RIGHT`, `BOTTOM_LEFT`, `BOTTOM`, `BOTTOM_RIGHT`.
 - `Theme`: `LIGHT`, `DARK`, `PRO_LIGHT`, `PRO_DARK`.
 
-Enum members serialize to Perspective's string values. Plain strings remain accepted. Theme names
-must be nonempty strings; application-defined names remain valid. The scroll setting is
-`plugin_config.scroll_lock`, a boolean, not an enum.
+Enum members serialize to Perspective's string values. Plain strings remain accepted.
+Application-defined theme names remain valid. The scroll setting is `plugin_config.scroll_lock`, a
+boolean, not an enum.
 
 Perspective 4 workspace envelopes (`viewers`, `detail`, `master`) are migrated before restoration.
 Migration preserves panel configuration, selected tabs, master panels, and split proportions. Missing
 or empty split sizes use equal shares; a missing master/detail split uses 25/75. Version 5 layouts are
-unchanged by migration.
+unchanged by migration, which keeps the wrapper's `retained_panel_configs_by_table` and
+`closed_channels` and checks the result against Perspective's schema.
 
 `spaday_perspective.migrate_layout(layout)` accepts a mapping or JSON string and returns the same
 representation without modifying the input. Existing v5 layouts and invalid JSON strings pass
-through unchanged. The browser bundle exports the mapping-only equivalent, `migrateLayout(layout)`.
+through unchanged. The browser bundle exports the mapping-only equivalent, `migrateLayout(layout)`,
+which returns a promise.
 
-The application theme overrides saved panel themes before restoration. `master_theme` overrides
-that choice for filter-source panels, including during live application theme changes. Input layouts
-are copied before preparation. Restoring a saved layout does not require a second theme restore.
+The application theme overrides saved panel themes before restoration, master panels included.
+Input layouts are copied before preparation. Restoring a saved layout does not require a second
+theme restore.
 
-Changing `master_theme` or `restore_selected_tabs_only` with an unchanged layout applies to the current workspace,
+Changing `restore_selected_tabs_only` with an unchanged layout applies to the current workspace,
 preserving user edits. Turning `restore_selected_tabs_only` off permits additional tabs; it does not reopen closed
 panels. Replacing `workspace` starts a new workspace and replaces its retained panel configurations.
 

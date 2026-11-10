@@ -17,6 +17,13 @@ export function isActionColumn(
   return !Array.isArray(rule) && "buttons" in rule;
 }
 
+/** The expression behind a generated action column: the index column itself for a single index,
+ * so the cell carries the row key; a literal for multi-column or absent indexes, where the key is
+ * read from the view's row identities instead. */
+export function actionExpression(index: string | string[] | undefined): string {
+  return typeof index === "string" ? JSON.stringify(index) : "0";
+}
+
 /** Table name → indexed column or dedicated column identifier → actions. */
 export type RowActions = Record<
   string,
@@ -28,8 +35,16 @@ interface ActionDetail {
   panel: string;
   table: string;
   column: string;
-  key: string | number;
+  /** The row's index value, or its index values in index order for a multi-column index. */
+  key: string | number | (string | number)[];
 }
+
+const scalar = (value: unknown): value is string | number =>
+  typeof value === "string" ||
+  (typeof value === "number" && Number.isSafeInteger(value));
+
+/** A button's detail before activation: a multi-column key is resolved on activation. */
+type PendingDetail = Omit<ActionDetail, "key"> & { key?: ActionDetail["key"] };
 
 interface ActionViewer extends HTMLElement {
   getViewConfig(options: { panel: string }): Promise<{
@@ -37,10 +52,19 @@ interface ActionViewer extends HTMLElement {
     split_by?: string[];
     expressions?: Record<string, string>;
   }>;
-  getTable(options: {
-    panel: string;
-    wait: boolean;
-  }): Promise<{ get_index(): Promise<string>; get_name(): Promise<string> }>;
+  getTable(options: { panel: string; wait: boolean }): Promise<{
+    get_index(): Promise<string | string[] | undefined>;
+    get_name(): Promise<string>;
+  }>;
+  /** The panel's live View. The viewer owns it and may replace or delete it at any time; callers
+   * read from it and must not delete it. */
+  getView(options: { panel: string; mode: "live" }): Promise<{
+    to_columns(window: {
+      start_row: number;
+      end_row: number;
+      id: boolean;
+    }): Promise<object>;
+  }>;
 }
 
 interface Grid extends HTMLElement {
@@ -48,7 +72,7 @@ interface Grid extends HTMLElement {
     addStyleListener(callback: () => Promise<void>): () => void;
     getMeta(
       cell: HTMLElement,
-    ): { column_header?: unknown[]; user?: unknown } | undefined;
+    ): { column_header?: unknown[]; user?: unknown; y?: number } | undefined;
     draw(): Promise<void>;
   };
 }
@@ -74,8 +98,27 @@ export function installRowActions(
   const attach = (grid: Grid) => {
     const table = grid.regular_table;
     const controller = new AbortController();
-    const details = new WeakMap<HTMLButtonElement, ActionDetail>();
+    const details = new WeakMap<HTMLButtonElement, PendingDetail>();
+    // Buttons on a multi-column index: the row to resolve and how many index values it has.
+    const rows = new WeakMap<
+      HTMLButtonElement,
+      { row: number; width: number }
+    >();
     let gesture: { button: HTMLButtonElement; detail: string } | undefined;
+    // One row's identity from the panel's live View. The viewer owns that View and may replace or
+    // delete it at any moment (config change, auto-pause); this only reads it and must not delete
+    // it, and a "View already deleted" failure is a cancellation reported like any other error.
+    // For a flat view `__ID__` is the key tuple wrapped in a one-element row path.
+    const resolveKey = async (row: number): Promise<unknown> => {
+      const view = await viewer.getView({ panel: grid.slot, mode: "live" });
+      const { __ID__ } = (await view.to_columns({
+        start_row: row,
+        end_row: row + 1,
+        id: true,
+      })) as { __ID__?: unknown[] };
+      const path = __ID__?.[0];
+      return Array.isArray(path) && path.length === 1 ? path[0] : undefined;
+    };
     let generation = 0;
     const style = async () => {
       const version = ++generation;
@@ -86,8 +129,9 @@ export function installRowActions(
         ? actions()[name]
         : {};
       const index = Object.keys(policy).length
-        ? await source.get_index()
+        ? (await source.get_index()) || undefined
         : undefined;
+      const multi = Array.isArray(index) ? index : undefined;
       if (disposed || controller.signal.aborted || version !== generation)
         return;
       for (const cell of table.querySelectorAll<HTMLTableCellElement>(
@@ -97,7 +141,7 @@ export function installRowActions(
         const column = meta?.column_header?.[meta.column_header.length - 1];
         const actionColumn =
           typeof column === "string" &&
-          config.expressions?.[column] === (index ? JSON.stringify(index) : "0")
+          config.expressions?.[column] === actionExpression(index)
             ? columnKey(grid.slot, column)
             : undefined;
         const policyKey = actionColumn ?? column;
@@ -124,16 +168,17 @@ export function installRowActions(
           if (old.length) cell.textContent = String(meta?.user ?? "");
           continue;
         }
-        const key = meta?.user;
-        const supportedKey =
-          typeof key === "string" ||
-          (typeof key === "number" && Number.isSafeInteger(key));
+        // A single index is the action cell's own value. A multi-column key has no cell to live
+        // in; it is resolved from the view's row identity when a button is activated, so drawing
+        // costs no engine query.
+        const key: unknown = multi ? undefined : meta?.user;
+        const indexColumn = multi ? multi.includes(column) : column === index;
         const reason =
           config.group_by?.length || config.split_by?.length
             ? "Row actions require an ungrouped, unsplit table"
-            : !index || (column !== index && !actionColumn)
+            : !index || (!indexColumn && !actionColumn)
               ? "Row actions require the table's indexed column"
-              : !supportedKey
+              : !multi && !scalar(key)
                 ? "Row action has no supported record key"
                 : "";
         const buttons = rules.map((rule, position) => {
@@ -142,7 +187,7 @@ export function installRowActions(
             panel: grid.slot,
             table: name,
             column: actionColumn ?? column,
-            key: key as string | number,
+            key: key as ActionDetail["key"] | undefined,
           };
           const button =
             old[position] &&
@@ -191,6 +236,9 @@ export function installRowActions(
           button.style.marginInlineEnd =
             position < rules.length - 1 ? "4px" : "0";
           details.set(button, detail);
+          if (multi)
+            rows.set(button, { row: meta?.y ?? 0, width: multi.length });
+          else rows.delete(button);
           return button;
         });
         if (
@@ -210,26 +258,46 @@ export function installRowActions(
       if (!button) return;
       event.stopImmediatePropagation();
       const detail = details.get(button)!;
-      if (event.type === "pointerdown")
-        gesture = { button, detail: JSON.stringify(detail) };
+      const pending = rows.get(button);
+      // What the button stands for: its detail, plus its row on a multi-column index.
+      const identity = JSON.stringify([detail, pending?.row]);
+      if (event.type === "pointerdown") gesture = { button, detail: identity };
       if (event.type === "click") {
         event.preventDefault();
         if (button.disabled || !host.isConnected || !grid.isConnected) return;
         // Virtualized cells may change identity between pointerdown and click.
         if (
           (event as MouseEvent).detail > 0 &&
-          (gesture?.button !== button ||
-            gesture.detail !== JSON.stringify(detail))
+          (gesture?.button !== button || gesture.detail !== identity)
         )
           return;
         gesture = undefined;
-        host.dispatchEvent(
-          new CustomEvent("perspective-row-action", {
-            detail: { ...detail },
-            bubbles: true,
-            composed: true,
-          }),
-        );
+        const dispatch = (key: ActionDetail["key"]) => {
+          if (!host.isConnected || !grid.isConnected) return;
+          host.dispatchEvent(
+            new CustomEvent("perspective-row-action", {
+              detail: { ...detail, key },
+              bubbles: true,
+              composed: true,
+            }),
+          );
+        };
+        if (!pending) {
+          dispatch(detail.key!);
+          return;
+        }
+        void (async () => {
+          const key = await resolveKey(pending.row);
+          if (
+            !Array.isArray(key) ||
+            key.length !== pending.width ||
+            !key.every(scalar)
+          )
+            throw new Error("Row action has no supported record key");
+          dispatch(key);
+        })().catch((error) => {
+          if (!controller.signal.aborted) report(error);
+        });
       }
     };
     for (const type of [

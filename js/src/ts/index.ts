@@ -1,16 +1,12 @@
 // the guard must execute before the upstream imports register their elements
 import { restoreDefine } from "./define-guard.js";
 import perspective from "@perspective-dev/client";
+import type { GetViewOptions } from "@perspective-dev/viewer";
 import PRO from "@perspective-dev/viewer/dist/css/pro.css";
 import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
 import { styleWorkspace } from "./workspace-style.js";
 import { installClipboard, type ClipboardViewer } from "./clipboard.js";
-import {
-  sameConfig,
-  validateConfig,
-  validatePanel,
-  validateTheme,
-} from "./config.js";
+import { errorMessage, sameConfig, validateConfig } from "./config.js";
 import { installFind, type FindViewer } from "./find.js";
 import {
   installRowActions,
@@ -20,14 +16,21 @@ import {
 import { installActionColumns } from "./action-columns.js";
 export type { RowAction, RowActions, ActionColumn } from "./row-actions.js";
 import {
-  migrateLayout,
+  migrateConfig,
   pruneLayout,
   tabStacks,
+  validator,
+  validatorReady,
   type PanelConfig,
   type Workspace,
 } from "./workspace.js";
 
-export { migrateLayout } from "./workspace.js";
+export {
+  migrateLayout,
+  migrateWorkspace,
+  type MigratedWorkspace,
+  type MigrateNotice,
+} from "./workspace.js";
 
 export type PerspectiveArchitecture = "server" | "client-server";
 
@@ -38,7 +41,9 @@ export interface ShowTableOptions {
 export interface PerspectiveTableConfig {
   name: string;
   architecture?: PerspectiveArchitecture;
-  index?: string;
+  /** One column, or several for a multi-column index. A mirror of an indexed server table inherits
+   * the server's index and treats this as a hint, warning when they disagree. */
+  index?: string | string[];
   limit?: number;
 }
 
@@ -51,7 +56,6 @@ export interface PerspectiveConfig {
   /** Compatibility alias for workspace. */
   layout?: unknown;
   wait_for_table?: boolean;
-  master_theme?: string;
   panel_defaults?: Record<string, Partial<PanelConfig>>;
   restore_selected_tabs_only?: boolean;
   /** Compatibility alias for panel_defaults. */
@@ -66,7 +70,7 @@ type PspView = Awaited<ReturnType<PspTable["view"]>>;
 
 declare const __PERSPECTIVE_VERSION__: string;
 
-type Mirror = { view: PspView; table: PspTable; stop(): Promise<void> };
+type Mirror = { view: PspView; table: PspTable };
 
 /* Perspective cannot load twice on a page, so the copy this bundle owns is the page's copy and is
  * shared rather than duplicated: one websocket client per server, one local worker, and one local
@@ -102,12 +106,14 @@ function sharedWorker(): Promise<PspClient> {
 }
 
 function mirrorKey(url: string, table: PerspectiveTableConfig): string {
-  return JSON.stringify([
-    wsUrl(url),
-    table.name,
-    table.index ?? null,
-    table.limit ?? null,
-  ]);
+  return JSON.stringify([wsUrl(url), table.name]);
+}
+
+/* Perspective folds a one-column list into the column itself, so hints compare that way too. */
+function normalizeIndex(
+  index: string | string[] | undefined,
+): string | string[] | undefined {
+  return Array.isArray(index) && index.length === 1 ? index[0] : index;
 }
 
 /* A `client-server` table mirrored into the shared worker, refcounted by that key: two panels
@@ -130,54 +136,25 @@ async function acquireMirror(
       sharedWorker(),
     ]);
     const serverTable = await remote.open_table(config.name);
+    const sourceIndex = normalizeIndex(await serverTable.get_index());
     const view = await serverTable.view();
-    const table = await local.table(await serverTable.schema(), {
-      name: config.name,
-      index:
-        config.index ??
-        (config.limit === undefined
-          ? (await serverTable.get_index()) || undefined
-          : undefined),
-      limit: config.limit,
-    });
-    let stopped = false;
-    let dirty = false;
-    let running: Promise<void> | undefined;
-    const report = (error: unknown) =>
-      console.error("perspective-panel: mirror refresh failed", error);
-    const refresh = (): Promise<void> => {
-      dirty = true;
-      running ??= (async () => {
-        dirty = false;
-        // Row deltas omit deleted keys. Replace from an authoritative snapshot, also
-        // covering clear/replace and unindexed sources without appending duplicates.
-        const snapshot = await view.to_arrow();
-        if (!stopped) await table.replace(snapshot);
-      })().finally(() => {
-        running = undefined;
-        // Ready means the first snapshot is loaded, not that a live source is idle.
-        if (dirty && !stopped) void refresh().catch(report);
-      });
-      return running;
-    };
-    // Subscribe before the initial snapshot so writes during initialization are not lost.
-    const subscription = await view.on_update(() => {
-      void refresh().catch(report);
-    });
-    const stop = async () => {
-      stopped = true;
-      await view.remove_update(subscription);
-      await running?.catch(() => {});
-    };
+    const limit = sourceIndex === undefined ? config.limit : undefined;
+    if (config.limit !== undefined && limit === undefined)
+      console.warn(
+        `perspective-panel: ${config.name} mirrors an indexed server table; the configured limit ${config.limit} is ignored`,
+      );
+    let table: PspTable;
     try {
-      await refresh();
+      // 5.7.0's typings list the data forms only; the runtime accepts a View (`TableData::View`).
+      table = await local.table(
+        view as unknown as Parameters<PspClient["table"]>[0],
+        { name: config.name, index: config.index, limit },
+      );
     } catch (error) {
-      await stop();
-      await view.delete();
-      await table.delete({ lazy: true });
+      await view.delete().catch(() => {});
       throw error;
     }
-    return { view, table, stop };
+    return { view, table };
   })();
   sharedMirrors.set(key, { mirror, refs: 1 });
   try {
@@ -197,9 +174,8 @@ async function releaseMirror(key: string): Promise<void> {
   sharedMirrors.delete(key);
   const mirror = await entry.mirror.catch(() => null);
   if (!mirror) return;
-  await mirror.stop().catch(() => {});
-  await mirror.view.delete().catch(() => {});
   await mirror.table.delete({ lazy: true }).catch(() => {});
+  await mirror.view.delete().catch(() => {});
 }
 
 // Perspective's CDN builds initialize themselves from their own URLs. The viewer instantiates the
@@ -214,6 +190,7 @@ const ready = Promise.all([
   import("@perspective-dev/viewer"),
   import("@perspective-dev/viewer-datagrid"),
   import("@perspective-dev/viewer-charts"),
+  validatorReady,
 ])
   .finally(() =>
     restoreDefine(`@perspective-dev/client ${__PERSPECTIVE_VERSION__}`, [
@@ -286,7 +263,7 @@ type Viewer = ClipboardViewer &
       expressions?: Record<string, string>;
     }>;
     getTable(options: { panel: string; wait: boolean }): Promise<{
-      get_index(): Promise<string>;
+      get_index(): Promise<string | string[] | undefined>;
       get_name(): Promise<string>;
       schema(): Promise<Record<string, string>>;
       view(config: unknown): Promise<{
@@ -306,6 +283,7 @@ type Viewer = ClipboardViewer &
       options?: { wait_for_table?: boolean },
     ): Promise<void>;
     saveWorkspace(): Promise<unknown>;
+    getView(options: GetViewOptions): Promise<PspView>;
     flush(): Promise<unknown>;
     resetThemes(themes?: string[] | null): Promise<unknown>;
     setAutoSize(autosize: boolean): void;
@@ -314,19 +292,28 @@ type Viewer = ClipboardViewer &
     toggleConfig(force?: boolean | null): Promise<unknown>;
   };
 
+function migrateConfigured(authored: PerspectiveConfig): Workspace | undefined {
+  const field = authored.workspace != null ? "workspace" : "layout";
+  const workspace = authored[field];
+  return workspace == null
+    ? undefined
+    : migrateConfig(workspace, `config.${field}`);
+}
+
 class PerspectivePanel extends HTMLElement {
   #viewer: Viewer | null = null;
   #config: PerspectiveConfig = {};
   #authoredConfig: PerspectiveConfig = {};
   #connectedUrl: string | null = null;
   #lastWorkspace: string | null = null;
+  #workspace: Workspace | undefined;
   #configGeneration = 0;
-  #lastMasterTheme: string | undefined;
   #lastSelectedTabsOnly = false;
   #lastMirrored: string | null = null;
   #localLoaded = false;
   #mirrors: string[] = [];
   #loaded = false;
+  #unchecked = false;
   #readyFired = false;
   #theme = "Pro Light";
   #explicitTheme = false;
@@ -360,9 +347,14 @@ class PerspectivePanel extends HTMLElement {
       this.#viewer.addEventListener("perspective-config-update", (event) => {
         // Perspective releases this callback after dispatch; read it synchronously.
         const config = (
-          event as CustomEvent<{ getConfig?: () => PanelConfig }>
+          event as CustomEvent<{
+            getConfig?: () => PanelConfig & { settings?: boolean };
+          }>
         ).detail?.getConfig?.();
         if (config && this.#hasTable(config.table)) {
+          // The event carries the element-level config; `settings` is the sidebar state, which a
+          // per-panel config may not name (5.7 rejects unknown keys on restore).
+          delete config.settings;
           const source = event
             .composedPath()
             .find(
@@ -534,7 +526,6 @@ class PerspectivePanel extends HTMLElement {
   }
 
   set theme(name: string) {
-    validateTheme(name);
     this.#explicitTheme = true;
     this.#modeObserver?.disconnect();
     this.#modeObserver = null;
@@ -576,7 +567,11 @@ class PerspectivePanel extends HTMLElement {
   }
 
   set config(config: PerspectiveConfig) {
-    validateConfig(config ?? {});
+    validateConfig(config ?? {}, validator);
+    // until the bundle has Perspective's validator, the schema check waits for `ready` in
+    // `#apply` and reports through `perspective-error`
+    const unchecked = validator === undefined;
+    const workspace = unchecked ? undefined : migrateConfigured(config ?? {});
     this.#authoredConfig = config || {};
     this.#config = {
       ...config,
@@ -585,6 +580,8 @@ class PerspectivePanel extends HTMLElement {
       restore_selected_tabs_only:
         config?.restore_selected_tabs_only ?? config?.single_tab,
     };
+    this.#unchecked = unchecked;
+    this.#workspace = workspace;
     this.#apply();
   }
   get config(): PerspectiveConfig {
@@ -688,10 +685,8 @@ class PerspectivePanel extends HTMLElement {
 
   // Element-level options, each a serializable prop queued behind wasm init.
   set themes(names: string[] | null) {
-    if (names != null) {
-      if (!Array.isArray(names)) throw new TypeError("themes: expected array");
-      names.forEach((name, i) => validateTheme(name, `themes[${i}]`));
-    }
+    if (names != null && !Array.isArray(names))
+      throw new TypeError("themes: expected array");
     this.#themes = names?.map((name) => THEMES[name] ?? name) ?? null;
     this.#enqueue(() => this.#viewer?.resetThemes(this.#themes));
   }
@@ -763,36 +758,23 @@ class PerspectivePanel extends HTMLElement {
     this.#enqueue(() => this.#restoreTheme());
   }
 
-  // Update each panel once, including inactive tabs and filter-source overrides.
-  async #restoreTheme(config = this.#config): Promise<void> {
+  // Update each panel once, including inactive tabs.
+  async #restoreTheme(): Promise<void> {
     if (!this.#viewer) return;
     const viewer = this.#viewer;
     const ws = (await viewer.saveWorkspace()) as Workspace;
-    const masters = ws.masters ?? [];
     await Promise.all(
       Object.keys(ws.panels ?? {}).map((id) =>
-        viewer.restore(
-          { theme: this.#panelTheme(masters.includes(id), config) },
-          { panel: id },
-        ),
+        viewer.restore({ theme: this.#theme }, { panel: id }),
       ),
     );
   }
 
-  #panelTheme(master: boolean, config = this.#config): string {
-    const theme = master ? config.master_theme : undefined;
-    return theme ? (THEMES[theme] ?? theme) : this.#theme;
-  }
-
-  // Apply the wrapper's current theme policy before restored plugins render.
-  #themedWorkspace(workspace: Workspace, config: PerspectiveConfig): Workspace {
+  // The application theme replaces saved panel themes before restored plugins render.
+  #themedWorkspace(workspace: Workspace): Workspace {
     const cloned = structuredClone(workspace);
-    for (const [id, panel] of Object.entries(cloned.panels ?? {})) {
-      panel.theme = this.#panelTheme(
-        cloned.masters?.includes(id) ?? false,
-        config,
-      );
-    }
+    for (const panel of Object.values(cloned.panels ?? {}))
+      panel.theme = this.#theme;
     return cloned;
   }
 
@@ -817,14 +799,14 @@ class PerspectivePanel extends HTMLElement {
     }
   }
 
+  // `workspace` is already current: a configured layout is migrated by the `config` setter and a
+  // live one is the viewer's own.
   async #restoreWorkspace(
-    workspace: Workspace | string,
+    workspace: Workspace,
     config = this.#config,
   ): Promise<void> {
     if (!this.#viewer) return;
-    const parsed =
-      typeof workspace === "string" ? JSON.parse(workspace) : workspace;
-    const prepared = this.#themedWorkspace(migrateLayout(parsed), config);
+    const prepared = this.#themedWorkspace(workspace);
     for (const [name, cached] of Object.entries(
       prepared.retained_panel_configs_by_table ??
         prepared.closed_channels ??
@@ -879,13 +861,15 @@ class PerspectivePanel extends HTMLElement {
               Object.keys(panel).sort(),
               Object.keys(current).sort(),
             ) &&
-            [
-              "table",
-              "plugin",
-              "version",
-              "plugin_config",
-              "columns_config",
-            ].every((key) => sameConfig(panel[key], current[key]))
+            (
+              [
+                "table",
+                "plugin",
+                "version",
+                "plugin_config",
+                "columns_config",
+              ] as const
+            ).every((key) => sameConfig(panel[key], current[key]))
           );
         })
       ) {
@@ -947,14 +931,15 @@ class PerspectivePanel extends HTMLElement {
       if (stack) {
         stack.tabs.push(id);
         stack.selected = stack.tabs.length - 1;
-      } else if (workspace.layout) {
+      } else if (workspace.layout && tabStacks(workspace.layout).length) {
         workspace.layout = {
           type: "split-layout",
           orientation: "horizontal",
-          sizes: [1, 3],
+          sizes: [0.25, 0.75],
           children: [workspace.layout, { type: "tab-layout", tabs: [id] }],
         };
       } else {
+        // an emptied workspace reports a split with no children; start from the new tab instead
         workspace.layout = { type: "tab-layout", tabs: [id] };
       }
       await this.#restoreWorkspace(workspace);
@@ -1003,17 +988,16 @@ class PerspectivePanel extends HTMLElement {
               ? structuredClone(this.#config.panel_defaults![name])
               : {}),
             table: name,
-            theme: this.#panelTheme(false),
+            theme: this.#theme,
           };
       const update: Partial<PanelConfig> = existing ? {} : config;
       if (patch.filter?.length) {
         const columns = new Set(patch.filter.map((clause) => clause[0]));
+        // a clause's term may be omitted; the declared `Filter` tuple does not say so
         update.filter = [
-          ...(
-            (config.filter ?? []) as NonNullable<ShowTableOptions["filter"]>
-          ).filter((clause) => !columns.has(clause[0])),
+          ...(config.filter ?? []).filter((clause) => !columns.has(clause[0])),
           ...patch.filter,
-        ];
+        ] as PanelConfig["filter"];
       }
       if (Object.keys(update).length) {
         try {
@@ -1097,15 +1081,18 @@ class PerspectivePanel extends HTMLElement {
 
   /** Apply a partial viewer configuration to one panel through the lifecycle queue. */
   async restorePanel(id: string, config: Partial<PanelConfig>): Promise<void> {
-    validateTheme(id, "panel");
     const patch = structuredClone(config);
     return this.#enqueue(async () => {
+      try {
+        validator?.validate("viewer", patch);
+      } catch (error) {
+        throw new TypeError(`config: ${errorMessage(error)}`);
+      }
       if (!this.#loaded || !this.#viewer)
         throw new Error("Perspective panel is not ready");
       const workspace = (await this.#viewer.saveWorkspace()) as Workspace;
       if (!hasOwn(workspace.panels ?? {}, id))
         throw new Error(`Unknown panel: ${id}`);
-      validatePanel(patch, "config", workspace.panels![id].plugin);
       await this.#viewer.restore(patch, { panel: id });
       await this.#viewer.flush();
       await this.#actionColumns?.refresh();
@@ -1126,7 +1113,7 @@ class PerspectivePanel extends HTMLElement {
   }
 
   // `client-server` tables mirror into a local worker: open the server table, take a
-  // view, and refresh its local snapshot (with the configured index/limit) on changes.
+  // view, and replicate it (indexed sources) or refresh a local snapshot from it on changes.
   // `viewer.load` ACCUMULATES clients and resolves panel table names
   // across all of them in load order, so the worker is loaded before the websocket
   // client — the local copies win the name lookup. `server` tables (the default) resolve
@@ -1156,6 +1143,11 @@ class PerspectivePanel extends HTMLElement {
         if (!this.#viewer || generation !== this.#configGeneration) return;
         styleWorkspace(this.#viewer);
         try {
+          if (this.#unchecked) {
+            validateConfig(this.#authoredConfig, validator);
+            this.#workspace = migrateConfigured(this.#authoredConfig);
+            this.#unchecked = false;
+          }
           const mirrored = this.#mirroredTables(config);
           const mirroredKey = JSON.stringify(mirrored);
           if (
@@ -1186,17 +1178,14 @@ class PerspectivePanel extends HTMLElement {
             this.#loaded = true;
           }
           if (generation !== this.#configGeneration) return;
-          if (this.#loaded && config.workspace) {
+          if (this.#loaded && this.#workspace) {
             const workspace = JSON.stringify(config.workspace);
             if (workspace !== this.#lastWorkspace) {
               // Perspective 5.5 errors on a `table` no loaded client hosts; `wait_for_table`
               // restores the earlier behavior, a pending panel that fills once it is created
               this.#retainedPanelConfigsByTable.clear();
               this.#lastWorkspace = null;
-              await this.#restoreWorkspace(
-                config.workspace as Workspace | string,
-                config,
-              );
+              await this.#restoreWorkspace(this.#workspace, config);
               this.#lastWorkspace = workspace;
             } else if (
               !!config.restore_selected_tabs_only !== this.#lastSelectedTabsOnly
@@ -1205,12 +1194,9 @@ class PerspectivePanel extends HTMLElement {
                 (await this.#viewer.saveWorkspace()) as Workspace,
                 config,
               );
-            } else if (config.master_theme !== this.#lastMasterTheme) {
-              await this.#restoreTheme(config);
             }
           }
           if (generation !== this.#configGeneration) return;
-          this.#lastMasterTheme = config.master_theme;
           this.#lastSelectedTabsOnly = !!config.restore_selected_tabs_only;
           this.#renderToolbar();
           // one-shot readiness: connected, tables loaded, and the initial workspace
@@ -1300,12 +1286,8 @@ class PerspectivePanel extends HTMLElement {
       ...Object.values(workspace.retained_panel_configs_by_table ?? {}),
     ]) {
       delete panel.theme;
-      for (const column of [
-        ...Object.values(panel.columns_config ?? {}),
-        ...Object.values(panel.plugin_config?.columns ?? {}),
-      ]) {
-        delete column.column_size_override;
-      }
+      for (const column of Object.values(panel.columns_config ?? {}))
+        delete column?.column_size_override;
     }
     return workspace;
   }

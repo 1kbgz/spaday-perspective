@@ -1,11 +1,16 @@
-type Filter = [string, string, unknown];
+import type {
+  Filter,
+  FilterReducer,
+  FilterTerm,
+} from "@perspective-dev/viewer";
+
 export interface FindViewer extends HTMLElement {
   getActivePanel(): string | null;
   getSelection(options: { panel: string }): { start_col?: number } | undefined;
   getViewConfig(options: { panel: string }): Promise<{
     columns?: (string | null)[];
     filter?: Filter[];
-    filter_op?: string;
+    filter_op?: FilterReducer;
     split_by?: string[];
   }>;
   getTable(options: { panel: string; wait: boolean }): Promise<{
@@ -159,7 +164,8 @@ export function installFind(
             throw new Error(
               "Find requires AND filters. Change the filter combination in Settings first.",
             );
-          const filter: Filter = [key, "==", value];
+          // the cell value, which the Datagrid typed from the table schema
+          const filter: Filter = [key, "==", value as FilterTerm];
           if (
             !filters.some(
               (existing) => JSON.stringify(existing) === JSON.stringify(filter),
