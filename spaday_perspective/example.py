@@ -203,9 +203,6 @@ def layout(*, grouped: bool = False) -> dict:
 panel = (
     PerspectiveViewer(
         id="market-grid",
-        toolbar=True,
-        hide_tabs=True,
-        find=True,
         row_actions={
             "trades": {
                 "@copy": {
@@ -296,7 +293,7 @@ page = element(
                 "Use Delete to confirm removal or Copy to fill the form. Totals cover all retained trades, including filtered-out rows."
             ),
             element("p").text("Buy trades and All trades update this panel's filter; grouping and other settings stay unchanged."),
-            element("p").text("Select cells to copy with Ctrl+C / Cmd+C. Use Find or Ctrl+F / Cmd+F in the grid to filter a column."),
+            element("p").text("Select cells to copy with Ctrl+C / Cmd+C."),
         ),
         element(
             "div",

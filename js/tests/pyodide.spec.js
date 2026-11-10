@@ -40,21 +40,6 @@ test("runs the complete example in Pyodide with a local Perspective engine", asy
   await expect(page.locator("perspective-viewer-datagrid")).toBeAttached();
   expect(sockets).toEqual([]);
 
-  await page.getByRole("button", { name: "Find", exact: true }).click();
-  const find = page.getByRole("dialog", { name: "Find in column" });
-  await find.getByLabel("Column").selectOption("symbol");
-  await find.getByLabel("Equals").fill("AAPL");
-  await find.getByRole("button", { name: "Apply filter" }).click();
-  await expect(find).toHaveCount(0);
-  expect(
-    await page.evaluate(async () =>
-      document.querySelector("perspective-panel").viewer.getViewConfig(),
-    ),
-  ).toMatchObject({ filter: [["symbol", "==", "AAPL"]] });
-  await page.evaluate(() =>
-    document.querySelector("perspective-panel").viewer.restore({ filter: [] }),
-  );
-
   await page.getByRole("button", { name: "Buy trades", exact: true }).click();
   const view = () =>
     page.evaluate(

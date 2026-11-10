@@ -1,8 +1,8 @@
 allowBuilds:
   esbuild: true
 minimumReleaseAgeExclude:
-  - "@perspective-dev/client@5.9.0"
-  - "@perspective-dev/server@5.9.0"
-  - "@perspective-dev/viewer-charts@5.9.0"
-  - "@perspective-dev/viewer-datagrid@5.9.0"
-  - "@perspective-dev/viewer@5.9.0"
+  - "@perspective-dev/client@5.9.1"
+  - "@perspective-dev/server@5.9.1"
+  - "@perspective-dev/viewer-charts@5.9.1"
+  - "@perspective-dev/viewer-datagrid@5.9.1"
+  - "@perspective-dev/viewer@5.9.1"

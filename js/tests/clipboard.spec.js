@@ -14,7 +14,6 @@ async function mount(page, url = "/dist/index.html") {
     const panel = document.createElement("perspective-panel");
     panel.id = "copy-panel";
     panel.style.cssText = "display:block;width:800px;height:400px";
-    panel.toolbar = true;
     panel.config = {
       local: true,
       layout: {
@@ -33,6 +32,11 @@ async function mount(page, url = "/dist/index.html") {
       window.copyErrors.push(event.detail.message),
     );
     document.body.append(panel);
+    // `copySelection` needs a gesture that keeps the grid focused, so the button sits in the panel
+    const copy = document.createElement("button");
+    copy.textContent = "Copy selection";
+    copy.addEventListener("click", () => void panel.copySelection());
+    panel.append(copy);
     await panel.save();
   });
   const cell = page

@@ -126,6 +126,11 @@ test("bundled themes and custom theme names remain usable", async ({
       custom: panel.theme,
     };
   });
-  expect(result.themes.sort()).toEqual(["Pro Dark", "Pro Light"]);
+  const bundled = [
+    ...read(
+      "../node_modules/@perspective-dev/viewer/dist/css/themes.css",
+    ).matchAll(/perspective-viewer\[theme=((?:[^\]\\]|\\.)+)\]/g),
+  ].map((match) => match[1].replace(/\\(.)/g, "$1"));
+  expect(result.themes.sort()).toEqual([...new Set(bundled)].sort());
   expect(result.custom).toBe("Company Dark");
 });

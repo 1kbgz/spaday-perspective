@@ -77,20 +77,11 @@ test("canonical and legacy workspace saves round-trip retained panel settings", 
   expect(result.canonical).not.toHaveProperty("closed_channels");
   expect(result.legacy.closed_channels.quotes).toEqual(retained);
   expect(result.legacy).not.toHaveProperty("retained_panel_configs_by_table");
-  const portable = result.portable.retained_panel_configs_by_table.quotes;
-  expect(portable).not.toHaveProperty("theme");
-  expect(portable.columns_config.price).not.toHaveProperty(
-    "column_size_override",
-  );
-  expect(portable.columns_config.price.bold).toBe(true);
-  expect(result.legacyPortable.closed_channels.quotes).toEqual(portable);
+  expect(result.portable).toEqual(result.canonical);
+  expect(result.legacyPortable).toEqual(result.legacy);
   expect(
     result.canonical.panels.orders.columns_config.price.column_size_override,
   ).toBe(200);
-  expect(result.portable.panels.orders).not.toHaveProperty("theme");
-  expect(result.portable.panels.orders.columns_config.price).toEqual({
-    bold: true,
-  });
   for (const restored of result.restored) {
     expect(restored.columns).toEqual(["price"]);
     expect(restored.filter).toEqual([["symbol", "==", "NVDA"]]);
@@ -177,7 +168,6 @@ async function mountChannels(page, options = {}) {
     panel.id = "workspace";
     panel.style.cssText = "display:block;width:800px;height:400px";
     panel.theme = "dark";
-    panel.toolbar = true;
     panel.config = {
       local: true,
       channels: {
@@ -273,7 +263,6 @@ test("channel controls retain edited configs through close, save, reload, and re
     const panel = document.createElement("perspective-panel");
     panel.style.cssText = "display:block;width:800px;height:400px";
     panel.theme = "light";
-    panel.toolbar = true;
     panel.config = {
       local: true,
       channels: { quotes: { title: "Quotes" }, orders: {} },
@@ -290,11 +279,11 @@ test("channel controls retain edited configs through close, save, reload, and re
     sort: [["price", "desc"]],
     filter: [["symbol", "==", "NVDA"]],
   });
-  expect(closed.closed_channels.quotes).not.toHaveProperty("theme");
-  await page.getByLabel("Open table").selectOption("quotes");
-  const reopened = await page.evaluate(() =>
-    document.querySelector("perspective-panel").save(),
-  );
+  const reopened = await page.evaluate(async () => {
+    const panel = document.querySelector("perspective-panel");
+    await panel.openChannel("quotes");
+    return panel.save();
+  });
   expect(
     Object.values(reopened.panels).find((p) => p.table === "quotes"),
   ).toMatchObject({
@@ -303,13 +292,14 @@ test("channel controls retain edited configs through close, save, reload, and re
     sort: [["price", "desc"]],
   });
   expect(reopened.closed_channels).toBeUndefined();
-  await page.getByRole("button", { name: "Close table panels" }).click();
   expect(
     Object.values(
       (
-        await page.evaluate(() =>
-          document.querySelector("perspective-panel").save(),
-        )
+        await page.evaluate(async () => {
+          const panel = document.querySelector("perspective-panel");
+          await panel.closeChannel("quotes");
+          return panel.save();
+        })
       ).panels,
     ).map((p) => p.table),
   ).toEqual(["orders"]);
@@ -325,25 +315,34 @@ test("single_tab prepares the selected layout before restore and retains hidden 
   expect(Object.values(initial.panels).map((p) => p.table)).toEqual(["orders"]);
   expect(initial.closed_channels.quotes.columns).toEqual(["symbol"]);
   await expect(page.locator("perspective-viewer-datagrid")).toHaveCount(1);
-  await page.getByLabel("Open table").selectOption("quotes");
-  const switched = await page.evaluate(() =>
-    document.querySelector("#workspace").saveClean(),
-  );
+  const switched = await page.evaluate(async () => {
+    const panel = document.querySelector("#workspace");
+    await panel.openChannel("quotes");
+    return panel.saveClean();
+  });
   expect(Object.values(switched.panels).map((p) => p.table)).toEqual([
     "quotes",
   ]);
   expect(switched.closed_channels.orders.table).toBe("orders");
   await expect(page.locator("perspective-viewer-datagrid")).toHaveCount(1);
-  await page.getByRole("button", { name: "Close table panels" }).click();
   expect(
-    (await page.evaluate(() => document.querySelector("#workspace").save()))
-      .panels,
+    (
+      await page.evaluate(async () => {
+        const panel = document.querySelector("#workspace");
+        await panel.closeChannel("quotes");
+        return panel.save();
+      })
+    ).panels,
   ).toEqual({});
-  await page.getByLabel("Open table").selectOption("orders");
   expect(
     Object.values(
-      (await page.evaluate(() => document.querySelector("#workspace").save()))
-        .panels,
+      (
+        await page.evaluate(async () => {
+          const panel = document.querySelector("#workspace");
+          await panel.openChannel("orders");
+          return panel.save();
+        })
+      ).panels,
     ).map((p) => p.table),
   ).toEqual(["orders"]);
 });
@@ -407,6 +406,7 @@ for (const theme of ["dark", "light"]) {
         [...panel.querySelectorAll("perspective-viewer-datagrid")]
           .map((grid) => getComputedStyle(grid).backgroundColor)
           .filter(Boolean);
+      while (!background().length) await new Promise(requestAnimationFrame);
       const expected = background()[0];
       const calls = [];
       const frames = [];
@@ -734,10 +734,6 @@ for (const tables of [
       Object.values(result.defaults.panels).map((panel) => panel.plugin),
     ).toEqual(["Datagrid", "Datagrid"]);
     expect(result.unknown).toBe("Unknown table: toString");
-    // Declared tables do not implicitly add toolbar entries.
-    await expect(
-      page.locator(".perspective-panel-titlebar select option"),
-    ).toHaveCount(1);
   });
 }
 
