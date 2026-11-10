@@ -42,8 +42,7 @@ Assign a saved or imported token to `config.workspace` to restore it. Keep its `
 `savePortableWorkspace()` includes retained configurations for panels closed through either the wrapper or native tabs.
 Use the same result with Spaday's `Download` action when exporting a layout.
 
-Saved panel themes follow the current application theme when restored. For a filter sidebar that
-must use its own theme, set `config.master_theme` and list its panel ID in the layout's `masters`.
+Saved panel themes follow the current application theme when restored.
 
 ## Select and filter a table
 

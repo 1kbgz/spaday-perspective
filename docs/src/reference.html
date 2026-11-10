@@ -312,15 +312,11 @@ The browser property is <code class="docutils literal notranslate"><span class="
 <td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
 <td><p>Leave a panel whose <code class="docutils literal notranslate"><span class="pre">table</span></code> no loaded client hosts yet empty and pending until it is created, instead of erroring (the default).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">master_theme</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
-<td><p>Theme for filter-source panels listed in <code class="docutils literal notranslate"><span class="pre">masters</span></code>. Accepts <code class="docutils literal notranslate"><span class="pre">light</span></code>, <code class="docutils literal notranslate"><span class="pre">dark</span></code>, or a registered theme name. Defaults to the application theme.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">panel_defaults</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">panel_defaults</span></code></p></td>
 <td><p>mapping</p></td>
 <td><p>Table name to default panel configuration, such as <code class="docutils literal notranslate"><span class="pre">{&quot;trades&quot;:</span> <span class="pre">{&quot;title&quot;:</span> <span class="pre">&quot;Trades&quot;,</span> <span class="pre">&quot;columns&quot;:</span> <span class="pre">[&quot;price&quot;]}}</span></code>. Supplies the table picker and default configs; declared tables also support <code class="docutils literal notranslate"><span class="pre">openTablePanel</span></code>/<code class="docutils literal notranslate"><span class="pre">closeTablePanels</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">restore_selected_tabs_only</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">restore_selected_tabs_only</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
 <td><p>Keep only the selected tab in each stack before restoring it. Hidden configured tables retain their settings for reopening. Default <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></td>
 </tr>
@@ -335,38 +331,43 @@ An explicit index or limit takes precedence; unindexed sources remain unindexed.
 <p>The public <code class="docutils literal notranslate"><span class="pre">spaday_perspective.PerspectiveViewer</span></code> validates literal configuration when serialized
 with <code class="docutils literal notranslate"><span class="pre">to_node()</span></code> (including through <code class="docutils literal notranslate"><span class="pre">serve()</span></code> or a widget). This includes <code class="docutils literal notranslate"><span class="pre">.prop(&quot;config&quot;,</span> <span class="pre">...)</span></code>
 updates. <code class="docutils literal notranslate"><span class="pre">validate_config(config)</span></code> performs the same check explicitly and raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>
-with a path such as <code class="docutils literal notranslate"><span class="pre">config.workspace.panels.trades.plugin_config.edit_mode</span></code>. Browser property setters
+with a path such as <code class="docutils literal notranslate"><span class="pre">config.layout</span></code> or <code class="docutils literal notranslate"><span class="pre">config.panel_defaults.trades</span></code>. Browser property setters
 validate reactive config updates before accepting them. Computed expressions are checked when
 their result reaches the browser, not while authoring the expression.</p>
-<p>Validation covers wrapper flags, table descriptors, panel defaults, theme-name types, and
-the pinned Datagrid’s plugin settings. Unknown Datagrid settings are rejected. Custom plugins,
-per-column style payloads, and table-dependent filter/expression validity remain upstream-owned.
-Unknown wrapper/workspace extension fields are preserved. This is not a complete validator for
-every Perspective plugin or layout tree.</p>
-<p>The shared Datagrid contract is checked against the installed plugin’s live settings schema and
-TypeScript enum declarations. An upstream field, type, or enum change fails those tests. Positive
-finite font sizes and row heights are accepted, including values outside the settings UI’s slider
-ranges; <code class="docutils literal notranslate"><span class="pre">zebra_rows</span></code> accepts nonnegative finite numbers, which Perspective rounds down.</p>
+<p>The wrapper checks its own settings: flags, table descriptors, and the aliases. Perspective’s
+<code class="docutils literal notranslate"><span class="pre">migrate</span></code> checks the layout and each configured panel (<code class="docutils literal notranslate"><span class="pre">panel_defaults</span></code>, retained configurations)
+against its schema ahead of time, naming the offending value by JSON pointer, such as
+<code class="docutils literal notranslate"><span class="pre">config.layout:</span> <span class="pre">migrated</span> <span class="pre">config</span> <span class="pre">is</span> <span class="pre">invalid</span> <span class="pre">at</span> <span class="pre">`/panels/grid`:</span> <span class="pre">…</span></code>. Information a layout upgrade
+would drop is rejected the same way. Plugin settings, theme names, and table and column names are
+the viewer’s to check when the layout is applied; it reports through <code class="docutils literal notranslate"><span class="pre">perspective-error</span></code>, for
+example <code class="docutils literal notranslate"><span class="pre">Invalid</span> <span class="pre">`plugin_config.edit_mode`:</span> <span class="pre">…</span></code>. The Python enums below are checked against the
+installed Datagrid’s declarations.</p>
+<p>In the browser, the schema check needs Perspective’s <code class="docutils literal notranslate"><span class="pre">migrate</span></code> binary, which the bundle loads
+alongside the viewer. A layout assigned before it arrives is checked when it is applied and
+reported through <code class="docutils literal notranslate"><span class="pre">perspective-error</span></code>; from then on <code class="docutils literal notranslate"><span class="pre">config</span></code> throws <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> as it does for the
+wrapper’s own settings. Any panel’s <code class="docutils literal notranslate"><span class="pre">perspective-ready</span></code> follows that load.</p>
 <p>Python string enums are exported for configuration:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">EditMode</span></code>: <code class="docutils literal notranslate"><span class="pre">EDIT</span></code>, <code class="docutils literal notranslate"><span class="pre">READ_ONLY</span></code>, <code class="docutils literal notranslate"><span class="pre">SELECT_ROW</span></code>, <code class="docutils literal notranslate"><span class="pre">SELECT_COLUMN</span></code>, <code class="docutils literal notranslate"><span class="pre">SELECT_REGION</span></code>, <code class="docutils literal notranslate"><span class="pre">SELECT_ROW_TREE</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Alignment</span></code>: <code class="docutils literal notranslate"><span class="pre">TOP_LEFT</span></code>, <code class="docutils literal notranslate"><span class="pre">TOP</span></code>, <code class="docutils literal notranslate"><span class="pre">TOP_RIGHT</span></code>, <code class="docutils literal notranslate"><span class="pre">LEFT</span></code>, <code class="docutils literal notranslate"><span class="pre">CENTER</span></code>, <code class="docutils literal notranslate"><span class="pre">RIGHT</span></code>, <code class="docutils literal notranslate"><span class="pre">BOTTOM_LEFT</span></code>, <code class="docutils literal notranslate"><span class="pre">BOTTOM</span></code>, <code class="docutils literal notranslate"><span class="pre">BOTTOM_RIGHT</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Theme</span></code>: <code class="docutils literal notranslate"><span class="pre">LIGHT</span></code>, <code class="docutils literal notranslate"><span class="pre">DARK</span></code>, <code class="docutils literal notranslate"><span class="pre">PRO_LIGHT</span></code>, <code class="docutils literal notranslate"><span class="pre">PRO_DARK</span></code>.</p></li>
 </ul>
-<p>Enum members serialize to Perspective’s string values. Plain strings remain accepted. Theme names
-must be nonempty strings; application-defined names remain valid. The scroll setting is
-<code class="docutils literal notranslate"><span class="pre">plugin_config.scroll_lock</span></code>, a boolean, not an enum.</p>
+<p>Enum members serialize to Perspective’s string values. Plain strings remain accepted.
+Application-defined theme names remain valid. The scroll setting is <code class="docutils literal notranslate"><span class="pre">plugin_config.scroll_lock</span></code>, a
+boolean, not an enum.</p>
 <p>Perspective 4 workspace envelopes (<code class="docutils literal notranslate"><span class="pre">viewers</span></code>, <code class="docutils literal notranslate"><span class="pre">detail</span></code>, <code class="docutils literal notranslate"><span class="pre">master</span></code>) are migrated before restoration.
 Migration preserves panel configuration, selected tabs, master panels, and split proportions. Missing
 or empty split sizes use equal shares; a missing master/detail split uses 25/75. Version 5 layouts are
-unchanged by migration.</p>
+unchanged by migration, which keeps the wrapper’s <code class="docutils literal notranslate"><span class="pre">retained_panel_configs_by_table</span></code> and
+<code class="docutils literal notranslate"><span class="pre">closed_channels</span></code> and checks the result against Perspective’s schema.</p>
 <p><code class="docutils literal notranslate"><span class="pre">spaday_perspective.migrate_layout(layout)</span></code> accepts a mapping or JSON string and returns the same
 representation without modifying the input. Existing v5 layouts and invalid JSON strings pass
-through unchanged. The browser bundle exports the mapping-only equivalent, <code class="docutils literal notranslate"><span class="pre">migrateLayout(layout)</span></code>.</p>
-<p>The application theme overrides saved panel themes before restoration. <code class="docutils literal notranslate"><span class="pre">master_theme</span></code> overrides
-that choice for filter-source panels, including during live application theme changes. Input layouts
-are copied before preparation. Restoring a saved layout does not require a second theme restore.</p>
-<p>Changing <code class="docutils literal notranslate"><span class="pre">master_theme</span></code> or <code class="docutils literal notranslate"><span class="pre">restore_selected_tabs_only</span></code> with an unchanged layout applies to the current workspace,
+through unchanged. The browser bundle exports the mapping-only equivalent, <code class="docutils literal notranslate"><span class="pre">migrateLayout(layout)</span></code>,
+which returns a promise.</p>
+<p>The application theme overrides saved panel themes before restoration, master panels included.
+Input layouts are copied before preparation. Restoring a saved layout does not require a second
+theme restore.</p>
+<p>Changing <code class="docutils literal notranslate"><span class="pre">restore_selected_tabs_only</span></code> with an unchanged layout applies to the current workspace,
 preserving user edits. Turning <code class="docutils literal notranslate"><span class="pre">restore_selected_tabs_only</span></code> off permits additional tabs; it does not reopen closed
 panels. Replacing <code class="docutils literal notranslate"><span class="pre">workspace</span></code> starts a new workspace and replaces its retained panel configurations.</p>
 <p><code class="docutils literal notranslate"><span class="pre">local=True</span></code> expects named tables to be created through <code class="docutils literal notranslate"><span class="pre">globalThis.__spadayPerspective.worker()</span></code> before the panel loads. It is intended for browser-only hosts such as the bundled Pyodide example; normal Python deployments should keep bulk data on Perspective’s websocket.</p>
