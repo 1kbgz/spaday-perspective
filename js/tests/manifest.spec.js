@@ -68,3 +68,18 @@ test("declared methods exist on the element", async ({ page }) => {
   }, methods);
   expect(missing).toEqual([]);
 });
+
+test("all upstream configuration-default methods are exposed", () => {
+  const upstream = viewer.members.filter(
+    (member) =>
+      member.kind === "method" &&
+      /^(set|get)(Plugin|Column)ConfigDefaults$/.test(member.name),
+  );
+  expect(upstream).toHaveLength(4);
+  const methods = new Set(
+    panel.members
+      .filter((member) => member.kind === "method")
+      .map((member) => member.name),
+  );
+  for (const method of upstream) expect(methods.has(method.name)).toBe(true);
+});

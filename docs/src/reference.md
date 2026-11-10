@@ -20,6 +20,32 @@ class; both imports serialize to the same tag. The wrapper manages a multi-panel
    :members:
 ```
 
+## Configuration defaults
+
+The following methods wrap Perspective's static configuration-default APIs. They return promises,
+wait for Perspective initialization, and execute through the wrapper's lifecycle queue.
+
+| Method                                        | Arguments                                    | Result                                       |
+| --------------------------------------------- | -------------------------------------------- | -------------------------------------------- |
+| `setPluginConfigDefaults(defaults, options?)` | Mapping or `null`; optional `{plugin}`       | No value                                     |
+| `getPluginConfigDefaults()`                   | None                                         | List of `{defaults, plugin?}` entries        |
+| `setColumnConfigDefaults(defaults, options?)` | Mapping or `null`; optional `{plugin, type}` | No value                                     |
+| `getColumnConfigDefaults()`                   | None                                         | List of `{defaults, plugin?, type?}` entries |
+
+Defaults apply to **every Perspective viewer on the page**, including viewers outside this wrapper.
+Set them before assigning connection/workspace config or restoring any viewer. Separate wrappers
+have separate lifecycle queues; the application must finish initialization before loading them.
+Removing a wrapper does not remove defaults. Saved workspaces omit defaults and do not contain the
+application's defaults registry.
+
+Each setter merges values for the same options. A `null` value removes a key at any depth;
+`defaults=null` removes all defaults for those options. Column types are `integer`, `float`,
+`string`, `boolean`, `date`, and `datetime`. Perspective validates arguments and applies scope
+precedence and format merging. See its [configuration defaults reference](https://perspective-dev.github.io/guide/how_to/javascript/config_defaults.html).
+
+`find` and `openFind` are not wrapper APIs. The market-monitor example implements its Find dialog
+with Python components and the general `showTable` method.
+
 ## Terminology and compatibility
 
 A **table** holds data. A **view** defines a query over a table. A **panel** displays a view in a

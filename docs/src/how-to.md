@@ -64,6 +64,57 @@ this opens a separate detail panel using the panel defaults. Existing filters on
 remain; the action replaces only the `side` clauses. The result field contains the selected panel ID
 for later `restorePanel` or `exportData` actions.
 
+## Set application defaults before loading
+
+Create the wrapper without a connection config, then set defaults before assigning that config.
+For example, this Python-authored button initializes defaults and opens the workspace:
+
+```python
+from spaday import Invoke, Sequence, SetProp, by_id, element
+from spaday_perspective import PerspectiveViewer
+
+panel = PerspectiveViewer(id="workspace")
+open_workspace = element("button").text("Open workspace").on(
+    "click",
+    Sequence(
+        Invoke(
+            by_id("workspace"), "setPluginConfigDefaults",
+            {"scroll_lock": True}, {"plugin": "Datagrid"}, result="plugin_defaults_set",
+        ),
+        Invoke(
+            by_id("workspace"), "setColumnConfigDefaults",
+            {"date_format": {"timeZone": "UTC"}}, {"type": "datetime"},
+            result="column_defaults_set",
+        ),
+        SetProp(by_id("workspace"), "config", {
+            "ws_url": "/perspective",
+            "workspace": {
+                "layout": {"type": "tab-layout", "tabs": ["trades"]},
+                "panels": {"trades": {"table": "trades", "plugin": "Datagrid"}},
+            },
+        }),
+    ),
+)
+```
+
+Include `panel` and `open_workspace` in the page and host a `trades` table. The `result` arguments
+make the sequence await each setter before loading. To initialize automatically, run the same
+sequence in a spaday initial effect. Complete it before loading any other Perspective viewers:
+these defaults apply to the entire page, not just `workspace`.
+
+Use `getPluginConfigDefaults` and `getColumnConfigDefaults` with `Invoke(..., result="defaults")`
+to inspect the registry. Pass `None` as the defaults argument to remove all defaults for the
+specified options. See [configuration defaults](reference.md#configuration-defaults) for scope
+and removal semantics.
+
+## Add a Find control
+
+Use a Python-authored dialog with a column picker and a value input, then call `showTable` with
+`{"filter": [[column, "==", value]]}`. Use numeric values for numeric columns. The
+[market-monitor example](https://github.com/1kbgz/spaday-perspective/blob/main/spaday_perspective/example.py)
+validates its input before applying the filter and closes the dialog only after the action succeeds.
+It leaves browser Find shortcuts unchanged.
+
 ## Embed a sized grid
 
 Give the grid a definite height, including inside a WebAwesome tab panel. `height="100%"` needs a

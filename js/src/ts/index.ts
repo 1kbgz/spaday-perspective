@@ -1,7 +1,10 @@
 // the guard must execute before the upstream imports register their elements
 import { restoreDefine } from "./define-guard.js";
 import perspective from "@perspective-dev/client";
-import type { GetViewOptions } from "@perspective-dev/viewer";
+import type {
+  GetViewOptions,
+  PerspectiveViewerElementExt,
+} from "@perspective-dev/viewer";
 import PERSPECTIVE_THEMES from "@perspective-dev/viewer/dist/css/themes.css";
 import { styleWorkspace } from "./workspace-style.js";
 import { installClipboard, type ClipboardViewer } from "./clipboard.js";
@@ -402,6 +405,62 @@ class PerspectivePanel extends HTMLElement {
     this.#clipboard = null;
     this.#modeObserver?.disconnect();
     this.#modeObserver = null;
+  }
+
+  /** Page-wide Perspective defaults; set before loading/restoring any workspace. */
+  setPluginConfigDefaults(
+    ...args: Parameters<PerspectiveViewerElementExt["setPluginConfigDefaults"]>
+  ): Promise<
+    ReturnType<PerspectiveViewerElementExt["setPluginConfigDefaults"]>
+  > {
+    return this.#enqueue(() => {
+      const Viewer = customElements.get(
+        "perspective-viewer",
+      ) as unknown as PerspectiveViewerElementExt;
+      return Viewer.setPluginConfigDefaults(...args);
+    });
+  }
+
+  /** Page-wide Perspective defaults; set before loading/restoring any workspace. */
+  getPluginConfigDefaults(
+    ...args: Parameters<PerspectiveViewerElementExt["getPluginConfigDefaults"]>
+  ): Promise<
+    ReturnType<PerspectiveViewerElementExt["getPluginConfigDefaults"]>
+  > {
+    return this.#enqueue(() => {
+      const Viewer = customElements.get(
+        "perspective-viewer",
+      ) as unknown as PerspectiveViewerElementExt;
+      return Viewer.getPluginConfigDefaults(...args);
+    });
+  }
+
+  /** Page-wide Perspective defaults; set before loading/restoring any workspace. */
+  setColumnConfigDefaults(
+    ...args: Parameters<PerspectiveViewerElementExt["setColumnConfigDefaults"]>
+  ): Promise<
+    ReturnType<PerspectiveViewerElementExt["setColumnConfigDefaults"]>
+  > {
+    return this.#enqueue(() => {
+      const Viewer = customElements.get(
+        "perspective-viewer",
+      ) as unknown as PerspectiveViewerElementExt;
+      return Viewer.setColumnConfigDefaults(...args);
+    });
+  }
+
+  /** Page-wide Perspective defaults; set before loading/restoring any workspace. */
+  getColumnConfigDefaults(
+    ...args: Parameters<PerspectiveViewerElementExt["getColumnConfigDefaults"]>
+  ): Promise<
+    ReturnType<PerspectiveViewerElementExt["getColumnConfigDefaults"]>
+  > {
+    return this.#enqueue(() => {
+      const Viewer = customElements.get(
+        "perspective-viewer",
+      ) as unknown as PerspectiveViewerElementExt;
+      return Viewer.getColumnConfigDefaults(...args);
+    });
   }
 
   get rowActions(): RowActions {

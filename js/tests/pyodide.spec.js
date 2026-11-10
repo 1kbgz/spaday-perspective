@@ -216,4 +216,23 @@ test("runs the complete example in Pyodide with a local Perspective engine", asy
       }),
     )
     .toEqual(["symbol", "side"]);
+
+  await page.getByRole("button", { name: "Find", exact: true }).click();
+  const find = page.getByRole("dialog", { name: "Find trade", exact: true });
+  await find
+    .getByRole("combobox", { name: "Column", exact: true })
+    .selectOption("symbol");
+  await find.getByLabel("Equals", { exact: true }).fill("AAPL");
+  await find.getByRole("button", { name: "Apply filter" }).click();
+  await expect(find).not.toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .locator("perspective-panel")
+        .evaluate(
+          async (panel) =>
+            Object.values((await panel.saveWorkspace()).panels)[0].filter,
+        ),
+    )
+    .toEqual([["symbol", "==", "AAPL"]]);
 });
