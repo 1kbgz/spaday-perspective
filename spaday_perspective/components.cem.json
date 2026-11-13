@@ -12,24 +12,9 @@
           "summary": "Perspective workspace whose data connection and layout are configured by a serializable prop.",
           "attributes": [
             {
-              "name": "hideTabs",
-              "type": { "text": "boolean" },
-              "description": "Hide the viewer's internal tab strips and reclaim their space. False by default. Does not hide the wrapper toolbar or remove panels; applications provide table navigation when needed."
-            },
-            {
-              "name": "find",
-              "type": { "text": "boolean" },
-              "description": "Enable a column/value filter prompt for Ctrl+F or Cmd+F in the focused Datagrid, and a Find toolbar button. Disabled by default."
-            },
-            {
               "name": "rowActions",
               "type": { "text": "unknown" },
               "description": "Table-name to row actions. Indexed columns accept {action, label, text?, icon?} or a list. Dedicated @ identifiers accept {header, position: start|end, buttons: [...]}. Icons: copy, delete, add, share. Buttons emit perspective-row-action with the row's index value as key, a list of values for a multi-column index; applications own confirmation, authorization and mutations. Grouped/split or unindexed rows are disabled."
-            },
-            {
-              "name": "toolbar",
-              "type": { "text": "boolean" },
-              "description": "Show the table picker, close table panels button, and Copy selection button. Panel defaults are keyed by table name in config.panel_defaults."
             },
             {
               "name": "config",
@@ -174,6 +159,80 @@
             {
               "kind": "method",
               "privacy": "public",
+              "name": "setPluginConfigDefaults",
+              "description": "Merge page-wide plugin defaults before loading/restoring workspaces. Options narrow by plugin; null removes defaults. Delegates validation and precedence to Perspective.",
+              "parameters": [
+                {
+                  "name": "defaults",
+                  "type": {
+                    "text": "unknown"
+                  }
+                },
+                {
+                  "name": "options",
+                  "optional": true,
+                  "type": {
+                    "text": "unknown"
+                  }
+                }
+              ],
+              "return": {
+                "type": {
+                  "text": "Promise<void>"
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "privacy": "public",
+              "name": "getPluginConfigDefaults",
+              "description": "Return page-wide plugin defaults, one entry per combination of options. Defaults are not saved in workspace configurations.",
+              "return": {
+                "type": {
+                  "text": "Promise<unknown>"
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "privacy": "public",
+              "name": "setColumnConfigDefaults",
+              "description": "Merge page-wide column defaults before loading/restoring workspaces. Options narrow by plugin and type; null removes defaults. Delegates validation and precedence to Perspective.",
+              "parameters": [
+                {
+                  "name": "defaults",
+                  "type": {
+                    "text": "unknown"
+                  }
+                },
+                {
+                  "name": "options",
+                  "optional": true,
+                  "type": {
+                    "text": "unknown"
+                  }
+                }
+              ],
+              "return": {
+                "type": {
+                  "text": "Promise<void>"
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "privacy": "public",
+              "name": "getColumnConfigDefaults",
+              "description": "Return page-wide column defaults, one entry per combination of options. Defaults are not saved in workspace configurations.",
+              "return": {
+                "type": {
+                  "text": "Promise<unknown>"
+                }
+              }
+            },
+            {
+              "kind": "method",
+              "privacy": "public",
               "name": "saveWorkspace",
               "description": "Save the whole workspace with retained_panel_configs_by_table metadata after queued work completes.",
               "return": { "type": { "text": "Promise<unknown>" } }
@@ -192,14 +251,6 @@
               "description": "Export CSV (default) or JSON text without synthetic action value columns. Options: panel (defaults to active panel), format (csv or json). Retains filtering, sorting, grouping and expressions; exports the configured view, not a selected block. The temporary view is deleted after export.",
               "parameters": [{ "name": "options", "optional": true, "type": { "text": "unknown" } }],
               "return": { "type": { "text": "Promise<string>" } }
-            },
-            {
-              "kind": "method",
-              "privacy": "public",
-              "name": "openFind",
-              "description": "Open the column/value filter prompt for the active panel when find is enabled.",
-              "parameters": [],
-              "return": { "type": { "text": "Promise<void>" } }
             },
             {
               "kind": "method",
@@ -266,7 +317,7 @@
               "kind": "method",
               "privacy": "public",
               "name": "savePortableWorkspace",
-              "description": "Save the workspace without panel themes or column width overrides, using retained_panel_configs_by_table metadata.",
+              "description": "Compatibility alias for saveWorkspace().",
               "return": {
                 "type": {
                   "text": "Promise<unknown>"
@@ -277,7 +328,7 @@
               "kind": "method",
               "privacy": "public",
               "name": "saveClean",
-              "description": "Compatibility alias for savePortableWorkspace(), writing legacy closed_channels metadata.",
+              "description": "Compatibility alias for save(), writing legacy closed_channels metadata.",
               "return": {
                 "type": {
                   "text": "Promise<unknown>"

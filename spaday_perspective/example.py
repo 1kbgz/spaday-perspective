@@ -5,7 +5,25 @@ from datetime import UTC, datetime
 
 import transports
 from pydantic import BaseModel
-from spaday import CallEndpoint, Download, If, Invoke, Sequence, SetField, ToggleField, by_id, cond, element, eq, event_prop, field, obj
+from spaday import (
+    CallEndpoint,
+    Download,
+    If,
+    Invoke,
+    Sequence,
+    SetField,
+    ToggleField,
+    any_,
+    arr,
+    by_id,
+    cond,
+    element,
+    eq,
+    event_prop,
+    field,
+    obj,
+    prop,
+)
 from spaday.backends.starlette import serve
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -203,9 +221,6 @@ def layout(*, grouped: bool = False) -> dict:
 panel = (
     PerspectiveViewer(
         id="market-grid",
-        toolbar=True,
-        hide_tabs=True,
-        find=True,
         row_actions={
             "trades": {
                 "@copy": {
@@ -296,7 +311,7 @@ page = element(
                 "Use Delete to confirm removal or Copy to fill the form. Totals cover all retained trades, including filtered-out rows."
             ),
             element("p").text("Buy trades and All trades update this panel's filter; grouping and other settings stay unchanged."),
-            element("p").text("Select cells to copy with Ctrl+C / Cmd+C. Use Find or Ctrl+F / Cmd+F in the grid to filter a column."),
+            element("p").text("Select cells to copy with Ctrl+C / Cmd+C."),
         ),
         element(
             "div",
@@ -327,11 +342,79 @@ page = element(
                     Download("trades.csv", field("exported_trades"), "text/csv"),
                 ),
             ),
+            element("button").text("Find").on("click", Invoke(by_id("find-trade-dialog"), "showModal")),
             class_="segmented",
         ),
         class_="workspace-heading",
     ),
     element("section", panel, class_="workspace-shell"),
+    element(
+        "dialog",
+        element("h2").text("Find trade"),
+        element("p").text("Filter trades by an exact column value. Other column filters stay unchanged."),
+        element(
+            "div",
+            element("label", htmlFor="find-trade-column").text("Column"),
+            element(
+                "select",
+                *(element("option", value=name).text(name) for name in ("symbol", "side", "venue", "time", "id", "quantity", "price")),
+                id="find-trade-column",
+            )
+            .bind("value", "find_column", mode="two-way")
+            .on("change", SetField("find_value", "")),
+        ),
+        element(
+            "label",
+            "Equals",
+            element("input", id="find-trade-value", required=True)
+            .compute("type", cond(any_(*(eq(field("find_column"), name) for name in ("id", "quantity", "price"))), "number", "text"))
+            .compute("step", cond(eq(field("find_column"), "price"), "any", "1"))
+            .bind("value", "find_value", mode="two-way"),
+        ),
+        element(
+            "div",
+            element("button", type="button").text("Cancel").on("click", Invoke(by_id("find-trade-dialog"), "close")),
+            element("button", type="button")
+            .text("Apply filter")
+            .on(
+                "click",
+                Sequence(
+                    Invoke(by_id("find-trade-value"), "reportValidity", result="find_valid"),
+                    If(
+                        field("find_valid"),
+                        Sequence(
+                            Invoke(
+                                by_id("market-grid"),
+                                "showTable",
+                                "trades",
+                                obj(
+                                    {
+                                        "filter": arr(
+                                            arr(
+                                                field("find_column"),
+                                                "==",
+                                                cond(
+                                                    any_(*(eq(field("find_column"), name) for name in ("id", "quantity", "price"))),
+                                                    prop(by_id("find-trade-value"), "valueAsNumber"),
+                                                    field("find_value"),
+                                                ),
+                                            )
+                                        )
+                                    }
+                                ),
+                                result="find_panel",
+                            ),
+                            Invoke(by_id("find-trade-dialog"), "close"),
+                        ),
+                    ),
+                ),
+            ),
+            class_="dialog-actions",
+        ),
+        id="find-trade-dialog",
+        class_="delete-dialog",
+        **{"aria-label": "Find trade"},
+    ),
     element(
         "dialog",
         element("h2").text("Delete trade?"),
@@ -422,7 +505,7 @@ styles = """
   .live-metric { display: flex; align-items: center; gap: .55rem; } .live-metric strong { margin: 0; }
   .live-dot { width: .65rem; height: .65rem; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 .28rem #d1fae5; }
   .workspace-heading { margin-bottom: .75rem; }
-  .segmented { display: flex; gap: .45rem; }
+  .segmented { display: flex; flex-wrap: wrap; gap: .45rem; }
   .workspace-shell { height: min(58vh, 34rem); overflow: hidden; border: 1px solid #cbd5e1; border-radius: 1rem; background: #fff;
     box-shadow: 0 18px 48px rgba(15,23,42,.12); }
   #market-grid { display: block; width: 100%; height: 100%; }
@@ -456,7 +539,7 @@ if not IS_PYODIDE:
         WebSocketRoute("/perspective", perspective_socket),
     ]
 
-initial_store = {"view": "blotter", "dark": False, "symbol": "AAPL", "side": "Buy", "quantity": 100}
+initial_store = {"view": "blotter", "dark": False, "symbol": "AAPL", "side": "Buy", "quantity": 100, "find_column": "symbol", "find_value": ""}
 
 app = serve(
     page,

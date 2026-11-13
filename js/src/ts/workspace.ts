@@ -2,8 +2,6 @@ import perspective from "@perspective-dev/client";
 import type { Validator } from "@perspective-dev/client";
 import type { WorkspaceConfigUpdate } from "@perspective-dev/viewer";
 import { errorMessage } from "./config.js";
-// The entry re-exports the workspace and viewer config types but not their constituents; these
-// are the same generated declarations, reached through the package's `./dist/*` export.
 import type { Layout } from "@perspective-dev/viewer/dist/ts-rs/Layout.d.ts";
 import type { ViewerConfigInitial } from "@perspective-dev/viewer/dist/ts-rs/ViewerConfigInitial.d.ts";
 
