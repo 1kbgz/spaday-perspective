@@ -292,13 +292,15 @@ path used by the example's **Export CSV** button.
 
 `copySelection()` copies the last focused grid's selection using Perspective's plugin text export.
 It must be called directly from a user gesture and resolves `true` on success, `false` for no selection,
-cancellation, or failure. Ctrl+C and Cmd+C use this path.
+cancellation, or failure. Application buttons outside the wrapper can call this method: moving focus
+to a button preserves the last focused grid for an explicit copy request. Ctrl+C and Cmd+C use this
+path only within the focused grid.
 Inputs, editable content, and ordinary browser text selections retain native copying.
 
 The secure Clipboard API is invoked before asynchronous export completes. When unavailable or denied,
 a text-only copy-event fallback is attempted while user activation remains valid. Failure emits
 `perspective-copy-error` with `{message, error}`; the application owns notifications. Pending exports
-are cancelled by selection/config changes, focus changes, new gestures, or disconnects. A write already
+are cancelled by Escape, selection/config changes, focus changes, new gestures, or disconnects. A write already
 accepted by the operating system cannot be revoked.
 
 Perspective 5.5's native Copy menu uses its own clipboard implementation. On insecure HTTP pages,

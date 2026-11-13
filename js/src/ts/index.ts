@@ -6,7 +6,6 @@ import type {
   PerspectiveViewerElementExt,
 } from "@perspective-dev/viewer";
 import PERSPECTIVE_THEMES from "@perspective-dev/viewer/dist/css/themes.css";
-import { styleWorkspace } from "./workspace-style.js";
 import { installClipboard, type ClipboardViewer } from "./clipboard.js";
 import { errorMessage, sameConfig, validateConfig } from "./config.js";
 import {
@@ -1076,7 +1075,6 @@ class PerspectivePanel extends HTMLElement {
       .then(async () => {
         await ready;
         if (!this.#viewer || generation !== this.#configGeneration) return;
-        styleWorkspace(this.#viewer);
         try {
           if (this.#unchecked) {
             validateConfig(this.#authoredConfig, validator);

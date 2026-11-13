@@ -32,11 +32,10 @@ async function mount(page, url = "/dist/index.html") {
       window.copyErrors.push(event.detail.message),
     );
     document.body.append(panel);
-    // `copySelection` needs a gesture that keeps the grid focused, so the button sits in the panel
     const copy = document.createElement("button");
     copy.textContent = "Copy selection";
     copy.addEventListener("click", () => void panel.copySelection());
-    panel.append(copy);
+    document.body.append(copy);
     await panel.save();
   });
   const cell = page
@@ -66,7 +65,7 @@ async function expectedText(page) {
   });
 }
 
-for (const activation of ["Control+c", "Meta+c", "button"]) {
+for (const activation of ["Control+c", "Meta+c", "button", "keyboard button"]) {
   test(`copies real grid text with ${activation}`, async ({
     page,
     context,
@@ -80,13 +79,47 @@ for (const activation of ["Control+c", "Meta+c", "button"]) {
       await page
         .getByRole("button", { name: "Copy selection", exact: true })
         .click();
-    else await page.keyboard.press(activation);
+    else if (activation === "keyboard button") {
+      await page
+        .getByRole("button", { name: "Copy selection", exact: true })
+        .focus();
+      await page.keyboard.press("Enter");
+    } else await page.keyboard.press(activation);
     await expect
       .poll(() => page.evaluate(() => navigator.clipboard.readText()))
       .toBe(text);
     expect(await page.evaluate(() => window.copyErrors)).toEqual([]);
   });
 }
+
+test("an external button copies its own wrapper after another grid receives focus", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await mount(page);
+  const text = await expectedText(page);
+  await page.evaluate(async () => {
+    const other = document.createElement("perspective-panel");
+    other.id = "other";
+    other.style.cssText = "display:block;width:800px;height:400px";
+    other.config = document.querySelector("#copy-panel").config;
+    document.body.append(other);
+    await other.save();
+    await navigator.clipboard.writeText("sentinel");
+  });
+  await page
+    .locator("#other regular-table tbody td")
+    .getByText("NVDA", { exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Copy selection", exact: true })
+    .click();
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe(text);
+  expect(await page.evaluate(() => window.copyErrors)).toEqual([]);
+});
 
 test("reconnecting reinstalls exactly one clipboard handler", async ({
   page,
@@ -163,77 +196,99 @@ test("preserves ordinary editable and browser text copying", async ({
   expect(result).toEqual([false, false]);
 });
 
-for (const cancel of [
-  "selection",
-  "outside focus",
-  "another workspace",
-  "disconnect",
-]) {
-  test(`cancels a delayed export after ${cancel}`, async ({
-    page,
-    context,
-  }) => {
-    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-    await mount(page);
-    await page.evaluate(() => {
-      const panel = document.querySelector("#copy-panel");
-      const original = panel.viewer.export.bind(panel.viewer);
-      Object.defineProperty(panel.viewer, "export", {
-        configurable: true,
-        value: async (...args) => {
-          const value = await original(...args);
-          await new Promise((resolve) => {
-            window.finishExport = resolve;
-          });
-          return value;
-        },
-      });
-      window.writes = [];
-      navigator.clipboard.write = async (items) => {
-        try {
-          window.writes.push(
-            await (await items[0].getType("text/plain")).text(),
-          );
-        } catch {
-          window.cancelled = true;
-        }
-      };
-    });
-    await page.keyboard.press("Control+c");
-    await expect
-      .poll(() => page.evaluate(() => typeof window.finishExport))
-      .toBe("function");
-    if (cancel === "selection")
-      await page
-        .locator("perspective-viewer-datagrid regular-table tbody td")
-        .nth(1)
-        .click();
-    else if (cancel === "outside focus")
+for (const activation of ["keyboard", "button"]) {
+  for (const cancel of [
+    "selection",
+    "outside focus",
+    "another workspace",
+    "disconnect",
+    "Escape",
+  ]) {
+    test(`cancels a delayed ${activation} export after ${cancel}`, async ({
+      page,
+      context,
+    }) => {
+      await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+      await mount(page);
       await page.evaluate(() => {
-        const input = document.createElement("input");
-        document.body.append(input);
-        input.focus();
+        const panel = document.querySelector("#copy-panel");
+        const original = panel.viewer.export.bind(panel.viewer);
+        Object.defineProperty(panel.viewer, "export", {
+          configurable: true,
+          value: async (...args) => {
+            const value = await original(...args);
+            await new Promise((resolve) => {
+              window.finishExport = resolve;
+            });
+            return value;
+          },
+        });
+        window.writes = [];
+        navigator.clipboard.write = async (items) => {
+          try {
+            window.writes.push(
+              await (await items[0].getType("text/plain")).text(),
+            );
+          } catch {
+            window.cancelled = true;
+          }
+        };
       });
-    else if (cancel === "another workspace") {
-      await page.evaluate(async () => {
-        const other = document.createElement("perspective-panel");
-        other.id = "other";
-        other.style.cssText = "display:block;width:800px;height:400px";
-        other.config = document.querySelector("#copy-panel").config;
-        document.body.append(other);
-        await other.save();
-      });
-      await page
-        .locator("#other perspective-viewer-datagrid regular-table tbody td")
-        .first()
-        .click();
-    } else
-      await page.evaluate(() => document.querySelector("#copy-panel").remove());
-    await page.evaluate(() => window.finishExport());
-    await expect.poll(() => page.evaluate(() => window.cancelled)).toBe(true);
-    expect(await page.evaluate(() => window.writes)).toEqual([]);
-    expect(await page.evaluate(() => window.copyErrors)).toEqual([]);
-  });
+      if (activation === "button")
+        await page
+          .getByRole("button", { name: "Copy selection", exact: true })
+          .click();
+      else await page.keyboard.press("Control+c");
+      await expect
+        .poll(() => page.evaluate(() => typeof window.finishExport))
+        .toBe("function");
+      if (cancel === "selection")
+        await page
+          .locator("perspective-viewer-datagrid regular-table tbody td")
+          .nth(1)
+          .click();
+      else if (cancel === "outside focus")
+        await page.evaluate(() => {
+          const input = document.createElement("input");
+          document.body.append(input);
+          input.focus();
+        });
+      else if (cancel === "another workspace") {
+        await page.evaluate(async () => {
+          const other = document.createElement("perspective-panel");
+          other.id = "other";
+          other.style.cssText = "display:block;width:800px;height:400px";
+          other.config = document.querySelector("#copy-panel").config;
+          document.body.append(other);
+          await other.save();
+        });
+        await page
+          .locator("#other perspective-viewer-datagrid regular-table tbody td")
+          .first()
+          .click();
+      } else if (cancel === "Escape") {
+        await page.evaluate(() => {
+          document.addEventListener(
+            "keydown",
+            (event) => {
+              if (event.key === "Escape")
+                window.escapePrevented = event.defaultPrevented;
+            },
+            { once: true },
+          );
+        });
+        await page.keyboard.press("Escape");
+        expect(await page.evaluate(() => window.escapePrevented)).toBe(false);
+      } else
+        await page.evaluate(() =>
+          document.querySelector("#copy-panel").remove(),
+        );
+      await page.evaluate(() => window.finishExport());
+      await expect.poll(() => page.evaluate(() => window.cancelled)).toBe(true);
+      expect(await page.evaluate(() => window.writes)).toEqual([]);
+      expect(await page.evaluate(() => window.copyErrors)).toEqual([]);
+    });
+  }
 }
 
 test("reports denied copying without an unhandled rejection", async ({
