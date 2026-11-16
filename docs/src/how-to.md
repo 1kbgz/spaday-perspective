@@ -312,11 +312,13 @@ panel = PerspectiveViewer(
 )
 ```
 
-`index` and `limit` apply to the local copy. `default_architecture` flips the default for every
-plain entry.
+Omit `index` and `limit` to inherit the source table's options, or specify them for the local copy.
+A local `limit` is ignored with a warning when the source table is indexed.
+Use `default_architecture` to set the architecture for plain table-name entries.
 
-Mirrors resnapshot after source changes so deletions and replacements propagate correctly. Keep
-large, high-frequency tables on the default server architecture to avoid full-table transfer on refresh.
+Perspective creates the local table from a source view and maintains the replica as rows change,
+including deletions, clear, and replace operations. Choose the default server architecture when
+the table should remain on the server rather than occupy browser memory.
 
 ## Share Perspective with your own library
 
