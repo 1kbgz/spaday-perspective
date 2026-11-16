@@ -99,3 +99,17 @@ def test_validation_warns_about_approximations_and_leaves_the_input_alone():
     with pytest.warns(UserWarning, match=r"config\.layout/layout: the master panels are placed on the left"):
         validate_config(config)
     assert config == before
+
+
+def test_a_layout_from_a_newer_patch_passes_through_with_a_warning(monkeypatch):
+    # Perspective 5.9.3 reports a newer patch of its own minor as a notice with no `step` or `reason`
+    from spaday_perspective import workspace
+
+    layout = {"version": "5.9.99", "layout": {"type": "tab-layout", "tabs": []}, "panels": {}}
+    notice = {"kind": "NewerPatch", "pointer": "", "version": "5.9.99"}
+    assert workspace.describe_notice(notice) == "written by Perspective 5.9.99, newer than this release; not migrated"
+    monkeypatch.setattr(workspace.perspective, "migrate", lambda kind, value, written_by=None: {"value": value, "notices": [notice], "steps": []})
+    with pytest.warns(UserWarning, match="layout: written by Perspective 5.9.99"):
+        assert migrate_layout(layout) == layout
+    with pytest.warns(UserWarning, match="config.layout: written by Perspective 5.9.99"):
+        validate_config({"layout": layout})

@@ -18,13 +18,6 @@ class PerspectivePanel(Component):
         class_name="PerspectivePanel",
         summary="Perspective workspace whose data connection and layout are configured by a serializable prop.",
         props=(
-            PropertySchema(
-                name="rowActions",
-                kind="json",
-                choices=(),
-                default=None,
-                description="Table-name to row actions. Indexed columns accept {action, label, text?, icon?} or a list. Dedicated @ identifiers accept {header, position: start|end, buttons: [...]}. Icons: copy, delete, add, share. Buttons emit perspective-row-action with the row's index value as key, a list of values for a multi-column index; applications own confirmation, authorization and mutations. Grouped/split or unindexed rows are disabled.",
-            ),
             PropertySchema(name="config", kind="json", choices=(), default=None, description=None),
             PropertySchema(name="theme", kind="string", choices=(), default=None, description=None),
             PropertySchema(
@@ -58,7 +51,6 @@ class PerspectivePanel(Component):
             PropertySchema(name="settings", kind="boolean", choices=(), default=None, description="Whether the settings sidebar is open."),
         ),
         events=(
-            "perspective-row-action",
             "perspective-click",
             "perspective-select",
             "perspective-global-filter",
@@ -67,6 +59,9 @@ class PerspectivePanel(Component):
             "perspective-toggle-settings",
             "perspective-statusbar-pointerdown",
             "perspective-table-delete",
+            "perspective-active-panel-update",
+            "perspective-command",
+            "perspective-agent-tool",
             "perspective-ready",
             "perspective-error",
             "perspective-copy-error",
@@ -78,7 +73,6 @@ class PerspectivePanel(Component):
         self,
         *children: Child,
         key: str | None = None,
-        rowActions: Any = None,
         config: Any = None,
         theme: str | None = None,
         themes: Any = None,
@@ -92,7 +86,6 @@ class PerspectivePanel(Component):
             *children,
             key=key,
             props={
-                "rowActions": rowActions,
                 "config": config,
                 "theme": theme,
                 "themes": themes,

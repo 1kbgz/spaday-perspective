@@ -58,6 +58,45 @@ test("loads named tables from the shared in-browser worker", async ({
   await expect(page.locator("perspective-panel")).toContainText("NVDA");
 });
 
+test("the panel is defined only once the viewer is, and takes over earlier properties", async ({
+  page,
+}) => {
+  // hold the viewer's module back so the page mounts and calls well before it arrives
+  await page.route("**/perspective-viewer.js", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await route.continue();
+  });
+  await page.goto("/dist/index.html");
+  const result = await page.evaluate(async () => {
+    const panel = document.createElement("perspective-panel");
+    panel.style.cssText = "display:block;width:600px;height:300px";
+    panel.theme = "dark";
+    panel.config = { local: true };
+    document.body.append(panel);
+    const before = {
+      panel: !!customElements.get("perspective-panel"),
+      method: typeof panel.setCommandSchema,
+    };
+    await customElements.whenDefined("perspective-panel");
+    return {
+      before,
+      viewer: !!customElements.get("perspective-viewer"),
+      inner: typeof panel.viewer.setCommandSchema,
+      theme: panel.theme,
+      config: panel.config,
+      own: Object.keys(panel),
+    };
+  });
+  expect(result).toEqual({
+    before: { panel: false, method: "undefined" },
+    viewer: true,
+    inner: "function",
+    theme: "Pro Dark",
+    config: expect.objectContaining({ local: true }),
+    own: [],
+  });
+});
+
 test("wait_for_table leaves a panel pending until its table is created", async ({
   page,
 }) => {
@@ -568,7 +607,6 @@ test("survives another bundle registering shared engines first", async ({
       imported = false;
       errors.push(String(error));
     }
-    const panelDefined = !!win.customElements.get("perspective-panel");
     // the viewer and its plugins load after the bundle itself, and the guard stays up until they have
     const restored = () =>
       String(win.customElements.define).includes("native code");
@@ -576,6 +614,11 @@ test("survives another bundle registering shared engines first", async ({
     while (!restored() && Date.now() < deadline) {
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
+    // the panel is defined last, once the viewer it wraps is
+    const panelDefined = await Promise.race([
+      win.customElements.whenDefined("perspective-panel").then(() => true),
+      new Promise((resolve) => setTimeout(() => resolve(false), 30_000)),
+    ]);
     return {
       imported,
       panelDefined,
@@ -586,7 +629,7 @@ test("survives another bundle registering shared engines first", async ({
   });
   expect(r.errors).toEqual([]);
   expect(r.imported).toBe(true); // the bundle no longer dies on duplicate defines
-  expect(r.panelDefined).toBe(true); // defined without waiting on the engine
+  expect(r.panelDefined).toBe(true); // defined once the viewer is, despite the rivals
   expect(r.viewerDefined).toBe(true); // and the engine's own modules survived the rivals too
   expect(r.defineRestored).toBe(true); // the guard did not leak past the upstream modules
   expect(r.errors).toEqual([]);

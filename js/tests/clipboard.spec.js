@@ -1,7 +1,9 @@
-import { chromium, expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-async function mount(page, url = "/dist/index.html") {
-  await page.goto(url);
+// `copy` and `export` are the viewer's own; these check the panel hands them through unchanged and
+// that its one addition, Ctrl+C / Cmd+C inside a grid, goes through the same `copy`.
+async function mount(page) {
+  await page.goto("/dist/index.html");
   await page.evaluate(async () => {
     const worker = await globalThis.__spadayPerspective.worker();
     await worker.table(
@@ -28,100 +30,182 @@ async function mount(page, url = "/dist/index.html") {
       },
     };
     window.copyErrors = [];
+    window.copyResults = [];
     panel.addEventListener("perspective-copy-error", (event) =>
       window.copyErrors.push(event.detail.message),
     );
     document.body.append(panel);
-    const copy = document.createElement("button");
-    copy.textContent = "Copy selection";
-    copy.addEventListener("click", () => void panel.copySelection());
-    document.body.append(copy);
+    for (const [name, options] of [
+      ["Copy view", undefined],
+      ["Copy selection", { method: "csv-selected" }],
+    ]) {
+      const button = document.createElement("button");
+      button.textContent = name;
+      button.addEventListener("click", () =>
+        window.copyResults.push(
+          panel.copy(options).then(
+            () => "ok",
+            (error) => `rejected: ${error.message ?? error}`,
+          ),
+        ),
+      );
+      document.body.append(button);
+    }
     await panel.save();
   });
-  const cell = page
+  await expect(
+    page.locator("perspective-viewer-datagrid regular-table tbody td").first(),
+  ).toBeVisible();
+}
+
+async function select(page, text = "AAPL") {
+  await page
     .locator("perspective-viewer-datagrid regular-table tbody td")
-    .first();
-  await expect(cell).toBeVisible();
-  await cell.click();
+    .getByText(text, { exact: true })
+    .click();
   await expect
     .poll(() =>
-      page.evaluate(() => {
-        const panel = document.querySelector("#copy-panel");
-        const grid = panel.querySelector("perspective-viewer-datagrid");
-        return !!panel.viewer.getSelection({ panel: grid.slot });
-      }),
+      page.evaluate(
+        () => !!document.querySelector("#copy-panel").viewer.getSelection(),
+      ),
     )
     .toBe(true);
 }
 
-async function expectedText(page) {
-  return page.evaluate(async () => {
-    const panel = document.querySelector("#copy-panel");
-    const value = await panel.viewer.export({
-      method: "plugin",
-      panel: panel.querySelector("perspective-viewer-datagrid").slot,
-    });
-    return typeof value === "string" ? value : value.text();
-  });
-}
+const exported = (page, method) =>
+  page.evaluate(
+    async (method) =>
+      document.querySelector("#copy-panel").viewer.export({ method }),
+    method,
+  );
 
-for (const activation of ["Control+c", "Meta+c", "button", "keyboard button"]) {
-  test(`copies real grid text with ${activation}`, async ({
-    page,
-    context,
-  }) => {
-    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-    await mount(page);
-    const text = await expectedText(page);
-    expect(text).toContain("AAPL");
-    await page.evaluate(() => navigator.clipboard.writeText("sentinel"));
-    if (activation === "button")
-      await page
-        .getByRole("button", { name: "Copy selection", exact: true })
-        .click();
-    else if (activation === "keyboard button") {
-      await page
-        .getByRole("button", { name: "Copy selection", exact: true })
-        .focus();
-      await page.keyboard.press("Enter");
-    } else await page.keyboard.press(activation);
-    await expect
-      .poll(() => page.evaluate(() => navigator.clipboard.readText()))
-      .toBe(text);
-    expect(await page.evaluate(() => window.copyErrors)).toEqual([]);
-  });
-}
+const results = (page) => page.evaluate(() => Promise.all(window.copyResults));
 
-test("an external button copies its own wrapper after another grid receives focus", async ({
+test("the default method copies the whole view and csv-selected only the selection", async ({
   page,
   context,
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await mount(page);
-  const text = await expectedText(page);
-  await page.evaluate(async () => {
-    const other = document.createElement("perspective-panel");
-    other.id = "other";
-    other.style.cssText = "display:block;width:800px;height:400px";
-    other.config = document.querySelector("#copy-panel").config;
-    document.body.append(other);
-    await other.save();
-    await navigator.clipboard.writeText("sentinel");
-  });
-  await page
-    .locator("#other regular-table tbody td")
-    .getByText("NVDA", { exact: true })
-    .click();
+  await select(page);
+  const view = await exported(page, "csv");
+  const selection = await exported(page, "csv-selected");
+  expect(view).toContain("NVDA");
+  expect(selection).toContain("AAPL");
+  expect(selection).not.toContain("NVDA");
+  await page.getByRole("button", { name: "Copy view", exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe(view);
   await page
     .getByRole("button", { name: "Copy selection", exact: true })
     .click();
   await expect
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))
-    .toBe(text);
+    .toBe(selection);
+  expect(await results(page)).toEqual(["ok", "ok"]);
   expect(await page.evaluate(() => window.copyErrors)).toEqual([]);
 });
 
-test("reconnecting reinstalls exactly one clipboard handler", async ({
+test("copy hands the clipboard one item during the click", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await mount(page);
+  await select(page);
+  const selection = await exported(page, "csv-selected");
+  await page.evaluate(() => {
+    const write = navigator.clipboard.write.bind(navigator.clipboard);
+    window.writes = [];
+    // the item is handed over before the export resolves, holding a promise for its text
+    navigator.clipboard.write = (items) => {
+      window.writes.push(navigator.userActivation.isActive);
+      return write(items);
+    };
+  });
+  await page
+    .getByRole("button", { name: "Copy selection", exact: true })
+    .click();
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe(selection);
+  expect(await page.evaluate(() => window.writes)).toEqual([true]);
+  expect(await results(page)).toEqual(["ok"]);
+});
+
+test("copy rejects on denial and with nothing selected", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions([]);
+  await mount(page);
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page
+    .getByRole("button", { name: "Copy selection", exact: true })
+    .click();
+  await expect
+    .poll(() => results(page))
+    .toEqual(["rejected: Nothing is selected"]);
+  await select(page);
+  await page.getByRole("button", { name: "Copy view", exact: true }).click();
+  const [, denied] = await results(page);
+  expect(denied).toMatch(/^rejected: /);
+  expect(denied).not.toBe("rejected: Nothing is selected");
+  expect(errors).toEqual([]);
+});
+
+for (const key of ["Control+c", "Meta+c"]) {
+  test(`${key} in a grid copies its selection as csv-selected`, async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await mount(page);
+    await select(page);
+    const selection = await exported(page, "csv-selected");
+    await page.evaluate(() => navigator.clipboard.writeText("sentinel"));
+    await page.keyboard.press(key);
+    await expect
+      .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+      .toBe(selection);
+    expect(await page.evaluate(() => window.copyErrors)).toEqual([]);
+  });
+}
+
+test("Ctrl+C with nothing selected reports the viewer's rejection", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await mount(page);
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.evaluate(() => navigator.clipboard.writeText("sentinel"));
+  // focus the grid by selecting, then clear the selection
+  await select(page);
+  await page.evaluate(() =>
+    document.querySelector("#copy-panel").viewer.setSelection(null),
+  );
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => !!document.querySelector("#copy-panel").viewer.getSelection(),
+      ),
+    )
+    .toBe(false);
+  await page.keyboard.press("Control+c");
+  await expect
+    .poll(() => page.evaluate(() => window.copyErrors))
+    .toEqual(["Nothing is selected"]);
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    "sentinel",
+  );
+  expect(errors).toEqual([]);
+});
+
+test("reconnecting reinstalls exactly one keyboard handler", async ({
   page,
   context,
 }) => {
@@ -132,33 +216,21 @@ test("reconnecting reinstalls exactly one clipboard handler", async ({
     panel.remove();
     document.body.append(panel);
     await panel.save();
+    // the viewer's methods are not writable, so count at the clipboard instead
     const write = navigator.clipboard.write.bind(navigator.clipboard);
-    window.writeCalls = 0;
-    navigator.clipboard.write = (...args) => {
-      window.writeCalls++;
-      return write(...args);
+    window.writes = 0;
+    navigator.clipboard.write = (items) => {
+      window.writes++;
+      return write(items);
     };
   });
-  await page
-    .locator("perspective-viewer-datagrid regular-table tbody td")
-    .nth(1)
-    .click();
-  await expect
-    .poll(() =>
-      page.evaluate(() => {
-        const panel = document.querySelector("#copy-panel");
-        return !!panel.viewer.getSelection({
-          panel: panel.querySelector("perspective-viewer-datagrid").slot,
-        });
-      }),
-    )
-    .toBe(true);
-  const text = await expectedText(page);
+  await select(page, "NVDA");
+  const selection = await exported(page, "csv-selected");
   await page.keyboard.press("Control+c");
   await expect
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))
-    .toBe(text);
-  expect(await page.evaluate(() => window.writeCalls)).toBe(1);
+    .toBe(selection);
+  expect(await page.evaluate(() => window.writes)).toBe(1);
 });
 
 test("preserves ordinary editable and browser text copying", async ({
@@ -196,200 +268,49 @@ test("preserves ordinary editable and browser text copying", async ({
   expect(result).toEqual([false, false]);
 });
 
-for (const activation of ["keyboard", "button"]) {
-  for (const cancel of [
-    "selection",
-    "outside focus",
-    "another workspace",
-    "disconnect",
-    "Escape",
-  ]) {
-    test(`cancels a delayed ${activation} export after ${cancel}`, async ({
-      page,
-      context,
-    }) => {
-      await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-      await mount(page);
-      await page.evaluate(() => {
-        const panel = document.querySelector("#copy-panel");
-        const original = panel.viewer.export.bind(panel.viewer);
-        Object.defineProperty(panel.viewer, "export", {
-          configurable: true,
-          value: async (...args) => {
-            const value = await original(...args);
-            await new Promise((resolve) => {
-              window.finishExport = resolve;
-            });
-            return value;
-          },
-        });
-        window.writes = [];
-        navigator.clipboard.write = async (items) => {
-          try {
-            window.writes.push(
-              await (await items[0].getType("text/plain")).text(),
-            );
-          } catch {
-            window.cancelled = true;
-          }
-        };
-      });
-      if (activation === "button")
-        await page
-          .getByRole("button", { name: "Copy selection", exact: true })
-          .click();
-      else await page.keyboard.press("Control+c");
-      await expect
-        .poll(() => page.evaluate(() => typeof window.finishExport))
-        .toBe("function");
-      if (cancel === "selection")
-        await page
-          .locator("perspective-viewer-datagrid regular-table tbody td")
-          .nth(1)
-          .click();
-      else if (cancel === "outside focus")
-        await page.evaluate(() => {
-          const input = document.createElement("input");
-          document.body.append(input);
-          input.focus();
-        });
-      else if (cancel === "another workspace") {
-        await page.evaluate(async () => {
-          const other = document.createElement("perspective-panel");
-          other.id = "other";
-          other.style.cssText = "display:block;width:800px;height:400px";
-          other.config = document.querySelector("#copy-panel").config;
-          document.body.append(other);
-          await other.save();
-        });
-        await page
-          .locator("#other perspective-viewer-datagrid regular-table tbody td")
-          .first()
-          .click();
-      } else if (cancel === "Escape") {
-        await page.evaluate(() => {
-          document.addEventListener(
-            "keydown",
-            (event) => {
-              if (event.key === "Escape")
-                window.escapePrevented = event.defaultPrevented;
-            },
-            { once: true },
-          );
-        });
-        await page.keyboard.press("Escape");
-        expect(await page.evaluate(() => window.escapePrevented)).toBe(false);
-      } else
-        await page.evaluate(() =>
-          document.querySelector("#copy-panel").remove(),
-        );
-      await page.evaluate(() => window.finishExport());
-      await expect.poll(() => page.evaluate(() => window.cancelled)).toBe(true);
-      expect(await page.evaluate(() => window.writes)).toEqual([]);
-      expect(await page.evaluate(() => window.copyErrors)).toEqual([]);
-    });
-  }
-}
-
-test("reports denied copying without an unhandled rejection", async ({
+test("an external button copies the selection of the panel it names", async ({
   page,
   context,
 }) => {
-  await context.grantPermissions([]);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await mount(page);
-  const errors = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  await page.evaluate(() => {
-    document.execCommand = () => false;
+  await select(page);
+  const selection = await exported(page, "csv-selected");
+  await page.evaluate(async () => {
+    const other = document.createElement("perspective-panel");
+    other.id = "other";
+    other.style.cssText = "display:block;width:800px;height:400px";
+    other.config = document.querySelector("#copy-panel").config;
+    document.body.append(other);
+    await other.save();
+    await navigator.clipboard.writeText("sentinel");
   });
-  await page.keyboard.press("Control+c");
+  // selecting in the other panel does not disturb the first panel's selection
+  await page
+    .locator("#other regular-table tbody td")
+    .getByText("NVDA", { exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Copy selection", exact: true })
+    .click();
   await expect
-    .poll(() => page.evaluate(() => window.copyErrors.length))
-    .toBe(1);
-  expect(errors).toEqual([]);
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe(selection);
+  expect(await results(page)).toEqual(["ok"]);
 });
 
-test("copies selected cells on an actual insecure HTTP origin", async () => {
-  const browser = await chromium.launch({
-    args: [
-      "--host-resolver-rules=MAP spaday.test 127.0.0.1",
-      "--no-proxy-server",
-    ],
-  });
-  try {
-    const page = await browser.newPage();
-    await mount(page, "http://spaday.test:3000/dist/index.html");
-    expect(await page.evaluate(() => isSecureContext)).toBe(false);
-    expect(await page.evaluate(() => typeof navigator.clipboard)).toBe(
-      "undefined",
-    );
-    const text = await expectedText(page);
-    await page.evaluate(() => {
-      document.addEventListener(
-        "copy",
-        (event) => {
-          const set = event.clipboardData.setData.bind(event.clipboardData);
-          event.clipboardData.setData = (type, value) => {
-            window.fallbackText = value;
-            set(type, value);
-          };
-        },
-        true,
-      );
-    });
-    await page
-      .getByRole("button", { name: "Copy selection", exact: true })
-      .click();
-    await expect
-      .poll(() => page.evaluate(() => window.fallbackText))
-      .toBe(text);
-    expect(await page.evaluate(() => window.copyErrors)).toEqual([]);
-    const errors = [];
-    page.on("pageerror", (error) => errors.push(error.message));
-    await page
-      .locator("perspective-viewer-datagrid regular-table tbody td")
-      .first()
-      .click({ button: "right" });
-    expect(await expectedText(page)).toBe(text);
-    await page
-      .locator(".context-menu-item")
-      .getByText("Copy", { exact: true })
-      .click();
-    await page
-      .locator("perspective-copy-menu .dropdown-menu-item")
-      .first()
-      .click();
-    await expect
-      .poll(() => page.evaluate(() => window.copyErrors.length))
-      .toBe(1);
-    expect(errors).toEqual([]);
-  } finally {
-    await browser.close();
-  }
-});
-
-test("falls back to a scoped text copy when Clipboard API is unavailable", async ({
-  page,
-}) => {
+test("export is the viewer's export", async ({ page }) => {
   await mount(page);
-  const text = await expectedText(page);
-  await page.evaluate(() => {
-    Object.defineProperty(navigator, "clipboard", {
-      value: undefined,
-      configurable: true,
-    });
-    document.addEventListener(
-      "copy",
-      (event) => {
-        const set = event.clipboardData.setData.bind(event.clipboardData);
-        event.clipboardData.setData = (type, value) => {
-          window.fallbackText = value;
-          set(type, value);
-        };
-      },
-      true,
-    );
+  const [panelCsv, viewerCsv, json] = await page.evaluate(async () => {
+    const panel = document.querySelector("#copy-panel");
+    return [
+      await panel.export(),
+      await panel.viewer.export(),
+      await panel.export({ method: "json", panel: "grid" }),
+    ];
   });
-  await page.keyboard.press("Control+c");
-  await expect.poll(() => page.evaluate(() => window.fallbackText)).toBe(text);
+  expect(panelCsv).toBe(viewerCsv);
+  expect(panelCsv.split("\n")[0]).toContain('"symbol"');
+  // `json` resolves to the columns themselves, not text
+  expect(json).toEqual({ symbol: ["AAPL", "NVDA"], price: [210, 181] });
 });

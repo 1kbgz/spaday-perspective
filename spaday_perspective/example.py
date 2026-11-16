@@ -159,10 +159,16 @@ async def submit_trade(request):
     return JSONResponse({"message": f"Added {quantity} {symbol} shares at ${price:,.2f}"})
 
 
-async def delete_trade(request):
-    payload = await request.json()
+def trade_key(payload) -> int | None:
+    """The trade id from a command's ``hit.id``, the row's index values as a list."""
     key = payload.get("id") if isinstance(payload, dict) else None
-    if type(key) is not int:
+    key = key[0] if isinstance(key, list) and len(key) == 1 else None
+    return key if type(key) is int else None
+
+
+async def delete_trade(request):
+    key = trade_key(await request.json())
+    if key is None:
         return JSONResponse({"message": "Expected an integer trade ID"}, status_code=422)
     if key not in records:
         return JSONResponse({"message": "Trade no longer exists"}, status_code=404)
@@ -172,9 +178,8 @@ async def delete_trade(request):
 
 
 async def copy_trade(request):
-    payload = await request.json()
-    key = payload.get("id") if isinstance(payload, dict) else None
-    if type(key) is not int:
+    key = trade_key(await request.json())
+    if key is None:
         return JSONResponse({"message": "Expected an integer trade ID"}, status_code=422)
     if key not in records:
         return JSONResponse({"message": "Trade no longer exists"}, status_code=404)
@@ -221,33 +226,19 @@ def layout(*, grouped: bool = False) -> dict:
 panel = (
     PerspectiveViewer(
         id="market-grid",
-        row_actions={
-            "trades": {
-                "@copy": {
-                    "header": "Copy",
-                    "position": "start",
-                    "buttons": [{"action": "copy", "label": "Copy trade to form", "icon": "copy"}],
-                },
-                "@delete": {
-                    "header": "Delete",
-                    "position": "end",
-                    "buttons": [{"action": "delete", "label": "Delete trade", "icon": "delete"}],
-                },
-            }
-        },
     )
     .on(
-        "perspective-row-action",
+        "perspective-command",
         If(
-            eq(event_prop("detail.action"), "delete"),
+            eq(event_prop("detail.key"), "delete"),
             Sequence(
-                SetField("delete_trade_id", event_prop("detail.key")),
+                SetField("delete_trade_id", event_prop("detail.context.hit.id")),
                 Invoke(by_id("delete-trade-dialog"), "showModal"),
             ),
             If(
-                eq(event_prop("detail.action"), "copy"),
+                eq(event_prop("detail.key"), "copy"),
                 Sequence(
-                    CallEndpoint("POST", "/api/trades/copy", obj({"id": event_prop("detail.key")}), result="copy_result"),
+                    CallEndpoint("POST", "/api/trades/copy", obj({"id": event_prop("detail.context.hit.id")}), result="copy_result"),
                     SetField("trade_result", field("copy_result")),
                     If(
                         field("copy_result.ok"),
@@ -335,8 +326,8 @@ page = element(
                     Invoke(by_id("market-grid"), "showTable", "trades", result="trade_panel"),
                     Invoke(
                         by_id("market-grid"),
-                        "exportData",
-                        obj({"panel": field("trade_panel"), "format": "csv"}),
+                        "export",
+                        obj({"panel": field("trade_panel"), "method": "csv"}),
                         result="exported_trades",
                     ),
                     Download("trades.csv", field("exported_trades"), "text/csv"),
@@ -478,6 +469,24 @@ page = element(
     class_="dashboard",
 ).compute("class", cond(field("dark"), "dashboard dark", "dashboard"))
 
+# The viewer's command schema is a function, so the page sets it rather than Python: icon-only row
+# buttons on the flat blotter. A grouped row is a group, not a trade; its `id` is its group path.
+commands_script = """
+<script type="module">
+  const commands = [
+    { kind: "Command", key: "copy", label: "", icon: "copy", title: "Copy trade to form" },
+    { kind: "Command", key: "delete", label: "", icon: "delete", title: "Delete trade" },
+  ];
+  const schema = ({ table, hit }) => ({
+    commands: table === "trades" && hit?.id?.length && !hit.row_path.length ? commands : [],
+  });
+  await customElements.whenDefined("perspective-panel");
+  let panel;
+  while (!(panel = document.querySelector("#market-grid"))) await new Promise(requestAnimationFrame);
+  await panel.setCommandSchema(schema, { scopes: ["datagrid-row"] });
+</script>
+"""
+
 styles = """
 <style>
   :root { color-scheme: light dark; }
@@ -548,7 +557,7 @@ app = serve(
     routes=routes,
     background=[transports.autosync(transport_server), stream_trades()],
     store=initial_store,
-    head=styles,
+    head=styles + commands_script,
     title="spaday-perspective example",
 )
 

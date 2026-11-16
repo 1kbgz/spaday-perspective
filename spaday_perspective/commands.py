@@ -1,4 +1,4 @@
-"""Indexed row actions. Run with python -m spaday_perspective.row_actions."""
+"""Row commands. Run with python -m spaday_perspective.commands."""
 
 import perspective
 from perspective.handlers.starlette import PerspectiveStarletteHandler
@@ -22,7 +22,9 @@ table = client.table(list(records.values()), name="orders", index="id")
 
 async def delete_order(request):
     data = await request.json()
+    # the command's `hit.id`: the row's index values, one here
     key = data.get("id") if isinstance(data, dict) else None
+    key = key[0] if isinstance(key, list) and len(key) == 1 else None
     if type(key) is not int:
         return JSONResponse({"message": "Expected an integer order ID"}, status_code=422)
     record = records.get(key)
@@ -43,12 +45,29 @@ async def socket(websocket):
         pass
 
 
+# The viewer's command schema is a function, so the page sets it rather than Python. Grouped rows
+# and the total row are skipped: their `id` is a group path, not an order.
+commands_script = """
+<script type="module">
+  const commands = [{ kind: "Command", key: "delete", label: "×", title: "Delete order" }];
+  const schema = ({ table, hit }) => ({
+    commands: table === "orders" && hit?.id?.length && !hit.row_path.length ? commands : [],
+  });
+  await customElements.whenDefined("perspective-panel");
+  let panel;
+  while (!(panel = document.querySelector("#orders"))) await new Promise(requestAnimationFrame);
+  await panel.setCommandSchema(schema, { scopes: ["datagrid-row"] });
+</script>
+"""
+
+
 def page():
     return element(
         "main",
-        element("h1", "Row actions"),
+        element("h1", "Row commands"),
         element("p", "Click × to request deletion. The server rejects locked orders. Open a second window to see shared updates."),
         PerspectiveViewer(
+            id="orders",
             config={
                 "ws_url": "/perspective",
                 "tables": ["orders"],
@@ -57,13 +76,12 @@ def page():
                     "panels": {"orders": {"table": "orders", "plugin": "Datagrid", "columns": ["id", "order", "locked"]}},
                 },
             },
-            row_actions={"orders": {"id": {"action": "delete", "label": "Delete order", "text": "×"}}},
         )
         .style(height="320px", width="100%")
         .on(
-            "perspective-row-action",
+            "perspective-command",
             Sequence(
-                CallEndpoint("POST", "/orders/delete", obj({"id": event_prop("detail.key")}), result="reply"),
+                CallEndpoint("POST", "/orders/delete", obj({"id": event_prop("detail.context.hit.id")}), result="reply"),
                 SetField("message", field("reply.body.message")),
             ),
         ),
@@ -75,8 +93,9 @@ app = serve(
     page,
     packages=[package],
     store={"message": "Ready"},
+    head=commands_script,
     routes=[WebSocketRoute("/perspective", socket), Route("/orders/delete", delete_order, methods=["POST"])],
-    title="Perspective row actions",
+    title="Perspective row commands",
 )
 
 if __name__ == "__main__":

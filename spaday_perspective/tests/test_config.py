@@ -65,3 +65,23 @@ def test_the_package_imports_and_passes_layouts_through_without_perspective():
         "assert migrate_layout({'viewers': {}}) == {'viewers': {}}\n"
     )
     subprocess.run([sys.executable, "-I", "-c", script], check=True, cwd=Path(__file__).parents[2])
+
+
+def test_wrapper_checks_still_run_in_process_without_perspective(monkeypatch):
+    # the subprocess above proves the import; this one covers what is left to check without the engine
+    from spaday_perspective import config, workspace
+
+    monkeypatch.setattr(config, "perspective", None)
+    monkeypatch.setattr(workspace, "perspective", None)
+    layout = {"viewers": {}}
+    assert workspace.migrate_workspace(layout) == (layout, [])
+    assert workspace.migrate_workspace(layout)[0] is not layout
+    # a panel only the engine would reject passes, and the workspace is not migrated
+    validate_config({"layout": {"panels": []}, "channels": {"t": {"plugin": 1}}})
+    with pytest.raises(ValueError, match="config.channels.t"):
+        validate_config({"channels": {"t": "trades"}})
+
+
+def test_themes_must_be_a_list():
+    with pytest.raises(ValueError, match="themes: expected array"):
+        PerspectivePanel(themes="Pro Dark").to_node()
