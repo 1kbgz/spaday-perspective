@@ -94,8 +94,9 @@ while `closeTablePanels` removes every panel for a table, including master panel
 Changing `ws_url` opens a new client connection. Changing the serialized `workspace` restores the viewer's panels.
 The wrapper queues asynchronous changes in assignment order.
 
-For a `client-server` mirror, omitting both `index` and `limit` inherits the source table's index.
-An explicit index or limit takes precedence; unindexed sources remain unindexed.
+For a `client-server` mirror, omitted `index` and `limit` options are inherited from the source table.
+Explicit options apply to the local copy, except that `limit` is ignored with a warning when the
+source table is indexed. Composite indexes are supported.
 
 ### Validation and enums
 
@@ -157,15 +158,15 @@ panels. Replacing `workspace` starts a new workspace and replaces its retained p
 
 A `server` table (the default) reads over the websocket: every scroll, sort, and filter round-trips
 to the Python server. A `client-server` table mirrors into a local Web Worker engine: the wrapper
-opens the server table and replaces a local copy (with the entry's `index` / `limit`) from an Arrow
-snapshot after source changes, loading the worker client before the websocket client so the
-local copy wins the viewer's table-name lookup. Reads are then local; the server stays authoritative
-for writes. Set architectures in the initial `config` — changing the mirrored set later reconnects.
+opens a view of the server table and passes it to the worker's `table(view, options)` API.
+The worker client loads before the websocket client so the local copy wins the viewer's table-name
+lookup. Reads are then local; the server stays authoritative for writes. Set architectures in the
+initial `config` — changing the mirrored set later reconnects.
 
-Row deltas omit deleted keys. Snapshot replacement propagates removals, clear, and replace operations
-and avoids duplicate appends for unindexed mirrors. Refreshes are serialized and notifications during
-an in-flight refresh coalesce into another snapshot. This sends the full source table on refresh;
-server architecture avoids that cost for large or frequently changing tables.
+Perspective's native mirroring maintains the replica through source updates, removals, clear, and
+replace operations. Wrappers using the same connection, table, and mirror options share a local
+table and subscription. The server architecture keeps the data on the server; a client-server
+mirror stores a copy in browser memory.
 
 ## Row actions
 
