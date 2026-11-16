@@ -50,14 +50,10 @@ test("legacy workspace configs retain multiple tabs, sizing, and save shape", as
     return {
       saved,
       clean,
-      toolbar: panel.toolbar,
-      titlebars: panel.querySelectorAll(".perspective-panel-titlebar").length,
       panelHeight: panel.clientHeight,
       viewerHeight: panel.viewer.offsetHeight,
     };
   });
-  expect(result.toolbar).toBe(false);
-  expect(result.titlebars).toBe(0);
   expect(result.viewerHeight).toBe(result.panelHeight);
   expect(result.saved.layout.selected).toBe(1);
   expect(
@@ -67,9 +63,6 @@ test("legacy workspace configs retain multiple tabs, sizing, and save shape", as
     Object.keys(result.saved).sort(),
   );
   expect(result.clean).not.toHaveProperty("closed_channels");
-  expect(
-    Object.values(result.clean.panels).every((panel) => !("theme" in panel)),
-  ).toBe(true);
 });
 
 test("both libraries render on one page with no collision", async ({

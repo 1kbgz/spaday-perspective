@@ -13,7 +13,8 @@ export function installClipboard(
   const browser = doc.defaultView!;
   const options = { capture: true, signal: controller.signal };
   let generation = 0;
-  let focusedGrid: HTMLElement | undefined;
+  // External controls can explicitly copy this grid; focus changes still cancel pending exports.
+  let lastFocusedGrid: HTMLElement | undefined;
   const invalidate = () => {
     generation++;
   };
@@ -63,7 +64,7 @@ export function installClipboard(
     }
   };
   const copySelection = async (): Promise<boolean> => {
-    const grid = focusedGrid;
+    const grid = lastFocusedGrid;
     if (!grid?.slot || !grid.isConnected || !host.isConnected) return false;
     const selection = viewer.getSelection({ panel: grid.slot });
     if (!selection) return false;
@@ -117,8 +118,7 @@ export function installClipboard(
     (event) => {
       invalidate();
       const grid = gridIn(event);
-      if (grid) focusedGrid = grid;
-      else if (!event.composedPath().includes(host)) focusedGrid = undefined;
+      if (grid) lastFocusedGrid = grid;
     },
     options,
   );
@@ -127,12 +127,18 @@ export function installClipboard(
     (event) => {
       invalidate();
       const grid = gridIn(event);
-      if (grid) focusedGrid = grid;
-      else if (!event.composedPath().includes(host)) focusedGrid = undefined;
+      if (grid) lastFocusedGrid = grid;
     },
     options,
   );
   doc.addEventListener("selectionchange", invalidate, options);
+  doc.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key === "Escape") invalidate();
+    },
+    options,
+  );
   browser.addEventListener("blur", invalidate, options);
   host.addEventListener("perspective-select", invalidate, options);
   host.addEventListener("perspective-config-update", invalidate, options);
@@ -163,7 +169,6 @@ export function installClipboard(
   host.addEventListener(
     "keydown",
     (event) => {
-      if (event.key === "Escape") invalidate();
       if ((event.key === "Enter" || event.key === " ") && guardMenu(event))
         return;
       if (
@@ -178,7 +183,7 @@ export function installClipboard(
         return;
       const grid = gridIn(event);
       if (!grid?.slot || !viewer.getSelection({ panel: grid.slot })) return;
-      focusedGrid = grid;
+      lastFocusedGrid = grid;
       event.preventDefault();
       event.stopPropagation();
       void copySelection();
@@ -206,7 +211,7 @@ export function installClipboard(
     dispose() {
       invalidate();
       controller.abort();
-      focusedGrid = undefined;
+      lastFocusedGrid = undefined;
     },
   };
 }

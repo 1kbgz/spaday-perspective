@@ -5,23 +5,46 @@
 Tag: `<perspective-panel>`. `PerspectiveViewer` aliases the existing validated `PerspectivePanel`
 class; both imports serialize to the same tag. The wrapper manages a multi-panel workspace.
 
-| Prop        | Type        | Description                                                                       |
-| ----------- | ----------- | --------------------------------------------------------------------------------- |
-| `config`    | mapping     | Connection, table names, and workspace layout.                                    |
-| `theme`     | `str`       | `light`, `dark`, or a Perspective theme name.                                     |
-| `themes`    | `list[str]` | Theme names offered by the status-bar picker (same shorthands accepted).          |
-| `autosize`  | `bool`      | Auto-size mode (on by default).                                                   |
-| `autopause` | `bool`      | Pause rendering while not visible (on by default).                                |
-| `throttle`  | `int`       | Render throttle in milliseconds; unset restores adaptive throttling.              |
-| `settings`  | `bool`      | Whether the settings sidebar is open.                                             |
-| `toolbar`   | `bool`      | Show table controls and Copy selection (default `False`).                         |
-| `hide_tabs` | `bool`      | Hide internal viewer tab strips and reclaim their space (default `False`).        |
-| `find`      | `bool`      | Enable focused-grid Ctrl+F / Cmd+F and the toolbar Find button (default `False`). |
+| Prop        | Type        | Description                                                              |
+| ----------- | ----------- | ------------------------------------------------------------------------ |
+| `config`    | mapping     | Connection, table names, and workspace layout.                           |
+| `theme`     | `str`       | `light`, `dark`, or a Perspective theme name.                            |
+| `themes`    | `list[str]` | Theme names offered by the status-bar picker (same shorthands accepted). |
+| `autosize`  | `bool`      | Auto-size mode (on by default).                                          |
+| `autopause` | `bool`      | Pause rendering while not visible (on by default).                       |
+| `throttle`  | `int`       | Render throttle in milliseconds; unset restores adaptive throttling.     |
+| `settings`  | `bool`      | Whether the settings sidebar is open.                                    |
 
 ```{eval-rst}
 .. autoclass:: spaday_perspective.PerspectiveViewer
    :members:
 ```
+
+## Configuration defaults
+
+The following methods wrap Perspective's static configuration-default APIs. They return promises,
+wait for Perspective initialization, and execute through the wrapper's lifecycle queue.
+
+| Method                                        | Arguments                                    | Result                                       |
+| --------------------------------------------- | -------------------------------------------- | -------------------------------------------- |
+| `setPluginConfigDefaults(defaults, options?)` | Mapping or `null`; optional `{plugin}`       | No value                                     |
+| `getPluginConfigDefaults()`                   | None                                         | List of `{defaults, plugin?}` entries        |
+| `setColumnConfigDefaults(defaults, options?)` | Mapping or `null`; optional `{plugin, type}` | No value                                     |
+| `getColumnConfigDefaults()`                   | None                                         | List of `{defaults, plugin?, type?}` entries |
+
+Defaults apply to **every Perspective viewer on the page**, including viewers outside this wrapper.
+Set them before assigning connection/workspace config or restoring any viewer. Separate wrappers
+have separate lifecycle queues; the application must finish initialization before loading them.
+Removing a wrapper does not remove defaults. Saved workspaces omit defaults and do not contain the
+application's defaults registry.
+
+Each setter merges values for the same options. A `null` value removes a key at any depth;
+`defaults=null` removes all defaults for those options. Column types are `integer`, `float`,
+`string`, `boolean`, `date`, and `datetime`. Perspective validates arguments and applies scope
+precedence and format merging. See its [configuration defaults reference](https://perspective-dev.github.io/guide/how_to/javascript/config_defaults.html).
+
+`find` and `openFind` are not wrapper APIs. The market-monitor example implements its Find dialog
+with Python components and the general `showTable` method.
 
 ## Terminology and compatibility
 
@@ -56,11 +79,6 @@ These methods are wrapper conveniences. Native `viewer.save()` saves an individu
 while `closeTablePanels` removes every panel for a table, including master panels.
 
 ## Configuration
-
-`hide_tabs` hides every internal tab strip without changing the saved workspace or its panels.
-It does not hide the wrapper toolbar. For multiple tables, provide navigation through the toolbar
-or your own buttons calling `openTablePanel`; hidden tabs cannot be selected or dragged by the user.
-The browser property is `hideTabs`.
 
 | Key                          | Type    | Description                                                                                                                                                                                                                  |
 | ---------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -101,6 +119,8 @@ In the browser, the schema check needs Perspective's `migrate` binary, which the
 alongside the viewer. A layout assigned before it arrives is checked when it is applied and
 reported through `perspective-error`; from then on `config` throws `TypeError` as it does for the
 wrapper's own settings. Any panel's `perspective-ready` follows that load.
+Without `perspective-python` installed, as in the Pyodide example, the Python check passes
+layouts through to the browser.
 
 Python string enums are exported for configuration:
 
@@ -270,34 +290,21 @@ Native Perspective export and selected-cell copying retain their original view-b
 selected/exported action fields contain record IDs. `exportData` provides the separate data-only
 path used by the example's **Export CSV** button.
 
-`openFind()` opens the column/value prompt for the active panel when `find=True`. With the toolbar
-enabled, Find invokes this method. Ctrl+F / Cmd+F instead targets the Datagrid receiving the key event.
-Other page content, editable inputs, and wrappers with Find disabled keep browser find behavior.
-
-Find lists source-table columns and uses `==`, converting the entered value to the column's type.
-Dates use UTC midnight; datetime input uses browser-local time. Computed columns and null-value
-search are not offered. A selected column is preselected when its position maps unambiguously to
-the source schema. Applying adds a filter without replacing existing filters or adding an identical
-duplicate. Configurations reporting OR-combined filters are refused instead of changing their meaning.
-Zero matches leave an empty filtered view. Filters can be edited or removed in Perspective Settings.
-
-Find reads schema metadata and applies the filter through Perspective's public API; it does not
-export or search rows in the browser. Filtering may still scan data in the engine. Cancellation,
-disabling Find, or disconnecting closes the prompt; it does not undo a filter already submitted.
-
 `copySelection()` copies the last focused grid's selection using Perspective's plugin text export.
 It must be called directly from a user gesture and resolves `true` on success, `false` for no selection,
-cancellation, or failure. Ctrl+C, Cmd+C, and the optional toolbar's Copy selection button use this path.
+cancellation, or failure. Application buttons outside the wrapper can call this method: moving focus
+to a button preserves the last focused grid for an explicit copy request. Ctrl+C and Cmd+C use this
+path only within the focused grid.
 Inputs, editable content, and ordinary browser text selections retain native copying.
 
 The secure Clipboard API is invoked before asynchronous export completes. When unavailable or denied,
 a text-only copy-event fallback is attempted while user activation remains valid. Failure emits
 `perspective-copy-error` with `{message, error}`; the application owns notifications. Pending exports
-are cancelled by selection/config changes, focus changes, new gestures, or disconnects. A write already
+are cancelled by Escape, selection/config changes, focus changes, new gestures, or disconnects. A write already
 accepted by the operating system cannot be revoked.
 
 Perspective 5.5's native Copy menu uses its own clipboard implementation. On insecure HTTP pages,
-the adapter blocks that menu's copy action and emits `perspective-copy-error`. Copy selection and
+the adapter blocks that menu's copy action and emits `perspective-copy-error`. `copySelection()` and
 keyboard copying can still use the fallback where browser policy permits it; otherwise Export remains
 available. Secure-context native-menu writes are not intercepted by the adapter.
 
@@ -305,11 +312,8 @@ available. Secure-context native-menu writes are not intercepted by the adapter.
 config (a `layout` tree plus per-panel viewer configs).
 
 For tables in `panel_defaults` or `tables`, `saveWorkspace()` also includes `retained_panel_configs_by_table`, a mapping from table name
-to its last panel configuration. `savePortableWorkspace()` returns the same shape with themes and datagrid column
-size overrides removed from both displayed and retained panel configurations. Width removal covers
-Perspective's `columns_config` and the older `plugin_config.columns` format, preserving other styles.
-These are durable presentation settings; use `saveWorkspace()` to retain them. Both results can be assigned to
-`config.workspace`. Storage and downloads remain application-owned.
+to its last panel configuration. `savePortableWorkspace()` is an alias kept for existing callers. The result can
+be assigned to `config.workspace`. Storage and downloads remain application-owned.
 
 `openTablePanel(name)` accepts names from `config.panel_defaults` or `config.tables` (string and object entries).
 It opens the table using its retained configuration, then defaults from `config.panel_defaults`, or Datagrid
@@ -361,10 +365,6 @@ element("button").text("Buy trades").on(
 This example selects a detail panel for `trades` and stores its ID in `shown`. The runnable market
 example uses the returned ID to export rows without inspecting the workspace layout.
 
-The optional toolbar lists only entries in `config.panel_defaults` and uses these same methods. Its container has class `perspective-panel-titlebar`
-and inherits `--spa-text` and `--spa-surface`. Custom design-kit controls can call the methods through
-Spaday `Invoke` without enabling the toolbar or accessing the viewer's shadow DOM.
-
 `viewer` returns the underlying `<perspective-viewer>` element — the escape hatch for its
 imperative and query API (`getTable`, `getSelection`, `download`, `copy`, `addPanel`/`removePanel`,
 `setActivePanel`, the agent methods, ...), typically from a `NamedJs` handler.
@@ -373,23 +373,8 @@ imperative and query API (`getTable`, `getSelection`, `download`, `copy`, `addPa
 
 `spaday_perspective.TOKENS` lists `spa_perspective_action_color`, `spa_perspective_action_background`,
 and `spa_perspective_action_border` for the optional row buttons. Pass these keywords to `.css()`
-to set the corresponding `--spa-perspective-*` properties. `spa_perspective_divider_color` controls
-panel borders and resize gaps; `spa_perspective_divider_hover_color` controls feedback while hovering
-or dragging a divider. Defaults follow Perspective's inactive border and active colors in light and
-dark themes. These do not replace Perspective's grid themes.
+to set the corresponding `--spa-perspective-*` properties. These do not replace Perspective's grid themes.
 
-```python
-PerspectiveViewer().css(
-    spa_perspective_divider_color="#666",
-    spa_perspective_divider_hover_color="#0af",
-)
-```
-
-The wrapper contains frame and title overflow and uses Perspective's own resize coordination.
-Applications do not need shadow-root observers or frame selectors. These frame styles target the
-pinned Perspective minor version and have narrow-pane and divider-drag tests in Chromium and WebKit.
-Legacy `--psp-workspace--tabbar-*` variables belong to the removed workspace component and do not
-style Perspective 5.6 frames.
 Perspective themes itself by name; `spaday_perspective.THEMES` maps page modes to those names:
 `{"light": "Pro Light", "dark": "Pro Dark"}`, the Perspective theme a panel applies for each page
 mode. A panel with no `theme` follows the nearest `wa-dark` / `wa-light` ancestor to one of these.

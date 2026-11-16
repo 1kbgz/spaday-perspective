@@ -55,26 +55,6 @@ test("re-dispatched viewer events are declared as the viewer declares them", () 
   ).toEqual([...redispatch].sort());
 });
 
-test("Perspective theme tokens the panel's styles reference are declared", () => {
-  const declared = new Set(viewer.cssProperties.map((prop) => prop.name));
-  // set by the viewer's own stylesheet but absent from the 5.7.0 manifest; drop each entry when
-  // the viewer declares it (the last assertion flags that)
-  const undeclared = new Set(["--psp-panel-titlebar--height"]);
-  const used = new Set(
-    sources.flatMap((source) =>
-      [...source.matchAll(/--psp-[\w-]+/g)].map((match) => match[0]),
-    ),
-  );
-  expect(used.size).toBeGreaterThan(0);
-  for (const token of used)
-    expect(declared.has(token) || undeclared.has(token), token).toBe(true);
-  for (const token of undeclared)
-    expect(
-      declared.has(token),
-      `${token} is declared upstream now; remove it from the exception list`,
-    ).toBe(false);
-});
-
 test("declared methods exist on the element", async ({ page }) => {
   await page.goto("/dist/index.html");
   await page.evaluate(() => customElements.whenDefined("perspective-panel"));
@@ -87,4 +67,19 @@ test("declared methods exist on the element", async ({ page }) => {
     return names.filter((name) => typeof element[name] !== "function");
   }, methods);
   expect(missing).toEqual([]);
+});
+
+test("all upstream configuration-default methods are exposed", () => {
+  const upstream = viewer.members.filter(
+    (member) =>
+      member.kind === "method" &&
+      /^(set|get)(Plugin|Column)ConfigDefaults$/.test(member.name),
+  );
+  expect(upstream).toHaveLength(4);
+  const methods = new Set(
+    panel.members
+      .filter((member) => member.kind === "method")
+      .map((member) => member.name),
+  );
+  for (const method of upstream) expect(methods.has(method.name)).toBe(true);
 });

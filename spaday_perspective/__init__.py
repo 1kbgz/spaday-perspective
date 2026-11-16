@@ -34,10 +34,8 @@ package = ComponentPackage(
 #: ``css()`` kwarg → (CSS custom property, what it controls), in the shape of
 #: :data:`spaday.theme.SHELL_TOKENS`.
 #:
-#: These style workspace dividers and optional row buttons. The underlying grid uses named :data:`THEMES`.
+#: These style the optional row buttons. The underlying grid uses named :data:`THEMES`.
 TOKENS: dict[str, tuple[str, str]] = {
-    "spa_perspective_divider_color": ("--spa-perspective-divider-color", "Panel borders and resize gaps"),
-    "spa_perspective_divider_hover_color": ("--spa-perspective-divider-hover-color", "Resize gap hover and drag feedback"),
     "spa_perspective_action_color": ("--spa-perspective-action-color", "Row action button text"),
     "spa_perspective_action_background": ("--spa-perspective-action-background", "Row action button background"),
     "spa_perspective_action_border": ("--spa-perspective-action-border", "Row action button border"),

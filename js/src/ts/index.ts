@@ -1,13 +1,13 @@
 // the guard must execute before the upstream imports register their elements
 import { restoreDefine } from "./define-guard.js";
 import perspective from "@perspective-dev/client";
-import type { GetViewOptions } from "@perspective-dev/viewer";
-import PRO from "@perspective-dev/viewer/dist/css/pro.css";
-import PRO_DARK from "@perspective-dev/viewer/dist/css/pro-dark.css";
-import { styleWorkspace } from "./workspace-style.js";
+import type {
+  GetViewOptions,
+  PerspectiveViewerElementExt,
+} from "@perspective-dev/viewer";
+import PERSPECTIVE_THEMES from "@perspective-dev/viewer/dist/css/themes.css";
 import { installClipboard, type ClipboardViewer } from "./clipboard.js";
 import { errorMessage, sameConfig, validateConfig } from "./config.js";
-import { installFind, type FindViewer } from "./find.js";
 import {
   installRowActions,
   isActionColumn,
@@ -41,8 +41,6 @@ export interface ShowTableOptions {
 export interface PerspectiveTableConfig {
   name: string;
   architecture?: PerspectiveArchitecture;
-  /** One column, or several for a multi-column index. A mirror of an indexed server table inherits
-   * the server's index and treats this as a hint, warning when they disagree. */
   index?: string | string[];
   limit?: number;
 }
@@ -200,10 +198,12 @@ const ready = Promise.all([
     ]),
   )
   .then(() => customElements.whenDefined("perspective-viewer"));
+
 const THEMES: Record<string, string> = {
   light: "Pro Light",
   dark: "Pro Dark",
 };
+
 // Perspective's events do not bubble out of `<perspective-viewer>`; re-dispatch the
 // observational set from the panel (bubbling + composed) so spaday's declarative
 // `.on("perspective-config-update", ...)` works. The cancelable `-before` events are
@@ -218,6 +218,7 @@ const REDISPATCH = [
   "perspective-statusbar-pointerdown",
   "perspective-table-delete",
 ];
+
 let stylesInjected = false;
 
 function hasOwn(object: object, key: string): boolean {
@@ -228,18 +229,7 @@ function injectStyles(): void {
   if (stylesInjected || typeof document === "undefined") return;
   stylesInjected = true;
   const style = document.createElement("style");
-  style.textContent = [
-    PRO,
-    PRO_DARK,
-    `
-    perspective-panel[hide-tabs] > perspective-viewer {
-      --psp-panel-titlebar--height: 0px;
-    }
-    perspective-panel[hide-tabs] > perspective-viewer > perspective-viewer-tab {
-      display: none !important;
-    }
-  `,
-  ].join("\n");
+  style.textContent = PERSPECTIVE_THEMES.toString();
   document.head.appendChild(style);
 }
 
@@ -255,42 +245,42 @@ function wsUrl(url: string): string {
 // config (the single-panel `restore`/`save` are the per-panel forms). Theme is
 // viewer config now, not an attribute; the element auto-sizes, so no manual
 // resize plumbing.
-type Viewer = ClipboardViewer &
-  Omit<FindViewer, "getTable"> & {
-    getViewConfig(options: { panel: string }): Promise<{
-      group_by?: string[];
-      split_by?: string[];
-      expressions?: Record<string, string>;
+type Viewer = ClipboardViewer & {
+  getActivePanel(): string | null;
+  getViewConfig(options: { panel: string }): Promise<{
+    group_by?: string[];
+    split_by?: string[];
+    expressions?: Record<string, string>;
+  }>;
+  getTable(options: { panel: string; wait: boolean }): Promise<{
+    get_index(): Promise<string | string[] | undefined>;
+    get_name(): Promise<string>;
+    schema(): Promise<Record<string, string>>;
+    view(config: unknown): Promise<{
+      to_csv(): Promise<string>;
+      to_json(): Promise<unknown>;
+      delete(): Promise<unknown>;
     }>;
-    getTable(options: { panel: string; wait: boolean }): Promise<{
-      get_index(): Promise<string | string[] | undefined>;
-      get_name(): Promise<string>;
-      schema(): Promise<Record<string, string>>;
-      view(config: unknown): Promise<{
-        to_csv(): Promise<string>;
-        to_json(): Promise<unknown>;
-        delete(): Promise<unknown>;
-      }>;
-    }>;
-    load(client: unknown): Promise<void>;
-    restore(
-      config: unknown,
-      options?: { panel?: string; wait_for_table?: boolean },
-    ): Promise<void>;
-    removePanel(id: string): Promise<unknown>;
-    restoreWorkspace(
-      config: unknown,
-      options?: { wait_for_table?: boolean },
-    ): Promise<void>;
-    saveWorkspace(): Promise<unknown>;
-    getView(options: GetViewOptions): Promise<PspView>;
-    flush(): Promise<unknown>;
-    resetThemes(themes?: string[] | null): Promise<unknown>;
-    setAutoSize(autosize: boolean): void;
-    setAutoPause(autopause: boolean): Promise<unknown>;
-    setThrottle(val?: number | null): void;
-    toggleConfig(force?: boolean | null): Promise<unknown>;
-  };
+  }>;
+  load(client: unknown): Promise<void>;
+  restore(
+    config: unknown,
+    options?: { panel?: string; wait_for_table?: boolean },
+  ): Promise<void>;
+  removePanel(id: string): Promise<unknown>;
+  restoreWorkspace(
+    config: unknown,
+    options?: { wait_for_table?: boolean },
+  ): Promise<void>;
+  saveWorkspace(): Promise<unknown>;
+  getView(options: GetViewOptions): Promise<PspView>;
+  flush(): Promise<unknown>;
+  resetThemes(themes?: string[] | null): Promise<unknown>;
+  setAutoSize(autosize: boolean): void;
+  setAutoPause(autopause: boolean): Promise<unknown>;
+  setThrottle(val?: number | null): void;
+  toggleConfig(force?: boolean | null): Promise<unknown>;
+};
 
 function migrateConfigured(authored: PerspectiveConfig): Workspace | undefined {
   const field = authored.workspace != null ? "workspace" : "layout";
@@ -325,16 +315,10 @@ class PerspectivePanel extends HTMLElement {
   #settings: boolean | null = null;
   #queue: Promise<unknown> = Promise.resolve();
   #retainedPanelConfigsByTable = new Map<string, PanelConfig>();
-  #toolbar = false;
-  #titlebar: HTMLElement | null = null;
-  #toolbarResize: ResizeObserver | null = null;
-  #toolbarKey: string | null = null;
   #clipboard: ReturnType<typeof installClipboard> | null = null;
   #rowActions: RowActions = {};
   #rowActionAdapter: ReturnType<typeof installRowActions> | null = null;
   #actionColumns: ReturnType<typeof installActionColumns> | null = null;
-  #find = false;
-  #findAdapter: ReturnType<typeof installFind> | null = null;
 
   connectedCallback(): void {
     injectStyles();
@@ -383,7 +367,6 @@ class PerspectivePanel extends HTMLElement {
       }
     }
     this.#clipboard ??= installClipboard(this, this.#viewer);
-    this.#findAdapter ??= installFind(this, this.#viewer, () => this.#find);
     this.#actionColumns ??= installActionColumns(
       this,
       this.#viewer,
@@ -404,8 +387,6 @@ class PerspectivePanel extends HTMLElement {
       (panel, header) => this.#actionColumns?.columnKey(panel, header),
     );
     this.#followPageMode();
-    this.#renderToolbar();
-    if (this.#titlebar) this.#toolbarResize?.observe(this.#titlebar);
     this.#apply();
   }
 
@@ -416,9 +397,6 @@ class PerspectivePanel extends HTMLElement {
   }
 
   disconnectedCallback(): void {
-    this.#toolbarResize?.disconnect();
-    this.#findAdapter?.dispose();
-    this.#findAdapter = null;
     this.#rowActionAdapter?.dispose();
     this.#rowActionAdapter = null;
     this.#actionColumns?.dispose();
@@ -428,11 +406,60 @@ class PerspectivePanel extends HTMLElement {
     this.#modeObserver = null;
   }
 
-  get hideTabs(): boolean {
-    return this.hasAttribute("hide-tabs");
+  /** Page-wide Perspective defaults; set before loading/restoring any workspace. */
+  setPluginConfigDefaults(
+    ...args: Parameters<PerspectiveViewerElementExt["setPluginConfigDefaults"]>
+  ): Promise<
+    ReturnType<PerspectiveViewerElementExt["setPluginConfigDefaults"]>
+  > {
+    return this.#enqueue(() => {
+      const Viewer = customElements.get(
+        "perspective-viewer",
+      ) as unknown as PerspectiveViewerElementExt;
+      return Viewer.setPluginConfigDefaults(...args);
+    });
   }
-  set hideTabs(value: boolean) {
-    this.toggleAttribute("hide-tabs", !!value);
+
+  /** Page-wide Perspective defaults; set before loading/restoring any workspace. */
+  getPluginConfigDefaults(
+    ...args: Parameters<PerspectiveViewerElementExt["getPluginConfigDefaults"]>
+  ): Promise<
+    ReturnType<PerspectiveViewerElementExt["getPluginConfigDefaults"]>
+  > {
+    return this.#enqueue(() => {
+      const Viewer = customElements.get(
+        "perspective-viewer",
+      ) as unknown as PerspectiveViewerElementExt;
+      return Viewer.getPluginConfigDefaults(...args);
+    });
+  }
+
+  /** Page-wide Perspective defaults; set before loading/restoring any workspace. */
+  setColumnConfigDefaults(
+    ...args: Parameters<PerspectiveViewerElementExt["setColumnConfigDefaults"]>
+  ): Promise<
+    ReturnType<PerspectiveViewerElementExt["setColumnConfigDefaults"]>
+  > {
+    return this.#enqueue(() => {
+      const Viewer = customElements.get(
+        "perspective-viewer",
+      ) as unknown as PerspectiveViewerElementExt;
+      return Viewer.setColumnConfigDefaults(...args);
+    });
+  }
+
+  /** Page-wide Perspective defaults; set before loading/restoring any workspace. */
+  getColumnConfigDefaults(
+    ...args: Parameters<PerspectiveViewerElementExt["getColumnConfigDefaults"]>
+  ): Promise<
+    ReturnType<PerspectiveViewerElementExt["getColumnConfigDefaults"]>
+  > {
+    return this.#enqueue(() => {
+      const Viewer = customElements.get(
+        "perspective-viewer",
+      ) as unknown as PerspectiveViewerElementExt;
+      return Viewer.getColumnConfigDefaults(...args);
+    });
   }
 
   get rowActions(): RowActions {
@@ -586,101 +613,6 @@ class PerspectivePanel extends HTMLElement {
   }
   get config(): PerspectiveConfig {
     return this.#authoredConfig;
-  }
-
-  get find(): boolean {
-    return this.#find;
-  }
-  set find(enabled: boolean) {
-    if (typeof enabled !== "boolean")
-      throw new TypeError("find: expected boolean");
-    this.#find = enabled;
-    if (!enabled) this.#findAdapter?.cancel();
-    this.#renderToolbar();
-  }
-  openFind(): Promise<void> {
-    return this.#findAdapter?.open() ?? Promise.resolve();
-  }
-
-  set toolbar(visible: boolean) {
-    this.#toolbar = !!visible;
-    this.#renderToolbar();
-  }
-  get toolbar(): boolean {
-    return this.#toolbar;
-  }
-
-  #renderToolbar(): void {
-    if (!this.#viewer) return;
-    const key = JSON.stringify([
-      this.#toolbar,
-      this.#find,
-      this.#config.panel_defaults,
-    ]);
-    if (key === this.#toolbarKey) return;
-    this.#toolbarKey = key;
-    this.#toolbarResize?.disconnect();
-    this.#titlebar?.remove();
-    this.#titlebar = null;
-    this.#viewer.style.height = "100%";
-    if (!this.#toolbar) return;
-    const bar = document.createElement("div");
-    bar.className = "perspective-panel-titlebar";
-    bar.style.cssText =
-      "display:flex;flex-wrap:wrap;align-items:center;gap:.375rem;box-sizing:border-box;padding:.375rem .5rem;color:var(--spa-text,inherit);background:var(--spa-surface,inherit)";
-    const select = document.createElement("select");
-    select.setAttribute("aria-label", "Open table");
-    select.append(new Option("Open table…", ""));
-    for (const [name, config] of Object.entries(
-      this.#config.panel_defaults ?? {},
-    )) {
-      select.append(new Option(config.title ?? name, name));
-    }
-    const close = document.createElement("button");
-    close.type = "button";
-    close.textContent = "Close table panels";
-    close.disabled = true;
-    select.addEventListener("change", () => {
-      close.disabled = !select.value;
-      if (select.value)
-        void this.openTablePanel(select.value).catch((error) =>
-          this.#reportError(error),
-        );
-    });
-    close.addEventListener("click", () => {
-      if (select.value)
-        void this.closeTablePanels(select.value).catch((error) =>
-          this.#reportError(error),
-        );
-      select.value = "";
-      close.disabled = true;
-    });
-    const copy = document.createElement("button");
-    copy.type = "button";
-    copy.textContent = "Copy selection";
-    copy.addEventListener("click", () => void this.copySelection());
-    bar.append(select, close, copy);
-    if (this.#find) {
-      const find = document.createElement("button");
-      find.type = "button";
-      find.textContent = "Find";
-      find.addEventListener("click", () => void this.openFind());
-      bar.append(find);
-    }
-    for (const control of [select, ...bar.querySelectorAll("button")]) {
-      control.style.cssText =
-        "box-sizing:border-box;flex:0 0 auto;width:auto;max-width:100%;height:2rem;min-height:2rem;margin:0;padding:.25rem .625rem;font-size:.875rem;line-height:1.25;white-space:nowrap";
-    }
-    select.style.flex = "0 1 16rem";
-    select.style.minWidth = "0";
-    this.prepend(bar);
-    this.#titlebar = bar;
-    this.#toolbarResize ??= new ResizeObserver(() => {
-      if (this.#viewer && this.#titlebar)
-        this.#viewer.style.height = `calc(100% - ${this.#titlebar.getBoundingClientRect().height}px)`;
-    });
-    this.#viewer.style.height = `calc(100% - ${bar.getBoundingClientRect().height}px)`;
-    this.#toolbarResize.observe(bar);
   }
 
   // Element-level options, each a serializable prop queued behind wasm init.
@@ -1022,14 +954,16 @@ class PerspectivePanel extends HTMLElement {
         if (stack) stack.tabs.push(id);
         else {
           stack = { type: "tab-layout", tabs: [id] };
-          workspace.layout = workspace.layout
-            ? {
-                type: "split-layout",
-                orientation: "horizontal",
-                sizes: [1, 3],
-                children: [workspace.layout, stack],
-              }
-            : stack;
+          // an emptied workspace reports a split with no children; replace it
+          workspace.layout =
+            workspace.layout && tabStacks(workspace.layout).length
+              ? {
+                  type: "split-layout",
+                  orientation: "horizontal",
+                  sizes: [1, 3],
+                  children: [workspace.layout, stack],
+                }
+              : stack;
         }
       }
       stack.selected = stack.tabs.indexOf(id);
@@ -1141,7 +1075,6 @@ class PerspectivePanel extends HTMLElement {
       .then(async () => {
         await ready;
         if (!this.#viewer || generation !== this.#configGeneration) return;
-        styleWorkspace(this.#viewer);
         try {
           if (this.#unchecked) {
             validateConfig(this.#authoredConfig, validator);
@@ -1198,7 +1131,6 @@ class PerspectivePanel extends HTMLElement {
           }
           if (generation !== this.#configGeneration) return;
           this.#lastSelectedTabsOnly = !!config.restore_selected_tabs_only;
-          this.#renderToolbar();
           // one-shot readiness: connected, tables loaded, and the initial workspace
           // config (when the config carries one) applied and rendered — the stable
           // signal a branded startup overlay can key off, unlike
@@ -1277,31 +1209,14 @@ class PerspectivePanel extends HTMLElement {
     return workspace;
   }
 
-  /** Save a workspace without panel themes and column width overrides. */
-  async savePortableWorkspace(): Promise<unknown> {
-    const workspace = (await this.saveWorkspace()) as Workspace | undefined;
-    if (!workspace) return workspace;
-    for (const panel of [
-      ...Object.values(workspace.panels ?? {}),
-      ...Object.values(workspace.retained_panel_configs_by_table ?? {}),
-    ]) {
-      delete panel.theme;
-      for (const column of Object.values(panel.columns_config ?? {}))
-        delete column?.column_size_override;
-    }
-    return workspace;
+  /** Compatibility alias for `saveWorkspace()`. */
+  savePortableWorkspace(): Promise<unknown> {
+    return this.saveWorkspace();
   }
 
-  /** Compatibility portable save using the historical closed_channels metadata key. */
-  async saveClean(): Promise<unknown> {
-    const workspace = (await this.savePortableWorkspace()) as
-      | Workspace
-      | undefined;
-    if (workspace?.retained_panel_configs_by_table) {
-      workspace.closed_channels = workspace.retained_panel_configs_by_table;
-      delete workspace.retained_panel_configs_by_table;
-    }
-    return workspace;
+  /** Compatibility alias for `save()`. */
+  saveClean(): Promise<unknown> {
+    return this.save();
   }
 }
 
