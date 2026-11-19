@@ -55,6 +55,50 @@ test("re-dispatched viewer events are declared as the viewer declares them", () 
   ).toEqual([...redispatch].sort());
 });
 
+test("inherited methods are declared as the viewer declares them", () => {
+  const upstream = Object.fromEntries(
+    viewer.members
+      .filter((member) => member.kind === "method")
+      .map((member) => [member.name, member]),
+  );
+  const inherited = panel.members.filter((member) => member.inheritedFrom);
+  expect(inherited.map((member) => member.name).sort()).toEqual([
+    "agentConfig",
+    "agentPrompt",
+    "agentReset",
+    "copy",
+    "export",
+    "getColumnConfigDefaults",
+    "getPluginConfigDefaults",
+    "setColumnConfigDefaults",
+    "setCommandSchema",
+    "setPluginConfigDefaults",
+  ]);
+  for (const member of inherited) {
+    const source = upstream[member.name];
+    expect(source, `${member.name} is a viewer method`).toBeDefined();
+    // the viewer's static methods are instance methods here, run through the panel's queue
+    const returns = source.static
+      ? `Promise<${source.return.type.text}>`
+      : source.return.type.text;
+    expect(member.description).toBe(source.description);
+    const shape = (parameter) => ({
+      name: parameter.name,
+      optional: parameter.optional ?? false,
+      type: parameter.type.text,
+      description: parameter.description ?? "",
+    });
+    expect((member.parameters ?? []).map(shape)).toEqual(
+      (source.parameters ?? []).map(shape),
+    );
+    expect(member.return.type.text).toBe(returns);
+    expect(member.inheritedFrom).toEqual({
+      name: viewer.name,
+      package: "@perspective-dev/viewer",
+    });
+  }
+});
+
 test("declared methods exist on the element", async ({ page }) => {
   await page.goto("/dist/index.html");
   await page.evaluate(() => customElements.whenDefined("perspective-panel"));

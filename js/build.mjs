@@ -20,7 +20,12 @@ const PERSPECTIVE_VERSION = JSON.parse(
 const VENDORED = {
   client: ["dist/cdn/*.js", "dist/wasm/perspective-migrate.wasm"],
   server: ["dist/wasm/*.wasm"],
-  viewer: ["dist/cdn/*.js", "dist/wasm/perspective-viewer.wasm"],
+  viewer: [
+    "dist/cdn/*.js",
+    "dist/wasm/perspective-viewer.wasm",
+    // the agent's `docs` bundle, fetched by applications that configure it
+    "dist/docs/perspective-docs.json",
+  ],
   "viewer-datagrid": ["dist/cdn/*.js"],
   "viewer-charts": ["dist/cdn/*.js"],
 };

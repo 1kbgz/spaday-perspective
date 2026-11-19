@@ -22,8 +22,10 @@ class; both imports serialize to the same tag. The wrapper manages a multi-panel
 
 ## Configuration defaults
 
-The following methods wrap Perspective's static configuration-default APIs. They return promises,
-wait for Perspective initialization, and execute through the wrapper's lifecycle queue.
+The following are the viewer's static configuration-default methods, passed through with their
+arguments unchanged. They are instance methods here so that `Invoke` can reach them, and they
+return promises: each waits for Perspective initialization and runs through the panel's lifecycle
+queue, so a `Sequence` can order a setter before a config.
 
 | Method                                        | Arguments                                    | Result                                       |
 | --------------------------------------------- | -------------------------------------------- | -------------------------------------------- |
@@ -168,107 +170,82 @@ replace operations. Wrappers using the same connection, table, and mirror option
 table and subscription. The server architecture keeps the data on the server; a client-server
 mirror stores a copy in browser memory.
 
-## Row actions
+## Commands
 
-`row_actions` (JavaScript `rowActions`) maps table names to indexed-column button descriptions:
+`setCommandSchema(schema, options?)` is the viewer's own method, passed through unchanged. `schema`
+is a synchronous function from Perspective's command context to `{commands}`, or `null` to remove
+it; `options.scopes` lists the surfaces it is evaluated for: `context-menu` (the default),
+`datagrid-row`, `datagrid-cell` and `chart-tooltip`. Called before the panel is connected, the
+schema is held and set ahead of the first workspace restore. See Perspective's
+[custom commands guide](https://perspective-dev.github.io/guide/how_to/javascript/commands.html)
+for the context, `hit` and `CommandSpec`.
 
-```python
-PerspectiveViewer(row_actions={"orders": {"id": {"action": "delete", "label": "Delete order", "text": "×"}}})
+The schema is a function, so it is set from a script on the page; Python cannot author it. Python
+handles the result:
+
+```html
+<script type="module">
+  const commands = [{ kind: "Command", key: "delete", label: "", icon: "delete", title: "Delete order" }];
+  // a grouped row's `id` is its group path and the total row's is empty; neither is an order
+  const schema = ({ table, hit }) => ({
+    commands: table === "orders" && hit?.id?.length && !hit.row_path.length ? commands : [],
+  });
+  await customElements.whenDefined("perspective-panel");
+  let panel;
+  while (!(panel = document.querySelector("#orders"))) await new Promise(requestAnimationFrame);
+  await panel.setCommandSchema(schema, { scopes: ["datagrid-row"] });
+</script>
 ```
 
-A column accepts one description or a list, rendered in order in the same cell:
+Pass the script to `serve(head=...)`. `icon` names a `--psp-icon--<name>--mask-image` property on
+the viewer: Perspective's themes define `copy`, `close`, `export` and others, and this package adds
+`delete`, `add` and `share`. An empty `label` with an `icon` gives an icon-only button whose
+`title` is its tooltip and accessible name.
+
+Picking a command fires `perspective-command`, re-dispatched from the panel, with `{key, context}`:
 
 ```python
-PerspectiveViewer(row_actions={"orders": {"id": [
-    {"action": "delete", "label": "Delete order"},
-    {"action": "copy", "label": "Copy order to form", "text": "⧉"},
-]}})
+panel.on(
+    "perspective-command",
+    CallEndpoint("POST", "/orders/delete", obj({"id": event_prop("detail.context.hit.id")})),
+)
 ```
 
-Dedicated columns use identifiers starting with `@` and do not replace the real index column:
+`detail.context.hit.id` is a list of the table's index values, `[7]` for an order whose `id` is 7
+and the key tuple in index order for a composite index.
+The application owns authorization, confirmation and mutation; nothing changes automatically. A
+handler that changes state the schema reads calls `viewer.invalidate()` to redraw the buttons.
 
-```python
-PerspectiveViewer(row_actions={"orders": {
-    "@copy": {
-        "header": "Copy", "position": "start",
-        "buttons": [{"action": "copy", "label": "Copy order", "icon": "copy"}],
-    },
-    "@delete": {
-        "header": "Delete", "position": "end",
-        "buttons": [{"action": "delete", "label": "Delete order", "icon": "delete"}],
-    },
-}})
-```
+The Datagrid places its command column by `plugin_config.command_column` (`left` by default,
+`right`, `tree` after the group columns, or `none`) and shows cell buttons while
+`plugin_config.command_cells` is true. Both are per-panel plugin config in `config.workspace`,
+saved by Perspective. The Datagrid accepts them only once it has drawn with the scope declared, so
+they are dropped from the workspace a page loads with; apply them afterwards with `restorePanel`.
+The schema itself is not saved and survives restores.
 
-Any number of dedicated columns may appear at either end, in mapping insertion order within
-each position. Each accepts multiple buttons. Headers must be unique and must not collide with
-source columns or user expressions. An empty button list removes the generated column.
-View-level expressions provide the record keys; source tables are unchanged. The wrapper's
-`saveWorkspace()` and `savePortableWorkspace()` omit those expressions and columns, which are recreated from
-`row_actions` on restoration. Direct calls to `viewer.saveWorkspace()` include them and are not
-portable to a fresh wrapper with the same action policy; use wrapper `saveWorkspace()` or `savePortableWorkspace()`
-for persistence. Matching expression text alone does not establish wrapper ownership.
-Replace a panel's table through `config.workspace`. Partial table swaps through the raw viewer API
-can retain the old table's expressions, including generated action fields; the wrapper does not
-assume ownership of expressions on a different table.
-In dedicated-column events, `column` is the stable `@` identifier, not its display header.
+Migrating from `row_actions`, removed in 0.9.0:
 
-An empty list removes an indexed column's buttons. The market example uses a leading copy
-column and a trailing delete column. Copy fills the existing order form without inserting a row.
-Delete opens a dialog authored in Python; Cancel and Escape leave the table unchanged, and
-confirmation calls the Python deletion endpoint. Its summary totals
-cover all retained trades, including rows hidden by filters, and update when rows are deleted or expire.
-
-`action` and accessible `label` are nonempty strings. `icon` accepts `copy`, `delete` (an X),
-`add`, or `share` (a chain link). Icons are built-in SVGs, use the button's color, and are hidden from assistive technology;
-`label` supplies the accessible name. `text` may accompany an icon. Without an icon, it defaults to `×`.
-Labels and text are rendered as text, never HTML. Annotations apply to all Datagrid panels for that
-table and are separate from Perspective's saved layout and column configuration.
-
-Literal `row_actions` values are validated by Python at serialization, including `.prop("rowActions", ...)`.
-`validate_row_actions(value)` performs the same check explicitly. Computed values are validated in
-the browser. Header collisions with live table columns or expressions are checked in the browser;
-one failing panel emits `perspective-error` without preventing other panels or workspace saves.
-Repeated identical errors are reported once until recovery. Initial `perspective-ready` waits for
-action configuration to succeed. Removing or correcting the conflicting policy recovers it.
-User-edited expressions are preserved, even when their name previously belonged to an action column.
-
-Removing generated columns also removes their grouping, splitting, sort, filter, aggregate and
-style references. Saved layouts omit those references with the generated columns.
-
-Indexed-column buttons replace the displayed index value without changing data. Only flat, unsplit views with a
-string or safe-integer key are enabled. Grouped views, non-index columns, and missing/unsupported
-keys disable the button. Other plugins do not display dedicated columns.
-
-`rowActions` supports computed bindings, including nested labels:
-
-```python
-PerspectiveViewer().compute("rowActions", obj({"orders": obj({"id": obj({
-    "action": "copy", "label": field("copy_label"), "icon": "copy",
-})})}))
-```
-
-Here `obj` and `field` are imported from `spaday`. Updating the store's `copy_label` updates
-button labels without recreating the panel or mutating its data.
-
-Pointer or keyboard activation emits bubbling, composed `perspective-row-action` with
-`{action, panel, table, column, key}`. `key` retains its string/number type; `panel` is the current
-Perspective panel ID. Buttons do not select/edit cells or mutate data. The application owns
-authorization, confirmation, deletion, and error presentation. No optimistic removal occurs.
-
-The adapter uses the pinned Datagrid's `regular_table` style listeners and rendered cell metadata,
-not asynchronous row-position lookup. A pointer gesture is cancelled if its button/identity changes
-before click. Listeners and rendered buttons are removed when annotations or the wrapper are removed.
-
-Button colors inherit the active theme and accept `--spa-perspective-action-color`,
-`--spa-perspective-action-background`, and `--spa-perspective-action-border` overrides.
+| `row_actions`                                                  | Commands                                                                               |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| the `row_actions` prop                                         | a page script calling `setCommandSchema`                                               |
+| table name key                                                 | test `context.table` in the schema                                                     |
+| indexed column key                                             | scope `datagrid-cell`, testing `hit.column_names`                                      |
+| `@` dedicated column with `position`                           | scope `datagrid-row`; the side is `plugin_config.command_column`                       |
+| `header`                                                       | gone; the command column has no header text                                            |
+| `action`                                                       | `key`                                                                                  |
+| `label`                                                        | `title`                                                                                |
+| `text`                                                         | `label`, empty for an icon-only button                                                 |
+| disabled on grouped, split or unindexed rows                   | return no commands unless `hit.id` is non-empty and `hit.row_path` is empty            |
+| `perspective-row-action` `{action, panel, table, column, key}` | `perspective-command` `{key, context}`; the row key is `context.hit.id`, always a list |
+| `TOKENS` and `--spa-perspective-action-*`                      | gone; buttons follow the Perspective theme                                             |
 
 ## Events
 
-Perspective's viewer events do not bubble, so the panel re-dispatches the observational set as
-bubbling DOM events usable from spaday's `.on(...)`: `perspective-click`, `perspective-select`,
+The viewer's observational events reach the panel as bubbling DOM events usable from spaday's
+`.on(...)`; the panel re-dispatches the ones Perspective does not bubble itself: `perspective-click`, `perspective-select`,
 `perspective-global-filter`, `perspective-global-filter-update`, `perspective-config-update`,
-`perspective-toggle-settings`, `perspective-statusbar-pointerdown`, and `perspective-table-delete`.
+`perspective-toggle-settings`, `perspective-statusbar-pointerdown`, `perspective-table-delete`,
+`perspective-active-panel-update`, `perspective-command`, and `perspective-agent-tool`.
 `perspective-config-update` fires on user edits (layout drags, view changes, filters). A handler can
 call `saveWorkspace()` to capture the whole workspace for persistence; the event payload is not a
 workspace token. Two wrapper lifecycle events complete the picture:
@@ -280,34 +257,45 @@ the viewer directly for those.
 
 ## Methods
 
-`exportData({panel?, format?})` returns CSV text by default or JSON text with `format: "json"`.
-`panel` defaults to the active panel. It exports the configured view, excluding synthetic action
-value columns, and retains filtering, sorting, grouping, splitting and expressions. Group keys
-remain present, including when a generated expression is used as a grouping key. This exports
-the whole configured view rather than the selected block or viewport. The temporary export view
-is deleted on success and failure; the displayed view is not changed.
+`copy(options?)` and `export(options?)` are the viewer's own methods, passed through unchanged.
+`options` is Perspective's `ExportOptions`, `{method?, panel?}`: `method` is an `ExportMethod`
+(`csv` by default; `csv-selected`, `json`, `json-selected`, `arrow`, `plugin`, ...) and `panel`
+defaults to the active panel. `export` resolves to the data in that method's type, a string for the
+CSV methods and an object of columns for the JSON ones; it is what the example's **Export CSV**
+button downloads. `copy` writes the
+data to the clipboard from within a user gesture, so call it directly from a click handler. It
+rejects when the write fails or is denied, and a `-selected` method rejects with
+"Nothing is selected" when the panel has no selection. Copying needs a secure context (HTTPS or
+localhost); there is no fallback.
 
-Native Perspective export and selected-cell copying retain their original view-based behavior:
-selected/exported action fields contain record IDs. `exportData` provides the separate data-only
-path used by the example's **Export CSV** button.
+Two button patterns follow. A whole-view button calls `copy()` and is always enabled. A
+selected-view button calls `copy({"method": "csv-selected"})` and is disabled until
+`perspective-select` reports a non-null detail, re-reading `viewer.getSelection()` when
+`perspective-active-panel-update` fires, since both address the active panel. A copy snapshots the
+selection when called, so later selection, focus or config changes do not alter what is written.
+Clicking a panel's body activates it, so a button outside the panel needs no focus tracking.
 
-`copySelection()` copies the last focused grid's selection using Perspective's plugin text export.
-It must be called directly from a user gesture and resolves `true` on success, `false` for no selection,
-cancellation, or failure. Application buttons outside the wrapper can call this method: moving focus
-to a button preserves the last focused grid for an explicit copy request. Ctrl+C and Cmd+C use this
-path only within the focused grid.
-Inputs, editable content, and ordinary browser text selections retain native copying.
+Ctrl+C and Cmd+C inside a grid call `copy({"method": "csv-selected", "panel": <that grid>})`. The
+panel adds no selection guard, so Perspective's rejections are reported as `perspective-copy-error`
+with `{message, error}`; the application owns notifications. Inputs, editable content, and ordinary
+browser text selections keep native copying.
 
-The secure Clipboard API is invoked before asynchronous export completes. When unavailable or denied,
-a text-only copy-event fallback is attempted while user activation remains valid. Failure emits
-`perspective-copy-error` with `{message, error}`; the application owns notifications. Pending exports
-are cancelled by Escape, selection/config changes, focus changes, new gestures, or disconnects. A write already
-accepted by the operating system cannot be revoked.
+`agentConfig(config)`, `agentPrompt(prompt)` and `agentReset()` are the viewer's own methods for its
+embedded LLM agent, passed through unchanged; see Perspective's documentation for `config`. All
+three take JSON, so Python dispatches them with `Invoke`, and `agentPrompt` resolves with the
+agent's reply for `result=`. `perspective-agent-tool` is re-dispatched from the panel for each tool
+the agent calls. The agent's `docs` bundle is served at
+`components/perspective/vendor/@perspective-dev/viewer/dist/docs/perspective-docs.json`. Limits:
 
-Perspective 5.5's native Copy menu uses its own clipboard implementation. On insecure HTTP pages,
-the adapter blocks that menu's copy action and emits `perspective-copy-error`. `copySelection()` and
-keyboard copying can still use the fallback where browser policy permits it; otherwise Export remains
-available. Secure-context native-menu writes are not intercepted by the adapter.
+- `config.engine`, and `config.docs` as a `Response` or a promise, are in-page objects; set those
+  from a page script calling `panel.agentConfig(...)`. From Python, pass `docs` as the parsed bundle.
+- An `apiKey` passed from Python is visible in the page. Point `url` at a same-origin proxy that
+  adds the key on the server.
+- A failed `agentPrompt` rejects with an error carrying `retry()`, which `Invoke` cannot reach;
+  invoke `agentPrompt` again.
+- The `perspective-agent-tool` detail is a JSON string of `{name, args}`, so `event_prop("detail")`
+  is that string and `detail.name` does not resolve.
+- The configuration is not saved with the workspace, and `agentConfig` replaces the conversation.
 
 `saveWorkspace()` waits for pending connection and restore work, then returns the whole-element workspace
 config (a `layout` tree plus per-panel viewer configs).
@@ -340,14 +328,14 @@ This operation retains other tabs even with `restore_selected_tabs_only=True`.
 existing clauses on those columns; filters on other columns remain. Omitting `filter` or passing an
 empty list leaves filters unchanged. Use `restorePanel(id, {"filter": []})` to clear every filter.
 Arguments are snapshotted when called. Selection, creation, and filtering run together on the
-lifecycle queue; the returned promise resolves to the selected panel ID after rendering and action
-column refresh. Unknown tables, malformed options, and upstream restore failures reject without
+lifecycle queue; the returned promise resolves to the selected panel ID after rendering. Unknown
+tables, malformed options, and upstream restore failures reject without
 blocking later queued operations.
 
 `restorePanel(id, config)` applies a partial viewer configuration to an existing panel through the
 same lifecycle queue. `id` is a key in `saveWorkspace().panels`, not a table name. Unspecified settings and
-other panels remain unchanged. The method snapshots its arguments when called, validates against the
-panel's effective plugin, and refreshes synthetic action columns after restoring. It returns a promise
+other panels remain unchanged. The method snapshots its arguments when called and validates against
+the panel's effective plugin. It returns a promise
 that rejects for missing panels, invalid configurations, or an upstream restore failure. Later queued
 operations can still run after a rejection. Panel existence is checked when the operation executes.
 
@@ -370,11 +358,7 @@ example uses the returned ID to export rows without inspecting the workspace lay
 imperative and query API (`getTable`, `getSelection`, `download`, `copy`, `addPanel`/`removePanel`,
 `setActivePanel`, the agent methods, ...), typically from a `NamedJs` handler.
 
-## `THEMES` and `TOKENS`
-
-`spaday_perspective.TOKENS` lists `spa_perspective_action_color`, `spa_perspective_action_background`,
-and `spa_perspective_action_border` for the optional row buttons. Pass these keywords to `.css()`
-to set the corresponding `--spa-perspective-*` properties. These do not replace Perspective's grid themes.
+## `THEMES`
 
 Perspective themes itself by name; `spaday_perspective.THEMES` maps page modes to those names:
 `{"light": "Pro Light", "dark": "Pro Dark"}`, the Perspective theme a panel applies for each page
@@ -411,7 +395,7 @@ including inactive tabs. Only panels whose view configuration changed are restor
 receive no per-panel restore. Comparison uses live state, so restoring a saved workspace resets user edits.
 
 Reuse requires complete saved configurations and unchanged derived tables. Incomplete configurations,
-added or removed panels, table/plugin/style changes, and row-action policies use a full restore.
+added or removed panels, and table/plugin/style changes use a full restore.
 Perspective merges plugin and column styles during per-panel updates; full restoration preserves the
 replacement semantics of saved workspaces in those cases.
 

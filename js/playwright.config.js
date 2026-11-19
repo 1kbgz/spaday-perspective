@@ -30,7 +30,7 @@ export default defineConfig({
     {
       name: "webkit-workspace",
       testMatch:
-        /(?:workspace|workspace-restores|config|config-defaults|example-find|action-columns|action-lifecycle|embedding|filter-restores)\.spec\.js/,
+        /(?:workspace|workspace-restores|config|config-defaults|example-find|commands|embedding|filter-restores)\.spec\.js/,
       use: { ...devices["Desktop Safari"] },
     },
   ],
@@ -51,7 +51,7 @@ export default defineConfig({
             timeout: 120 * 1000,
           },
           {
-            command: "python -m spaday_perspective.row_actions",
+            command: "python -m spaday_perspective.commands",
             url: "http://127.0.0.1:8017",
             reuseExistingServer: !process.env.CI,
             timeout: 120 * 1000,

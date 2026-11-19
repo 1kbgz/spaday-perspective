@@ -12,11 +12,6 @@
           "summary": "Perspective workspace whose data connection and layout are configured by a serializable prop.",
           "attributes": [
             {
-              "name": "rowActions",
-              "type": { "text": "unknown" },
-              "description": "Table-name to row actions. Indexed columns accept {action, label, text?, icon?} or a list. Dedicated @ identifiers accept {header, position: start|end, buttons: [...]}. Icons: copy, delete, add, share. Buttons emit perspective-row-action with the row's index value as key, a list of values for a multi-column index; applications own confirmation, authorization and mutations. Grouped/split or unindexed rows are disabled."
-            },
-            {
               "name": "config",
               "type": {
                 "text": "unknown"
@@ -65,11 +60,6 @@
             }
           ],
           "events": [
-            {
-              "name": "perspective-row-action",
-              "type": { "text": "CustomEvent" },
-              "description": "A row button was activated. Detail contains action, panel, table, column, and the typed record key: the row's index value, or a list of its index values for a multi-column index. No data is mutated automatically."
-            },
             {
               "name": "perspective-click",
               "type": {
@@ -135,6 +125,30 @@
               "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
             },
             {
+              "name": "perspective-active-panel-update",
+              "type": {
+                "text": "CustomEvent<PerspectiveActivePanelUpdateEventDetail>"
+              },
+              "description": "Fires when the active panel changes, with its id or `null` at zero panels.",
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
+            },
+            {
+              "name": "perspective-command",
+              "type": {
+                "text": "CustomEvent<PerspectiveCommandEventDetail>"
+              },
+              "description": "Fires when the user picks a command declared through `setCommandSchema()`, with its `key` and context.",
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
+            },
+            {
+              "name": "perspective-agent-tool",
+              "type": {
+                "text": "CustomEvent<string>"
+              },
+              "description": "Fires when the agent invokes a tool, with a JSON string of `{name, args}` as its detail.",
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
+            },
+            {
               "name": "perspective-ready",
               "type": {
                 "text": "CustomEvent"
@@ -151,7 +165,7 @@
             {
               "name": "perspective-copy-error",
               "type": { "text": "CustomEvent" },
-              "description": "Selected-cell copying failed or the native Copy menu is unavailable over HTTP. Detail contains message and error; applications choose their notification UI."
+              "description": "A keyboard copy (Ctrl+C or Cmd+C in a grid) was rejected by the viewer's copy: nothing is selected, or the clipboard write failed or was denied. Detail contains message and error; applications choose their notification UI."
             }
           ],
           "slots": [],
@@ -160,75 +174,41 @@
               "kind": "method",
               "privacy": "public",
               "name": "setPluginConfigDefaults",
-              "description": "Merge page-wide plugin defaults before loading/restoring workspaces. Options narrow by plugin; null removes defaults. Delegates validation and precedence to Perspective.",
+              "description": "Merge `defaults` into the `plugin_config` defaults every\n`<perspective-viewer>` on the page applies.\n\n```javascript\ncustomElements\n    .get(\"perspective-viewer\")\n    .setPluginConfigDefaults({ group_pad: 10 });\n```",
               "parameters": [
-                {
-                  "name": "defaults",
-                  "type": {
-                    "text": "unknown"
-                  }
-                },
-                {
-                  "name": "options",
-                  "optional": true,
-                  "type": {
-                    "text": "unknown"
-                  }
-                }
+                { "name": "defaults", "type": { "text": "Record<string, unknown> | null" }, "description": "Values keyed like `plugin_config`, where `null` removes\na default, or `null` to clear the slot." },
+                { "name": "options", "optional": true, "type": { "text": "ConfigDefaultsOptions" }, "description": "`plugin` limits the defaults to one plugin." }
               ],
-              "return": {
-                "type": {
-                  "text": "Promise<void>"
-                }
-              }
+              "return": { "type": { "text": "Promise<void>" } },
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
             },
             {
               "kind": "method",
               "privacy": "public",
               "name": "getPluginConfigDefaults",
-              "description": "Return page-wide plugin defaults, one entry per combination of options. Defaults are not saved in workspace configurations.",
-              "return": {
-                "type": {
-                  "text": "Promise<unknown>"
-                }
-              }
+              "description": "The `plugin_config` defaults set by `setPluginConfigDefaults()`, one\nentry per slot.",
+              "return": { "type": { "text": "Promise<Array<{ plugin?: string; defaults: Record<string, unknown>; }>>" } },
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
             },
             {
               "kind": "method",
               "privacy": "public",
               "name": "setColumnConfigDefaults",
-              "description": "Merge page-wide column defaults before loading/restoring workspaces. Options narrow by plugin and type; null removes defaults. Delegates validation and precedence to Perspective.",
+              "description": "Merge `defaults` into the `columns_config` defaults every\n`<perspective-viewer>` on the page applies.\n\n```javascript\ncustomElements\n    .get(\"perspective-viewer\")\n    .setColumnConfigDefaults(\n        { date_format: { timeZone: \"UTC\" } },\n        { type: \"datetime\" },\n    );\n```",
               "parameters": [
-                {
-                  "name": "defaults",
-                  "type": {
-                    "text": "unknown"
-                  }
-                },
-                {
-                  "name": "options",
-                  "optional": true,
-                  "type": {
-                    "text": "unknown"
-                  }
-                }
+                { "name": "defaults", "type": { "text": "Record<string, unknown> | null" }, "description": "Values keyed like one `columns_config` entry, where\n`null` removes a default, or `null` to clear the slot." },
+                { "name": "options", "optional": true, "type": { "text": "ColumnConfigDefaultsOptions" }, "description": "`plugin` limits the defaults to one plugin, `type` to\ncolumns of one view type." }
               ],
-              "return": {
-                "type": {
-                  "text": "Promise<void>"
-                }
-              }
+              "return": { "type": { "text": "Promise<void>" } },
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
             },
             {
               "kind": "method",
               "privacy": "public",
               "name": "getColumnConfigDefaults",
-              "description": "Return page-wide column defaults, one entry per combination of options. Defaults are not saved in workspace configurations.",
-              "return": {
-                "type": {
-                  "text": "Promise<unknown>"
-                }
-              }
+              "description": "The `columns_config` defaults set by `setColumnConfigDefaults()`, one\nentry per slot.",
+              "return": { "type": { "text": "Promise<Array<{ plugin?: string; type?: ColumnType; defaults: Record<string, unknown>; }>>" } },
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
             },
             {
               "kind": "method",
@@ -247,17 +227,62 @@
             {
               "kind": "method",
               "privacy": "public",
-              "name": "exportData",
-              "description": "Export CSV (default) or JSON text without synthetic action value columns. Options: panel (defaults to active panel), format (csv or json). Retains filtering, sorting, grouping and expressions; exports the configured view, not a selected block. The temporary view is deleted after export.",
-              "parameters": [{ "name": "options", "optional": true, "type": { "text": "unknown" } }],
-              "return": { "type": { "text": "Promise<string>" } }
+              "name": "copy",
+              "description": "Copy this viewer's `View` or `Table` data to the system clipboard from\nwithin a user gesture, rejecting if nothing could be written.\n\n# Arguments\n\n- `method` - The `ExportMethod` (serialized as a `String`) to use to\n  render the data to the Clipboard.\n\n# JavaScript Examples\n\n```javascript\nmyDownloadButton.addEventListener(\"click\", async () => {\n    await viewer.copy();\n})\n```",
+              "parameters": [{ "name": "options", "optional": true, "type": { "text": "ExportOptions | null" } }],
+              "return": { "type": { "text": "Promise<void>" } },
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
             },
             {
               "kind": "method",
               "privacy": "public",
-              "name": "copySelection",
-              "description": "Copy the focused grid's selected text. Call directly from a user gesture. Resolves true on success, false on cancellation, no selection, or failure.",
-              "return": { "type": { "text": "Promise<boolean>" } }
+              "name": "export",
+              "description": "Exports this viewer's internal [`View`] as a JavaSript data, the\nexact type of which depends on the `method` but defaults to `String`\nin CSV format.\n\nThis method is only really useful for the `\"plugin\"` method, which\nwill use the configured plugin's export (e.g. PNG for\n`@perspective-dev/viewer-charts`). Otherwise, prefer to call the\nequivalent method on the underlying [`View`] directly.\n\n# Arguments\n\n- `method` - The `ExportMethod` to use to render the data to download.\n\n# JavaScript Examples\n\n```javascript\nconst data = await viewer.export(\"plugin\");\n```",
+              "parameters": [{ "name": "options", "optional": true, "type": { "text": "ExportOptions | null" } }],
+              "return": { "type": { "text": "Promise<ExportData>" } },
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
+            },
+            {
+              "kind": "method",
+              "privacy": "public",
+              "name": "setCommandSchema",
+              "description": "Set the function that declares this viewer's custom commands, replacing\nany previously set, and re-query every plugin's command buttons when it\nor its scopes changed.\n\n# Arguments\n\n- `schema` - A synchronous function from a command context to a `{\n  commands }` list, or `null` to remove the current one.\n- `options.scopes` - The surfaces the schema is evaluated for,\n  `[\"context-menu\"]` when omitted.\n\n# JavaScript Examples\n\n```javascript\nawait viewer.setCommandSchema(\n    (ctx) => ({\n        commands: [{ kind: \"Command\", key: \"hello\", label: \"Hello\" }],\n    }),\n    { scopes: [\"context-menu\", \"datagrid-row\"] },\n);\n```",
+              "parameters": [
+                { "name": "schema", "optional": true, "type": { "text": "PerspectiveCommandSchema | null" } },
+                { "name": "options", "optional": true, "type": { "text": "CommandSchemaOptions | null" } }
+              ],
+              "return": { "type": { "text": "Promise<void>" } },
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
+            },
+            {
+              "kind": "method",
+              "privacy": "public",
+              "name": "agentConfig",
+              "description": "Configure the embedded LLM agent (see `prompt()`), replacing any prior\nconfiguration and conversation.\n\nThe agent core is provider-agnostic: one OpenAI-chat-completions\nprotocol over primitive connection fields. Exactly one of\n`config.url` or `config.engine` is required; the `providers` presets\nexported by this package are plain spreadable collections of these\nfields (`{...providers.anthropic, apiKey}`).\n\n- `config.url` - a full chat-completions endpoint URL (any\n  OpenAI-compatible service: Anthropic/Gemini compatibility endpoints,\n  LM Studio, Ollama, OpenRouter, a proxy...).\n- `config.engine` - an in-page engine object with an OpenAI-compatible\n  `chat.completions.create(request)` method (e.g. WebLLM's `MLCEngine`);\n  mutually exclusive with `url`.\n- `config.headers` - extra request headers, sent verbatim.\n- `config.apiKey` - sugar for the `Authorization: Bearer` header.\n- `config.model` - model id sent with each request; local servers and\n  engines generally answer with whatever model is loaded.\n- `config.name` - cosmetic label for the chat badge (presets set this).\n- `config.systemPrompt` - extra system-prompt context appended to the\n  agent's built-in instructions.\n- `config.maxTurns` - max model turns (tool-call rounds + the final\n  answer) per `prompt()` call. Defaults to 16.\n- `config.docs` - the agent metadata bundle, which supplies the\n  `search_docs` corpus and the rich tool parameter schemas: the packaged\n  `dist/docs/perspective-docs.json` asset as a parsed object (`import\n  docs from \"…json\" with { type: \"json\" }`), a `fetch()` `Response`, an\n  `ArrayBuffer`, a JSON string, or a `Promise` of any of those — and/or\n  an inline array of `{title?, text}` entries for host data definitions.\n  Omitted, `search_docs` searches an empty corpus and the parameter\n  schemas degrade to permissive objects.\n- `config.systemRole` - where the preamble (plus `systemPrompt`) is\n  placed: `\"system\"` (default) or `\"user\"`. Some engines refuse a system\n  message alongside `tools` because they substitute their own — WebLLM's\n  Hermes function calling throws `CustomSystemPromptError` on ANY system\n  message — and those need `\"user\"`, which folds the same text into the\n  opening user turn.\n- `config.entitlements` - access grants limiting which tools the agent\n  is offered (and may call): any of `\"read_view\"`, `\"configure_view\"`,\n  `\"manage_layout\"`, `\"read_docs\"`, `\"execute_code\"`, `\"read_data\"`.\n  Omitted, all but `\"execute_code\"` and `\"read_data\"` are granted;\n  `[\"read_view\", \"read_docs\"]` yields a read-only agent. Users may\n  switch granted entitlements off from the chat panel, never on.\n\n# JavaScript Examples\n\n```javascript\nimport { providers } from \"@perspective-dev/viewer\";\n\nviewer.agentConfig({\n    ...providers.anthropic,\n    apiKey: \"sk-ant-...\",\n    docs: fetch(\n        \"node_modules/@perspective-dev/viewer/dist/docs/perspective-docs.json\",\n    ),\n});\n```",
+              "parameters": [
+                { "name": "config", "type": { "text": "any" } }
+              ],
+              "return": { "type": { "text": "void" } },
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
+            },
+            {
+              "kind": "method",
+              "privacy": "public",
+              "name": "agentPrompt",
+              "description": "Run one conversational turn of the embedded LLM agent (configured via\n`agentConfig()`), resolving with the agent's final text response after\nany tool calls have been applied to this element. Turns share a\nconversation history (and the chat sidebar's transcript) until\n`agentReset()`; a call made while a turn is already running rejects.\nTool activity is emitted as `perspective-agent-tool` CustomEvents on\nthis element. A failed turn rejects with an `Error` whose `retry()`\nmethod retries it, returning a `Promise` that settles like this one.\n\n# JavaScript Examples\n\n```javascript\nawait viewer.agentPrompt(\"Show me sales by region as a bar chart\");\n```",
+              "parameters": [
+                { "name": "prompt", "type": { "text": "string" } }
+              ],
+              "return": { "type": { "text": "Promise<any>" } },
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
+            },
+            {
+              "kind": "method",
+              "privacy": "public",
+              "name": "agentReset",
+              "description": "Clear the agent's conversation (history and chat transcript), keeping\nits configuration. Cancels any in-flight turn.",
+              "return": { "type": { "text": "Promise<any>" } },
+              "inheritedFrom": { "name": "PerspectiveViewerElement", "package": "@perspective-dev/viewer" }
             },
             {
               "kind": "method",

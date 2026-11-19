@@ -15,6 +15,9 @@ def describe_notice(notice: dict) -> str:
     """One line for a migration notice, to follow the JSON pointer it concerns."""
     if notice["kind"] == "Dropped":
         return f"dropped by {notice['step']}, no current form for {json.dumps(notice['value'])}"
+    # a newer patch of this minor passes through unmigrated
+    if notice["kind"] == "NewerPatch":
+        return f"written by Perspective {notice['version']}, newer than this release; not migrated"
     return f"{notice['reason']} ({notice['step']})"
 
 

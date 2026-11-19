@@ -3,7 +3,6 @@ from pathlib import Path
 
 from spaday import ComponentPackage
 
-from .action_config import validate_row_actions
 from .config import Alignment, EditMode, Theme, validate_config
 from .panel import PerspectivePanel
 from .workspace import migrate_layout
@@ -31,28 +30,16 @@ package = ComponentPackage(
     provides=json.loads(_VERSIONS.read_text(encoding="utf-8")) if _VERSIONS.exists() else {},
 )
 
-#: ``css()`` kwarg → (CSS custom property, what it controls), in the shape of
-#: :data:`spaday.theme.SHELL_TOKENS`.
-#:
-#: These style the optional row buttons. The underlying grid uses named :data:`THEMES`.
-TOKENS: dict[str, tuple[str, str]] = {
-    "spa_perspective_action_color": ("--spa-perspective-action-color", "Row action button text"),
-    "spa_perspective_action_background": ("--spa-perspective-action-background", "Row action button background"),
-    "spa_perspective_action_border": ("--spa-perspective-action-border", "Row action button border"),
-}
-
-#: Page mode → the Perspective theme ``<perspective-panel>`` applies for it: Perspective's answer to
-#: :data:`TOKENS`. A panel with no ``theme`` follows the nearest ``wa-dark`` / ``wa-light`` ancestor
-#: to one of these. ``theme`` and ``themes`` accept the keys as shorthands and pass any other name to
-#: Perspective unchanged, which is how an application selects a theme of its own once the page
-#: carries its CSS::
+#: Page mode → the Perspective theme ``<perspective-panel>`` applies for it. A panel with no
+#: ``theme`` follows the nearest ``wa-dark`` / ``wa-light`` ancestor to one of these. ``theme`` and
+#: ``themes`` accept the keys as shorthands and pass any other name to Perspective unchanged, which
+#: is how an application selects a theme of its own once the page carries its CSS::
 #:
 #:     PerspectiveViewer(...).compute("theme", cond(field("dark"), "Acme Dark", "Acme Light"))
 THEMES = {"light": "Pro Light", "dark": "Pro Dark"}
 
 __all__ = [
     "THEMES",
-    "TOKENS",
     "Alignment",
     "EditMode",
     "PerspectivePanel",
@@ -61,5 +48,4 @@ __all__ = [
     "migrate_layout",
     "package",
     "validate_config",
-    "validate_row_actions",
 ]

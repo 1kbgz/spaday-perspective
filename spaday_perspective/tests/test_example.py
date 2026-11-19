@@ -25,7 +25,7 @@ def test_example_serves_dashboard_and_accepts_trades():
 
 
 def test_row_delete_authors_confirmation_before_the_endpoint_call():
-    action = example.panel.to_node()["events"]["perspective-row-action"]["then"]
+    action = example.panel.to_node()["events"]["perspective-command"]["then"]
     assert [step["kind"] for step in action["actions"]] == ["set-field", "invoke"]
     assert action["actions"][0]["field"] == "delete_trade_id"
     assert action["actions"][1]["method"] == "showModal"
@@ -34,9 +34,10 @@ def test_row_delete_authors_confirmation_before_the_endpoint_call():
 def test_example_deletes_by_index_and_validates_the_request():
     trade = example.append_trade(symbol="TEST", side="Buy", quantity=1, price=1)
     key = trade["id"]
-    for body in ({}, [], {"id": True}, {"id": str(key)}):
+    # the request carries the command's `hit.id`, the row's index values
+    for body in ({}, [], {"id": True}, {"id": str(key)}, {"id": key}, {"id": [str(key)]}, {"id": [key, key]}):
         assert asyncio.run(request("POST", "/api/trades/delete", json=body)).status_code == 422
-    response = asyncio.run(request("POST", "/api/trades/delete", json={"id": key}))
+    response = asyncio.run(request("POST", "/api/trades/delete", json={"id": [key]}))
     assert response.json() == {"message": f"Deleted trade {key}"}
     assert key not in example.records
     view = example.trades.view(filter=[["id", "==", key]])
@@ -44,21 +45,21 @@ def test_example_deletes_by_index_and_validates_the_request():
         assert view.to_records() == []
     finally:
         view.delete()
-    assert asyncio.run(request("POST", "/api/trades/delete", json={"id": key})).status_code == 404
+    assert asyncio.run(request("POST", "/api/trades/delete", json={"id": [key]})).status_code == 404
 
 
 def test_copy_trade_returns_form_fields_without_mutating_records():
     trade = example.append_trade(symbol="COPY", side="Sell", quantity=23, price=12.34)
     before = dict(example.records)
     metrics = example.feed.model_dump()
-    response = asyncio.run(request("POST", "/api/trades/copy", json={"id": trade["id"]}))
+    response = asyncio.run(request("POST", "/api/trades/copy", json={"id": [trade["id"]]}))
     assert response.json() == {"message": f"Copied trade {trade['id']} to form", "symbol": "COPY", "side": "Sell", "quantity": 23}
     assert example.records == before
     assert example.feed.model_dump() == metrics
-    for body in ({}, [], {"id": True}, {"id": str(trade["id"])}):
+    for body in ({}, [], {"id": True}, {"id": str(trade["id"])}, {"id": trade["id"]}):
         assert asyncio.run(request("POST", "/api/trades/copy", json=body)).status_code == 422
     example.remove_trade(trade["id"])
-    assert asyncio.run(request("POST", "/api/trades/copy", json={"id": trade["id"]})).status_code == 404
+    assert asyncio.run(request("POST", "/api/trades/copy", json={"id": [trade["id"]]})).status_code == 404
 
 
 def test_metrics_follow_retained_rows_and_rounded_prices(monkeypatch):
@@ -96,7 +97,7 @@ def test_browser_example_queues_removals_and_keeps_the_row_cap(monkeypatch):
     assert example.feed.notional == "$1,000"
     assert example.browser_removals == [1, 2]
     assert len(example.browser_updates) == 1_002
-    response = asyncio.run(request("POST", "/api/trades/delete", json={"id": 3}))
+    response = asyncio.run(request("POST", "/api/trades/delete", json={"id": [3]}))
     assert response.status_code == 200
     assert example.browser_removals == [1, 2, 3]
     assert len(example.records) == 999

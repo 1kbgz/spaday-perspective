@@ -3,10 +3,10 @@ import json
 import re
 from pathlib import Path
 
-from spaday import element, generate
+from spaday import generate
 from spaday.bootstrap import bootstrap
 
-from spaday_perspective import THEMES, TOKENS, PerspectivePanel, PerspectiveViewer, package
+from spaday_perspective import THEMES, PerspectivePanel, PerspectiveViewer, package
 
 
 def test_perspective_viewer_preserves_the_panel_binding_and_canonical_config():
@@ -29,53 +29,59 @@ def test_perspective_panel_serializes_local_worker_mode():
     assert node["props"]["config"]["Map"]["local"] == {"Bool": True}
 
 
-def test_row_actions_are_wrapper_props_and_declare_the_event():
-    node = PerspectivePanel(row_actions={"orders": {"id": {"action": "delete", "label": "Delete order"}}}).to_node()
-    rule = node["props"]["rowActions"]["Map"]["orders"]["Map"]["id"]["Map"]
-    assert rule["action"] == {"Str": "delete"}
-    assert rule["label"] == {"Str": "Delete order"}
+def test_set_command_schema_is_a_method_and_the_event_is_declared():
     assert PerspectivePanel.schema is not None
-    assert "perspective-row-action" in PerspectivePanel.schema.events
+    assert "perspective-command" in PerspectivePanel.schema.events
+    assert "command_schema" not in {prop.name for prop in PerspectivePanel.schema.props}
+    manifest = json.loads((Path(__file__).parent.parent / "components.cem.json").read_text(encoding="utf-8"))
+    assert "setCommandSchema" in {member["name"] for member in manifest["modules"][0]["declarations"][0]["members"]}
 
 
-def test_row_action_example_authors_an_endpoint_action():
-    from spaday_perspective.row_actions import page
+def test_agent_and_config_default_methods_are_inherited_and_python_dispatchable():
+    from spaday import Invoke, by_id, field, obj
+
+    declaration = json.loads((Path(__file__).parent.parent / "components.cem.json").read_text(encoding="utf-8"))["modules"][0]["declarations"][0]
+    inherited = {member["name"] for member in declaration["members"] if "inheritedFrom" in member}
+    assert {"agentConfig", "agentPrompt", "agentReset"} <= inherited
+    assert {"setPluginConfigDefaults", "getPluginConfigDefaults", "setColumnConfigDefaults", "getColumnConfigDefaults"} <= inherited
+    assert PerspectivePanel.schema is not None
+    assert "perspective-agent-tool" in PerspectivePanel.schema.events
+    assert "agent" not in {prop.name for prop in PerspectivePanel.schema.props}
+    action = Invoke(by_id("workspace"), "agentConfig", obj({"url": "/chat", "docs": field("docs.body")})).to_dict()
+    assert action["method"] == "agentConfig"
+    assert Invoke(by_id("workspace"), "agentPrompt", field("prompt"), result="answer").to_dict()["result"] == "answer"
+
+
+def test_commands_example_authors_an_endpoint_action():
+    from spaday_perspective.commands import commands_script, page
 
     serialized = json.dumps(page().to_node())
-    assert "perspective-row-action" in serialized
+    assert "perspective-command" in serialized
     assert "/orders/delete" in serialized
+    # the schema is a function, set by the page
+    assert "setCommandSchema" in commands_script
 
 
-def test_tokens_match_browser_styles():
-    source = (Path(__file__).parent.parent.parent / "js" / "src" / "ts" / "row-actions.ts").read_text(encoding="utf-8")
-    assert {name for name, _ in TOKENS.values()} == set(re.findall(r"--spa-perspective-[\w-]+", source))
-
-
-def test_token_keywords_serialize_to_the_declared_css_properties():
-    for keyword, (property_name, _) in TOKENS.items():
-        node = element("div").css(**{keyword: "test"}).to_node()
-        assert node["props"]["style"]["Str"] == f"{property_name}: test"
-
-
-def test_row_action_example_validates_requests_and_updates_the_table():
+def test_commands_example_validates_requests_and_updates_the_table():
     from starlette.testclient import TestClient
 
-    from spaday_perspective.row_actions import app, records, table
+    from spaday_perspective.commands import app, records, table
 
     original = dict(records)
     try:
         with TestClient(app) as client:
             with client.websocket_connect("/perspective"):
                 pass
-            for data in ({}, [], {"id": True}, {"id": "1"}):
+            # the request carries the command's `hit.id`, the row's index values
+            for data in ({}, [], {"id": True}, {"id": "1"}, {"id": 1}, {"id": [True]}, {"id": [1, 2]}):
                 assert client.post("/orders/delete", json=data).status_code == 422
-            assert client.post("/orders/delete", json={"id": 99}).status_code == 404
-            assert client.post("/orders/delete", json={"id": 3}).status_code == 403
+            assert client.post("/orders/delete", json={"id": [99]}).status_code == 404
+            assert client.post("/orders/delete", json={"id": [3]}).status_code == 403
             assert table.size() == 3
-            assert client.post("/orders/delete", json={"id": 1}).json() == {"message": "Deleted order 1"}
+            assert client.post("/orders/delete", json={"id": [1]}).json() == {"message": "Deleted order 1"}
             assert table.size() == 2
             assert 1 not in records
-            assert client.post("/orders/delete", json={"id": 1}).status_code == 404
+            assert client.post("/orders/delete", json={"id": [1]}).status_code == 404
     finally:
         records.clear()
         records.update(original)
@@ -157,9 +163,7 @@ def test_panel_serializes_channel_controls_and_restore_options():
     assert config["wait_for_table"] == {"Bool": True}
 
 
-def test_share_icon_is_accepted_in_python_policy_validation():
-    from spaday_perspective import validate_row_actions
-
-    policy = {"rows": {"id": {"action": "open", "label": "Open", "icon": "share", "text": ""}}}
-    validate_row_actions(policy)
-    assert PerspectivePanel(row_actions=policy).to_node()["props"]["rowActions"]["Map"]["rows"]
+def test_icon_masks_match_the_panel():
+    """The icons the docs name are the masks icons.ts defines; the rest are Perspective's."""
+    source = (Path(__file__).parent.parent.parent / "js" / "src" / "ts" / "icons.ts").read_text(encoding="utf-8")
+    assert set(re.findall(r"--psp-icon--(\w+)--mask-image", source)) == {"delete", "add", "share"}

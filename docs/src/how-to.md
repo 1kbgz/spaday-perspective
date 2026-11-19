@@ -62,7 +62,7 @@ element("button").text("Buy trades").on(
 Declare `trades` in `config.panel_defaults` or `config.tables`. If only a master panel shows the table,
 this opens a separate detail panel using the panel defaults. Existing filters on other columns
 remain; the action replaces only the `side` clauses. The result field contains the selected panel ID
-for later `restorePanel` or `exportData` actions.
+for later `restorePanel` or `export` actions.
 
 ## Set application defaults before loading
 
@@ -121,21 +121,22 @@ Give the grid a definite height, including inside a WebAwesome tab panel. `heigh
 parent with a definite height; otherwise the grid can collapse. A sized grid observes its container
 when the tab becomes visible and when the container resizes. No tab-show callback is required.
 
-## Export rows without action columns
+## Export rows
 
-Attach this action to your own button to download the configured view as CSV:
+Attach this action to your own button to download the configured view as CSV through the viewer's
+`export`:
 
 ```python
 from spaday import Download, Invoke, Sequence, by_id, field
 
 export_trades = Sequence(
-    Invoke(by_id("workspace"), "exportData", {"panel": "trades", "format": "csv"}, result="exported_trades"),
+    Invoke(by_id("workspace"), "export", {"panel": "trades", "method": "csv"}, result="exported_trades"),
     Download("trades.csv", field("exported_trades"), "text/csv"),
 )
 ```
 
-Use `format="json"` in the options mapping for JSON text, or omit `panel` to export the active panel.
-Filters and sorting still apply. This exports the configured view, not the selected cell block.
+`method` is Perspective's `ExportMethod`: `json` for an object of columns, `csv-selected` for the
+selected cells, and so on. Omit `panel` to export the active panel. Filters and sorting apply.
 
 ## Stream rows from Python
 
@@ -160,41 +161,88 @@ spaday store.
 
 ## Add a delete button to each row
 
-Create the source table with a unique index, include that column in the Datagrid, and annotate it:
+Create the source table with a unique index, set a command schema from a page script, and handle
+`perspective-command` in Python. The schema is a function, so Python cannot author it:
 
 ```python
 from spaday import CallEndpoint, event_prop, obj
-from spaday_perspective import PerspectiveViewer
+from spaday.backends.starlette import serve
+from spaday_perspective import PerspectiveViewer, package
 
 orders = client.table(rows, name="orders", index="id")
-panel = PerspectiveViewer(
-    config=config,
-    row_actions={"orders": {"id": {"action": "delete", "label": "Delete order"}}},
-).on(
-    "perspective-row-action",
-    CallEndpoint("POST", "/orders/delete", obj({"id": event_prop("detail.key")}), result="reply"),
+panel = PerspectiveViewer(id="orders", config=config).on(
+    "perspective-command",
+    CallEndpoint("POST", "/orders/delete", obj({"id": event_prop("detail.context.hit.id")}), result="reply"),
 )
+
+commands = """
+<script type="module">
+  const commands = [{ kind: "Command", key: "delete", label: "", icon: "delete", title: "Delete order" }];
+  const schema = ({ table, hit }) => ({
+    commands: table === "orders" && hit?.id?.length && !hit.row_path.length ? commands : [],
+  });
+  await customElements.whenDefined("perspective-panel");
+  let panel;
+  while (!(panel = document.querySelector("#orders"))) await new Promise(requestAnimationFrame);
+  await panel.setCommandSchema(schema, { scopes: ["datagrid-row"] });
+</script>
+"""
+
+app = serve(panel, packages=[package], head=commands)
 ```
+
+The Datagrid draws the button in its command column on every flat row; the `hit` test leaves
+grouped rows and the total row without one, since their `id` is a group path, not an order.
+`detail.context.hit.id` is the row's index values as a list, `[7]` for the order whose `id` is 7.
 
 In the endpoint, validate the ID and the authenticated user's permission, then update authoritative
 storage and call `orders.remove([key])`. Use `reply` to show success or rejection. Do not delete by
-displayed row number or use a clicked group's filters as a bulk-delete predicate. If several actions
-share a handler, validate the requested action and table against an allowlist too.
+displayed row number or use a clicked group's filters as a bulk-delete predicate. If several
+commands share a handler, validate `detail.key` and `detail.context.table` against an allowlist too.
 
-The main example (`python -m spaday_perspective.example`) and browser preview include delete buttons
-in the live blotter. Both call the same Python deletion handler. The table retains up to 1,000 rows;
-summary totals count all trades received, including deleted trades.
+The main example (`python -m spaday_perspective.example`) and browser preview include copy and
+delete buttons in the live blotter. Both call the same Python deletion handler. The table retains up
+to 1,000 rows; summary totals count all trades received, including deleted trades.
 
 Run the smaller example with a locked-record policy using:
 
 ```sh
-python -m spaday_perspective.row_actions
+python -m spaday_perspective.commands
 ```
 
 Open <http://127.0.0.1:8017> in two windows. Deleting an unlocked order updates both; locked orders
 return an error. This local demo illustrates a record policy, not production authentication. Its
 Perspective socket is application-owned; production hosts must also restrict client-side table writes.
 For a mirrored table, configure its local `index` to match the authoritative index.
+
+## Add the agent
+
+Configure the viewer's embedded agent once, then send prompts from your own controls. Point `url`
+at a same-origin endpoint that forwards OpenAI-style chat completions and adds the API key on the
+server, so the key never reaches the page:
+
+```python
+from spaday import CallEndpoint, Invoke, Sequence, SetField, by_id, element, event_prop, field, obj
+
+DOCS = "/components/perspective/vendor/@perspective-dev/viewer/dist/docs/perspective-docs.json"
+
+configure = Sequence(
+    CallEndpoint("GET", DOCS, result="agent_docs"),
+    Invoke(
+        by_id("workspace"), "agentConfig",
+        obj({"url": "/api/llm/chat/completions", "model": "claude-opus-5", "docs": field("agent_docs.body")}),
+    ),
+)
+ask = Invoke(by_id("workspace"), "agentPrompt", field("prompt"), result="answer")
+reset = Invoke(by_id("workspace"), "agentReset")
+
+panel.on("perspective-agent-tool", SetField("last_tool", event_prop("detail")))
+element("button").text("Ask").on("click", ask)
+```
+
+Run `configure` from a button or a spaday initial effect before the first prompt. `answer` holds
+the agent's reply, and `last_tool` the JSON string of the latest tool call. See
+[Methods](reference.md#methods) for what Python cannot pass.
 
 ## Switch between saved workspaces
 
@@ -272,7 +320,9 @@ panel = PerspectiveViewer(
 )
 ```
 
-Select cells and press Ctrl+C / Cmd+C to copy.
+Select cells and press Ctrl+C / Cmd+C to copy them as CSV. A button outside the grid copies the
+same selection with `Invoke(by_id("workspace"), "copy", {"method": "csv-selected"})`, and the whole
+view with `copy` and no options; see [Methods](reference.md#methods).
 
 ## Persist user-edited layouts
 

@@ -21,9 +21,7 @@ export type Workspace = Omit<
   closed_channels?: Record<string, PanelConfig>;
 };
 
-export type MigrateNotice =
-  | { kind: "Dropped"; step: string; pointer: string; value: unknown }
-  | { kind: "Approximated"; step: string; pointer: string; reason: string };
+export type MigrateNotice = ReturnType<Validator["migrate"]>["notices"][number];
 
 export interface MigratedWorkspace {
   value: Workspace;
@@ -31,9 +29,12 @@ export interface MigratedWorkspace {
 }
 
 export function describeNotice(notice: MigrateNotice): string {
-  return notice.kind === "Dropped"
-    ? `dropped by ${notice.step}, no current form for ${JSON.stringify(notice.value)}`
-    : `${notice.reason} (${notice.step})`;
+  if (notice.kind === "Dropped")
+    return `dropped by ${notice.step}, no current form for ${JSON.stringify(notice.value)}`;
+  // a newer patch of this minor passes through unmigrated
+  if (notice.kind === "NewerPatch")
+    return `written by Perspective ${notice.version}, newer than this release; not migrated`;
+  return `${notice.reason} (${notice.step})`;
 }
 
 declare const __PERSPECTIVE_VERSION__: string;

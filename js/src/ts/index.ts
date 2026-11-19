@@ -2,19 +2,13 @@
 import { restoreDefine } from "./define-guard.js";
 import perspective from "@perspective-dev/client";
 import type {
-  GetViewOptions,
+  HTMLPerspectiveViewerElement,
   PerspectiveViewerElementExt,
 } from "@perspective-dev/viewer";
 import PERSPECTIVE_THEMES from "@perspective-dev/viewer/dist/css/themes.css";
 import { installClipboard, type ClipboardViewer } from "./clipboard.js";
+import { ICON_STYLES } from "./icons.js";
 import { errorMessage, sameConfig, validateConfig } from "./config.js";
-import {
-  installRowActions,
-  isActionColumn,
-  type RowActions,
-} from "./row-actions.js";
-import { installActionColumns } from "./action-columns.js";
-export type { RowAction, RowActions, ActionColumn } from "./row-actions.js";
 import {
   migrateConfig,
   pruneLayout,
@@ -178,10 +172,11 @@ async function releaseMirror(key: string): Promise<void> {
 
 // Perspective's CDN builds initialize themselves from their own URLs. The viewer instantiates the
 // client binary with a top-level await and then defines `<perspective-viewer>`, which is where the
-// client looks for it; imported statically, that await would hold this module back until the binary
-// arrived, and the page would mount its tree before `<perspective-panel>` existed. So the viewer and
-// its plugins load dynamically, the panel's work waits on `ready`, and the define-guard stays up
-// until they have registered their elements. The client only registers the server binary; it is
+// client looks for it; imported statically, that await would hold this whole module back, including
+// the engine it lends. So the viewer and its plugins load dynamically, and `<perspective-panel>` is
+// defined only once they have: a defined panel always holds a working viewer. A panel the page
+// mounted earlier is upgraded then, taking the properties already set on it. The define-guard stays
+// up until the viewer's elements are registered. The client only registers the server binary; it is
 // fetched on the first `worker()` call (a `client-server` table architecture), so `server`-only
 // pages never pay for it.
 const ready = Promise.all([
@@ -197,7 +192,14 @@ const ready = Promise.all([
       "perspective-viewer-datagrid-toolbar",
     ]),
   )
-  .then(() => customElements.whenDefined("perspective-viewer"));
+  .then(() => customElements.whenDefined("perspective-viewer"))
+  .then(() => {
+    if (!customElements.get("perspective-panel"))
+      customElements.define("perspective-panel", PerspectivePanel);
+  });
+ready.catch((error) =>
+  console.error("perspective-panel: Perspective failed to load", error),
+);
 
 const THEMES: Record<string, string> = {
   light: "Pro Light",
@@ -217,6 +219,20 @@ const REDISPATCH = [
   "perspective-toggle-settings",
   "perspective-statusbar-pointerdown",
   "perspective-table-delete",
+  "perspective-active-panel-update",
+  "perspective-command",
+  "perspective-agent-tool",
+];
+
+// the panel's writable properties, which a page may set before the element is defined
+const PROPERTIES = [
+  "theme",
+  "themes",
+  "config",
+  "autosize",
+  "autopause",
+  "throttle",
+  "settings",
 ];
 
 let stylesInjected = false;
@@ -229,7 +245,7 @@ function injectStyles(): void {
   if (stylesInjected || typeof document === "undefined") return;
   stylesInjected = true;
   const style = document.createElement("style");
-  style.textContent = PERSPECTIVE_THEMES.toString();
+  style.textContent = PERSPECTIVE_THEMES.toString() + ICON_STYLES;
   document.head.appendChild(style);
 }
 
@@ -245,42 +261,29 @@ function wsUrl(url: string): string {
 // config (the single-panel `restore`/`save` are the per-panel forms). Theme is
 // viewer config now, not an attribute; the element auto-sizes, so no manual
 // resize plumbing.
-type Viewer = ClipboardViewer & {
-  getActivePanel(): string | null;
-  getViewConfig(options: { panel: string }): Promise<{
-    group_by?: string[];
-    split_by?: string[];
-    expressions?: Record<string, string>;
-  }>;
-  getTable(options: { panel: string; wait: boolean }): Promise<{
-    get_index(): Promise<string | string[] | undefined>;
-    get_name(): Promise<string>;
-    schema(): Promise<Record<string, string>>;
-    view(config: unknown): Promise<{
-      to_csv(): Promise<string>;
-      to_json(): Promise<unknown>;
-      delete(): Promise<unknown>;
-    }>;
-  }>;
-  load(client: unknown): Promise<void>;
-  restore(
-    config: unknown,
-    options?: { panel?: string; wait_for_table?: boolean },
-  ): Promise<void>;
-  removePanel(id: string): Promise<unknown>;
-  restoreWorkspace(
-    config: unknown,
-    options?: { wait_for_table?: boolean },
-  ): Promise<void>;
-  saveWorkspace(): Promise<unknown>;
-  getView(options: GetViewOptions): Promise<PspView>;
-  flush(): Promise<unknown>;
-  resetThemes(themes?: string[] | null): Promise<unknown>;
-  setAutoSize(autosize: boolean): void;
-  setAutoPause(autopause: boolean): Promise<unknown>;
-  setThrottle(val?: number | null): void;
-  toggleConfig(force?: boolean | null): Promise<unknown>;
-};
+type Viewer = ClipboardViewer &
+  Pick<
+    HTMLPerspectiveViewerElement,
+    "export" | "setCommandSchema" | "agentConfig" | "agentPrompt" | "agentReset"
+  > & {
+    load(client: unknown): Promise<void>;
+    restore(
+      config: unknown,
+      options?: { panel?: string; wait_for_table?: boolean },
+    ): Promise<void>;
+    removePanel(id: string): Promise<unknown>;
+    restoreWorkspace(
+      config: unknown,
+      options?: { wait_for_table?: boolean },
+    ): Promise<void>;
+    saveWorkspace(): Promise<unknown>;
+    flush(): Promise<unknown>;
+    resetThemes(themes?: string[] | null): Promise<unknown>;
+    setAutoSize(autosize: boolean): void;
+    setAutoPause(autopause: boolean): Promise<unknown>;
+    setThrottle(val?: number | null): void;
+    toggleConfig(force?: boolean | null): Promise<unknown>;
+  };
 
 function migrateConfigured(authored: PerspectiveConfig): Workspace | undefined {
   const field = authored.workspace != null ? "workspace" : "layout";
@@ -316,12 +319,29 @@ class PerspectivePanel extends HTMLElement {
   #queue: Promise<unknown> = Promise.resolve();
   #retainedPanelConfigsByTable = new Map<string, PanelConfig>();
   #clipboard: ReturnType<typeof installClipboard> | null = null;
-  #rowActions: RowActions = {};
-  #rowActionAdapter: ReturnType<typeof installRowActions> | null = null;
-  #actionColumns: ReturnType<typeof installActionColumns> | null = null;
+  #pendingCommandSchema: Parameters<
+    HTMLPerspectiveViewerElement["setCommandSchema"]
+  > | null = null;
 
   connectedCallback(): void {
     injectStyles();
+    // properties set before the element was defined shadow its accessors; hand them over
+    for (const name of PROPERTIES) {
+      if (!hasOwn(this, name)) continue;
+      const value = (this as unknown as Record<string, unknown>)[name];
+      delete (this as unknown as Record<string, unknown>)[name];
+      try {
+        (this as unknown as Record<string, unknown>)[name] = value;
+      } catch (error) {
+        this.dispatchEvent(
+          new CustomEvent("perspective-error", {
+            detail: error,
+            bubbles: true,
+            composed: true,
+          }),
+        );
+      }
+    }
     if (!this.#viewer) {
       this.style.display ||= "block";
       this.#viewer = document.createElement("perspective-viewer") as Viewer;
@@ -339,53 +359,26 @@ class PerspectivePanel extends HTMLElement {
           // The event carries the element-level config; `settings` is the sidebar state, which a
           // per-panel config may not name (5.7 rejects unknown keys on restore).
           delete config.settings;
-          const source = event
-            .composedPath()
-            .find(
-              (node): node is HTMLElement =>
-                node instanceof HTMLElement &&
-                node.parentElement === this.#viewer &&
-                !!node.slot,
-            );
           this.#retainedPanelConfigsByTable.set(
             config.table,
-            this.#actionColumns?.cleanConfig(config, source?.slot) ??
-              structuredClone(config),
+            structuredClone(config),
           );
         }
       });
       for (const name of REDISPATCH) {
-        this.#viewer.addEventListener(name, (event) =>
+        this.#viewer.addEventListener(name, (event) => {
+          if (event.bubbles) return;
           this.dispatchEvent(
             new CustomEvent(name, {
               detail: (event as CustomEvent).detail,
               bubbles: true,
               composed: true,
             }),
-          ),
-        );
+          );
+        });
       }
     }
     this.#clipboard ??= installClipboard(this, this.#viewer);
-    this.#actionColumns ??= installActionColumns(
-      this,
-      this.#viewer,
-      () => this.#rowActions,
-      (step) => this.#enqueue(step),
-      () => {
-        this.#rowActionAdapter?.refresh();
-        void this.#enqueue(() => this.#notifyReady()).catch((error) =>
-          this.#reportError(error),
-        );
-      },
-    );
-    this.#actionColumns.connect();
-    this.#rowActionAdapter ??= installRowActions(
-      this,
-      this.#viewer,
-      () => this.#rowActions,
-      (panel, header) => this.#actionColumns?.columnKey(panel, header),
-    );
     this.#followPageMode();
     this.#apply();
   }
@@ -397,9 +390,6 @@ class PerspectivePanel extends HTMLElement {
   }
 
   disconnectedCallback(): void {
-    this.#rowActionAdapter?.dispose();
-    this.#rowActionAdapter = null;
-    this.#actionColumns?.dispose();
     this.#clipboard?.dispose();
     this.#clipboard = null;
     this.#modeObserver?.disconnect();
@@ -462,94 +452,61 @@ class PerspectivePanel extends HTMLElement {
     });
   }
 
-  get rowActions(): RowActions {
-    return this.#rowActions;
-  }
-  set rowActions(value: RowActions) {
-    if (value != null && (typeof value !== "object" || Array.isArray(value)))
-      throw new TypeError("rowActions requires a table-to-column mapping");
-    for (const columns of Object.values(value ?? {})) {
-      if (!columns || typeof columns !== "object" || Array.isArray(columns))
-        throw new TypeError("rowActions requires a table-to-column mapping");
-      const headers = new Set<string>();
-      for (const [key, entry] of Object.entries(columns)) {
-        if (entry && typeof entry === "object" && isActionColumn(entry)) {
-          if (
-            !key.startsWith("@") ||
-            typeof entry.header !== "string" ||
-            !entry.header.trim() ||
-            !["start", "end"].includes(entry.position) ||
-            !Array.isArray(entry.buttons) ||
-            headers.has(entry.header)
-          )
-            throw new TypeError(
-              "Action columns require an @ identifier, unique nonempty header, start/end position, and buttons array",
-            );
-          headers.add(entry.header);
-        }
-        for (const rule of entry &&
-        typeof entry === "object" &&
-        isActionColumn(entry)
-          ? entry.buttons
-          : Array.isArray(entry)
-            ? entry
-            : [entry]) {
-          if (
-            !rule ||
-            typeof rule.action !== "string" ||
-            !rule.action ||
-            typeof rule.label !== "string" ||
-            !rule.label ||
-            (rule.text !== undefined && typeof rule.text !== "string") ||
-            (rule.icon !== undefined &&
-              !["copy", "delete", "add", "share"].includes(rule.icon))
-          )
-            throw new TypeError(
-              "rowActions requires action and label strings, optional text, and an optional copy/delete/add/share icon",
-            );
-        }
-      }
+  /** The viewer's `setCommandSchema`. Called before the panel is connected, the schema is held and
+   * set ahead of the first restore. */
+  setCommandSchema(
+    ...args: Parameters<HTMLPerspectiveViewerElement["setCommandSchema"]>
+  ): ReturnType<HTMLPerspectiveViewerElement["setCommandSchema"]> {
+    if (this.#viewer) {
+      this.#pendingCommandSchema = null;
+      return this.#viewer.setCommandSchema(...args);
     }
-    this.#rowActions = structuredClone(value ?? {});
-    this.#rowActionAdapter?.refresh();
-    if (this.#loaded)
-      void this.#enqueue(() => this.#actionColumns?.refresh()).catch((error) =>
-        this.#reportError(error),
-      );
+    this.#pendingCommandSchema = args;
+    return Promise.resolve();
   }
 
-  /** Copy the focused grid selection. Call directly from a user gesture. */
-  copySelection(): Promise<boolean> {
-    return this.#clipboard?.copySelection() ?? Promise.resolve(false);
+  /** The viewer's `agentConfig`. */
+  agentConfig(
+    ...args: Parameters<HTMLPerspectiveViewerElement["agentConfig"]>
+  ): ReturnType<HTMLPerspectiveViewerElement["agentConfig"]> {
+    if (!this.#viewer) throw new Error("Perspective panel is not connected");
+    return this.#viewer.agentConfig(...args);
   }
 
-  /** Export the configured view without synthetic action value columns. */
-  exportData(
-    options: { panel?: string; format?: "csv" | "json" } | null = {},
-  ): Promise<string> {
-    return this.#enqueue(async () => {
-      const format = options?.format ?? "csv";
-      if (!["csv", "json"].includes(format))
-        throw new TypeError("exportData format must be csv or json");
-      const viewer = this.#viewer;
-      if (!viewer || !this.#loaded)
-        throw new Error("Perspective panel is not ready");
-      const panel = options?.panel ?? viewer.getActivePanel();
-      if (!panel) throw new Error("No active panel to export");
-      await viewer.flush();
-      const config = await viewer.getViewConfig({ panel });
-      const table = await viewer.getTable({ panel, wait: false });
-      const view = await table.view(
-        this.#actionColumns?.dataConfig(panel, config) ?? config,
-      );
-      try {
-        return format === "csv"
-          ? await view.to_csv()
-          : JSON.stringify(await view.to_json());
-      } finally {
-        await view.delete();
-      }
-    });
+  /** The viewer's `agentPrompt`. */
+  agentPrompt(
+    ...args: Parameters<HTMLPerspectiveViewerElement["agentPrompt"]>
+  ): ReturnType<HTMLPerspectiveViewerElement["agentPrompt"]> {
+    return this.#viewer
+      ? this.#viewer.agentPrompt(...args)
+      : Promise.reject(new Error("Perspective panel is not connected"));
+  }
+
+  /** The viewer's `agentReset`. */
+  agentReset(
+    ...args: Parameters<HTMLPerspectiveViewerElement["agentReset"]>
+  ): ReturnType<HTMLPerspectiveViewerElement["agentReset"]> {
+    return this.#viewer
+      ? this.#viewer.agentReset(...args)
+      : Promise.reject(new Error("Perspective panel is not connected"));
+  }
+
+  /** The viewer's `copy`: a panel's view to the clipboard, called from within a user gesture. */
+  copy(
+    ...args: Parameters<HTMLPerspectiveViewerElement["copy"]>
+  ): ReturnType<HTMLPerspectiveViewerElement["copy"]> {
+    return this.#viewer
+      ? this.#viewer.copy(...args)
+      : Promise.reject(new Error("Perspective panel is not connected"));
+  }
+
+  /** The viewer's `export`: a panel's view as data in the method's format. */
+  export(
+    ...args: Parameters<HTMLPerspectiveViewerElement["export"]>
+  ): ReturnType<HTMLPerspectiveViewerElement["export"]> {
+    return this.#viewer
+      ? this.#viewer.export(...args)
+      : Promise.reject(new Error("Perspective panel is not connected"));
   }
 
   set theme(name: string) {
@@ -720,7 +677,6 @@ class PerspectivePanel extends HTMLElement {
   }
 
   #rememberPanelConfigs(workspace: Workspace, config = this.#config): void {
-    workspace = this.#actionColumns?.clean(workspace) ?? workspace;
     for (const panel of Object.values(workspace.panels ?? {})) {
       if (this.#hasTable(panel.table, config)) {
         this.#retainedPanelConfigsByTable.set(
@@ -770,11 +726,7 @@ class PerspectivePanel extends HTMLElement {
     // Only complete saved configs on the same tables/plugins can be applied as
     // updates. Plugin/style buckets merge on restore, so changes there must
     // retain replacement semantics too.
-    if (
-      prepared.panels &&
-      Object.keys(prepared.panels).length &&
-      !Object.keys(this.#rowActions).length
-    ) {
+    if (prepared.panels && Object.keys(prepared.panels).length) {
       const live = (await this.#viewer
         .saveWorkspace()
         .catch(() => null)) as Workspace | null;
@@ -812,12 +764,10 @@ class PerspectivePanel extends HTMLElement {
         delete prepared.panels;
       }
     }
-    if (prepared.panels) this.#actionColumns?.reset();
     await this.#viewer.restoreWorkspace(prepared, {
       wait_for_table: !!config.wait_for_table,
     });
     await this.#viewer.flush();
-    await this.#actionColumns?.refresh();
     if (
       this.#settings !== true &&
       !prepared.active &&
@@ -971,7 +921,6 @@ class PerspectivePanel extends HTMLElement {
         layout: workspace.layout,
       });
       await this.#viewer.flush();
-      await this.#actionColumns?.refresh();
       this.#rememberPanelConfigs(
         (await this.#viewer.saveWorkspace()) as Workspace,
       );
@@ -1029,21 +978,10 @@ class PerspectivePanel extends HTMLElement {
         throw new Error(`Unknown panel: ${id}`);
       await this.#viewer.restore(patch, { panel: id });
       await this.#viewer.flush();
-      await this.#actionColumns?.refresh();
       this.#rememberPanelConfigs(
         (await this.#viewer.saveWorkspace()) as Workspace,
       );
     });
-  }
-
-  #reportError(error: unknown): void {
-    this.dispatchEvent(
-      new CustomEvent("perspective-error", {
-        detail: error,
-        bubbles: true,
-        composed: true,
-      }),
-    );
   }
 
   // `client-server` tables mirror into a local worker: open the server table, take a
@@ -1076,6 +1014,9 @@ class PerspectivePanel extends HTMLElement {
         await ready;
         if (!this.#viewer || generation !== this.#configGeneration) return;
         try {
+          const commands = this.#pendingCommandSchema;
+          this.#pendingCommandSchema = null;
+          if (commands) await this.#viewer.setCommandSchema(...commands);
           if (this.#unchecked) {
             validateConfig(this.#authoredConfig, validator);
             this.#workspace = migrateConfigured(this.#authoredConfig);
@@ -1159,17 +1100,11 @@ class PerspectivePanel extends HTMLElement {
       !this.isConnected ||
       !this.#loaded ||
       !this.#viewer ||
-      (this.#config.workspace && this.#lastWorkspace === null) ||
-      this.#actionColumns?.isValid() === false
+      (this.#config.workspace && this.#lastWorkspace === null)
     )
       return;
     await this.#viewer.flush();
-    if (
-      this.#readyFired ||
-      !this.isConnected ||
-      this.#actionColumns?.isValid() === false
-    )
-      return;
+    if (this.#readyFired || !this.isConnected) return;
     this.#readyFired = true;
     this.dispatchEvent(
       new CustomEvent("perspective-ready", { bubbles: true, composed: true }),
@@ -1179,15 +1114,13 @@ class PerspectivePanel extends HTMLElement {
   /** The whole-element workspace config (layout tree + per-panel viewer configs). */
   async saveWorkspace(): Promise<unknown> {
     await this.#queue.catch(() => {});
-    await this.#actionColumns?.refresh();
     const workspace = (await this.#viewer?.saveWorkspace()) as
       | Workspace
       | undefined;
     if (!workspace) return workspace;
-    const clean = this.#actionColumns?.clean(workspace) ?? workspace;
-    this.#rememberPanelConfigs(clean);
+    this.#rememberPanelConfigs(workspace);
     const open = new Set(
-      Object.values(clean.panels ?? {}).map((panel) => panel.table),
+      Object.values(workspace.panels ?? {}).map((panel) => panel.table),
     );
     const closed = Object.fromEntries(
       [...this.#retainedPanelConfigsByTable].filter(
@@ -1195,8 +1128,8 @@ class PerspectivePanel extends HTMLElement {
       ),
     );
     if (Object.keys(closed).length)
-      clean.retained_panel_configs_by_table = structuredClone(closed);
-    return clean;
+      workspace.retained_panel_configs_by_table = structuredClone(closed);
+    return workspace;
   }
 
   /** Compatibility workspace save using the historical closed_channels metadata key. */
@@ -1218,10 +1151,6 @@ class PerspectivePanel extends HTMLElement {
   saveClean(): Promise<unknown> {
     return this.save();
   }
-}
-
-if (!customElements.get("perspective-panel")) {
-  customElements.define("perspective-panel", PerspectivePanel);
 }
 
 /* Lend the page's one Perspective engine to any other library on the page.

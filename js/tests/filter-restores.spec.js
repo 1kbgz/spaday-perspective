@@ -33,15 +33,15 @@ for (const [architecture, queued] of [
       const panel = document.createElement("perspective-panel");
       panel.id = "filter-test";
       panel.style.cssText = "height:300px;width:600px";
-      panel.rowActions = {
-        [name]: {
-          "@actions": {
-            header: "Actions",
-            position: "end",
-            buttons: [{ action: "copy", label: "Copy", icon: "copy" }],
-          },
-        },
-      };
+      panel.setCommandSchema(
+        ({ table }) => ({
+          commands:
+            table === name
+              ? [{ kind: "Command", key: "copy", label: "Copy" }]
+              : [],
+        }),
+        { scopes: ["datagrid-row"] },
+      );
       panel.config = {
         ...(architecture === "local"
           ? { local: true }
