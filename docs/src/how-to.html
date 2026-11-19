@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>How to stream data and change layouts &#8212; spaday-perspective v0.8.4</title>
+    <title>How to stream data and change layouts &#8212; spaday-perspective v0.9.0</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/fuma.css?v=ca04d621" />
     <link rel="stylesheet" type="text/css" href="../../_static/fuma-code.css?v=a950e949" />
@@ -13,15 +13,15 @@
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
     <link rel="stylesheet" type="text/css" href="../../_static/autodoc_pydantic.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=6a604523" />
     <link rel="stylesheet" type="text/css" href="../../_static/fonts/fuma-fonts.css?v=c2892c73" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/custom.css?v=88c24c6a" />
-    <script src="../../_static/documentation_options.js?v=b41f4c93"></script>
+    <script src="../../_static/documentation_options.js?v=39bb1c6d"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
-    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../../_static/design-tabs.js?v=fcb327ea"></script>
     <script data-searchlite-index="searchlite-index.json" defer="defer" src="../../_static/searchlite.js?v=a5320898"></script>
     <script defer="defer" src="../../_static/fuma.js?v=9c325f6c"></script>
     <script src="../../_static/js/custom.js?v=956e5d78"></script>
@@ -49,7 +49,7 @@
   <div class="fd-subnav-inner">
     <button type="button" class="fd-icon-button fd-sidebar-toggle" aria-controls="fd-sidebar" aria-expanded="false" aria-label="Toggle navigation" title="Toggle navigation">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="fd-icon "><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
-    </button><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.8.4</span>
+    </button><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.9.0</span>
 </a>
 
     <div class="fd-nav-actions">
@@ -64,7 +64,7 @@
 
 <aside id="fd-sidebar" aria-label="Documentation">
   <div class="fd-sidebar-header">
-    <div class="fd-sidebar-brand-row"><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.8.4</span>
+    <div class="fd-sidebar-brand-row"><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.9.0</span>
 </a>
       <button type="button" class="fd-icon-button fd-sidebar-collapse" aria-label="Collapse sidebar" title="Collapse sidebar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="fd-icon "><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
     </div>
@@ -125,10 +125,16 @@
     <a href="#select-and-filter-a-table">Select and filter a table</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
-    <a href="#embed-a-grid-without-internal-tabs">Embed a grid without internal tabs</a>
+    <a href="#set-application-defaults-before-loading">Set application defaults before loading</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
-    <a href="#export-rows-without-action-columns">Export rows without action columns</a>
+    <a href="#add-a-find-control">Add a Find control</a>
+  </li>
+  <li class="fd-toc-item" data-depth="1">
+    <a href="#embed-a-sized-grid">Embed a sized grid</a>
+  </li>
+  <li class="fd-toc-item" data-depth="1">
+    <a href="#export-rows">Export rows</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
     <a href="#stream-rows-from-python">Stream rows from Python</a>
@@ -137,13 +143,16 @@
     <a href="#add-a-delete-button-to-each-row">Add a delete button to each row</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
+    <a href="#add-the-agent">Add the agent</a>
+  </li>
+  <li class="fd-toc-item" data-depth="1">
     <a href="#switch-between-saved-workspaces">Switch between saved workspaces</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
     <a href="#map-a-page-theme">Map a page theme</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
-    <a href="#configure-selection-and-find-a-value">Configure selection and find a value</a>
+    <a href="#configure-selection">Configure selection</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
     <a href="#persist-user-edited-layouts">Persist user-edited layouts</a>
@@ -165,10 +174,9 @@
 <h1>How to stream data and change layouts<a class="headerlink" href="#how-to-stream-data-and-change-layouts" title="Link to this heading">¶</a></h1>
 <section id="open-table-panels-and-save-workspaces">
 <h2>Open table panels and save workspaces<a class="headerlink" href="#open-table-panels-and-save-workspaces" title="Link to this heading">¶</a></h2>
-<p>Set default panel configurations by table name and enable the optional toolbar:</p>
+<p>Set default panel configurations by table name:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">panel</span> <span class="o">=</span> <span class="n">PerspectiveViewer</span><span class="p">(</span>
     <span class="nb">id</span><span class="o">=</span><span class="s2">"workspace"</span><span class="p">,</span>
-    <span class="n">toolbar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">config</span><span class="o">=</span><span class="p">{</span>
         <span class="s2">"ws_url"</span><span class="p">:</span> <span class="s2">"/perspective"</span><span class="p">,</span>
         <span class="s2">"panel_defaults"</span><span class="p">:</span> <span class="p">{</span>
@@ -186,7 +194,7 @@
 </div>
 <p>Host both tables on the Perspective server. Selecting <strong>Orders</strong> replaces the selected detail tab;
 reopening <strong>Trades</strong> restores its columns, filters, sorting, and title. Omit <code class="docutils literal notranslate"><span class="pre">restore_selected_tabs_only</span></code> to keep
-multiple tabs. To use your own design-kit buttons, omit <code class="docutils literal notranslate"><span class="pre">toolbar</span></code> and attach these actions:</p>
+multiple tabs. To use your own design-kit buttons:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday</span><span class="w"> </span><span class="kn">import</span> <span class="n">Invoke</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">SetStorage</span><span class="p">,</span> <span class="n">by_id</span><span class="p">,</span> <span class="n">field</span>
 
 <span class="n">open_orders</span> <span class="o">=</span> <span class="n">Invoke</span><span class="p">(</span><span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"openTablePanel"</span><span class="p">,</span> <span class="s2">"orders"</span><span class="p">)</span>
@@ -219,43 +227,76 @@ Use the same result with Spaday’s <code class="docutils literal notranslate"><
 <p>Declare <code class="docutils literal notranslate"><span class="pre">trades</span></code> in <code class="docutils literal notranslate"><span class="pre">config.panel_defaults</span></code> or <code class="docutils literal notranslate"><span class="pre">config.tables</span></code>. If only a master panel shows the table,
 this opens a separate detail panel using the panel defaults. Existing filters on other columns
 remain; the action replaces only the <code class="docutils literal notranslate"><span class="pre">side</span></code> clauses. The result field contains the selected panel ID
-for later <code class="docutils literal notranslate"><span class="pre">restorePanel</span></code> or <code class="docutils literal notranslate"><span class="pre">exportData</span></code> actions.</p>
+for later <code class="docutils literal notranslate"><span class="pre">restorePanel</span></code> or <code class="docutils literal notranslate"><span class="pre">export</span></code> actions.</p>
 </section>
-<section id="embed-a-grid-without-internal-tabs">
-<h2>Embed a grid without internal tabs<a class="headerlink" href="#embed-a-grid-without-internal-tabs" title="Link to this heading">¶</a></h2>
-<p>Set <code class="docutils literal notranslate"><span class="pre">hide_tabs=True</span></code> when your application already supplies navigation:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">panel</span> <span class="o">=</span> <span class="n">PerspectiveViewer</span><span class="p">(</span>
-    <span class="n">hide_tabs</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="n">config</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">"ws_url"</span><span class="p">:</span> <span class="s2">"/perspective"</span><span class="p">,</span>
-        <span class="s2">"workspace"</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s2">"panels"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"trades"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"table"</span><span class="p">:</span> <span class="s2">"trades"</span><span class="p">,</span> <span class="s2">"plugin"</span><span class="p">:</span> <span class="s2">"Datagrid"</span><span class="p">}},</span>
-            <span class="s2">"layout"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"tab-layout"</span><span class="p">,</span> <span class="s2">"tabs"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"trades"</span><span class="p">]},</span>
-        <span class="p">},</span>
-    <span class="p">},</span>
-<span class="p">)</span><span class="o">.</span><span class="n">style</span><span class="p">(</span><span class="n">height</span><span class="o">=</span><span class="s2">"24rem"</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="s2">"100%"</span><span class="p">,</span> <span class="n">min_width</span><span class="o">=</span><span class="s2">"0"</span><span class="p">)</span>
+<section id="set-application-defaults-before-loading">
+<h2>Set application defaults before loading<a class="headerlink" href="#set-application-defaults-before-loading" title="Link to this heading">¶</a></h2>
+<p>Create the wrapper without a connection config, then set defaults before assigning that config.
+For example, this Python-authored button initializes defaults and opens the workspace:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday</span><span class="w"> </span><span class="kn">import</span> <span class="n">Invoke</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">SetProp</span><span class="p">,</span> <span class="n">by_id</span><span class="p">,</span> <span class="n">element</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">spaday_perspective</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerspectiveViewer</span>
+
+<span class="n">panel</span> <span class="o">=</span> <span class="n">PerspectiveViewer</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">"workspace"</span><span class="p">)</span>
+<span class="n">open_workspace</span> <span class="o">=</span> <span class="n">element</span><span class="p">(</span><span class="s2">"button"</span><span class="p">)</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Open workspace"</span><span class="p">)</span><span class="o">.</span><span class="n">on</span><span class="p">(</span>
+    <span class="s2">"click"</span><span class="p">,</span>
+    <span class="n">Sequence</span><span class="p">(</span>
+        <span class="n">Invoke</span><span class="p">(</span>
+            <span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"setPluginConfigDefaults"</span><span class="p">,</span>
+            <span class="p">{</span><span class="s2">"scroll_lock"</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="p">{</span><span class="s2">"plugin"</span><span class="p">:</span> <span class="s2">"Datagrid"</span><span class="p">},</span> <span class="n">result</span><span class="o">=</span><span class="s2">"plugin_defaults_set"</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">Invoke</span><span class="p">(</span>
+            <span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"setColumnConfigDefaults"</span><span class="p">,</span>
+            <span class="p">{</span><span class="s2">"date_format"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"timeZone"</span><span class="p">:</span> <span class="s2">"UTC"</span><span class="p">}},</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"datetime"</span><span class="p">},</span>
+            <span class="n">result</span><span class="o">=</span><span class="s2">"column_defaults_set"</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">SetProp</span><span class="p">(</span><span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"config"</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s2">"ws_url"</span><span class="p">:</span> <span class="s2">"/perspective"</span><span class="p">,</span>
+            <span class="s2">"workspace"</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">"layout"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"type"</span><span class="p">:</span> <span class="s2">"tab-layout"</span><span class="p">,</span> <span class="s2">"tabs"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"trades"</span><span class="p">]},</span>
+                <span class="s2">"panels"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"trades"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"table"</span><span class="p">:</span> <span class="s2">"trades"</span><span class="p">,</span> <span class="s2">"plugin"</span><span class="p">:</span> <span class="s2">"Datagrid"</span><span class="p">}},</span>
+            <span class="p">},</span>
+        <span class="p">}),</span>
+    <span class="p">),</span>
+<span class="p">)</span>
 </pre></div>
 </div>
+<p>Include <code class="docutils literal notranslate"><span class="pre">panel</span></code> and <code class="docutils literal notranslate"><span class="pre">open_workspace</span></code> in the page and host a <code class="docutils literal notranslate"><span class="pre">trades</span></code> table. The <code class="docutils literal notranslate"><span class="pre">result</span></code> arguments
+make the sequence await each setter before loading. To initialize automatically, run the same
+sequence in a spaday initial effect. Complete it before loading any other Perspective viewers:
+these defaults apply to the entire page, not just <code class="docutils literal notranslate"><span class="pre">workspace</span></code>.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">getPluginConfigDefaults</span></code> and <code class="docutils literal notranslate"><span class="pre">getColumnConfigDefaults</span></code> with <code class="docutils literal notranslate"><span class="pre">Invoke(...,</span> <span class="pre">result=&quot;defaults&quot;)</span></code>
+to inspect the registry. Pass <code class="docutils literal notranslate"><span class="pre">None</span></code> as the defaults argument to remove all defaults for the
+specified options. See <a class="reference internal" href="reference.html#configuration-defaults"><span class="std std-ref">configuration defaults</span></a> for scope
+and removal semantics.</p>
+</section>
+<section id="add-a-find-control">
+<h2>Add a Find control<a class="headerlink" href="#add-a-find-control" title="Link to this heading">¶</a></h2>
+<p>Use a Python-authored dialog with a column picker and a value input, then call <code class="docutils literal notranslate"><span class="pre">showTable</span></code> with
+<code class="docutils literal notranslate"><span class="pre">{&quot;filter&quot;:</span> <span class="pre">[[column,</span> <span class="pre">&quot;==&quot;,</span> <span class="pre">value]]}</span></code>. Use numeric values for numeric columns. The
+<a class="reference external" href="https://github.com/1kbgz/spaday-perspective/blob/main/spaday_perspective/example.py">market-monitor example</a>
+validates its input before applying the filter and closes the dialog only after the action succeeds.
+It leaves browser Find shortcuts unchanged.</p>
+</section>
+<section id="embed-a-sized-grid">
+<h2>Embed a sized grid<a class="headerlink" href="#embed-a-sized-grid" title="Link to this heading">¶</a></h2>
 <p>Give the grid a definite height, including inside a WebAwesome tab panel. <code class="docutils literal notranslate"><span class="pre">height=&quot;100%&quot;</span></code> needs a
 parent with a definite height; otherwise the grid can collapse. A sized grid observes its container
 when the tab becomes visible and when the container resizes. No tab-show callback is required.</p>
-<p><code class="docutils literal notranslate"><span class="pre">hide_tabs</span></code> changes presentation only. For several tables, retain <code class="docutils literal notranslate"><span class="pre">toolbar=True</span></code> or supply
-buttons calling <code class="docutils literal notranslate"><span class="pre">openTablePanel</span></code> as shown above. The example uses the wrapper toolbar with hidden
-internal tabs.</p>
 </section>
-<section id="export-rows-without-action-columns">
-<h2>Export rows without action columns<a class="headerlink" href="#export-rows-without-action-columns" title="Link to this heading">¶</a></h2>
-<p>Attach this action to your own button to download the configured view as CSV:</p>
+<section id="export-rows">
+<h2>Export rows<a class="headerlink" href="#export-rows" title="Link to this heading">¶</a></h2>
+<p>Attach this action to your own button to download the configured view as CSV through the viewer’s
+<code class="docutils literal notranslate"><span class="pre">export</span></code>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday</span><span class="w"> </span><span class="kn">import</span> <span class="n">Download</span><span class="p">,</span> <span class="n">Invoke</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">by_id</span><span class="p">,</span> <span class="n">field</span>
 
 <span class="n">export_trades</span> <span class="o">=</span> <span class="n">Sequence</span><span class="p">(</span>
-    <span class="n">Invoke</span><span class="p">(</span><span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"exportData"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"panel"</span><span class="p">:</span> <span class="s2">"trades"</span><span class="p">,</span> <span class="s2">"format"</span><span class="p">:</span> <span class="s2">"csv"</span><span class="p">},</span> <span class="n">result</span><span class="o">=</span><span class="s2">"exported_trades"</span><span class="p">),</span>
+    <span class="n">Invoke</span><span class="p">(</span><span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"export"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"panel"</span><span class="p">:</span> <span class="s2">"trades"</span><span class="p">,</span> <span class="s2">"method"</span><span class="p">:</span> <span class="s2">"csv"</span><span class="p">},</span> <span class="n">result</span><span class="o">=</span><span class="s2">"exported_trades"</span><span class="p">),</span>
     <span class="n">Download</span><span class="p">(</span><span class="s2">"trades.csv"</span><span class="p">,</span> <span class="n">field</span><span class="p">(</span><span class="s2">"exported_trades"</span><span class="p">),</span> <span class="s2">"text/csv"</span><span class="p">),</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p>Use <code class="docutils literal notranslate"><span class="pre">format=&quot;json&quot;</span></code> in the options mapping for JSON text, or omit <code class="docutils literal notranslate"><span class="pre">panel</span></code> to export the active panel.
-Filters and sorting still apply. This exports the configured view, not the selected cell block.</p>
+<p><code class="docutils literal notranslate"><span class="pre">method</span></code> is Perspective’s <code class="docutils literal notranslate"><span class="pre">ExportMethod</span></code>: <code class="docutils literal notranslate"><span class="pre">json</span></code> for an object of columns, <code class="docutils literal notranslate"><span class="pre">csv-selected</span></code> for the
+selected cells, and so on. Omit <code class="docutils literal notranslate"><span class="pre">panel</span></code> to export the active panel. Filters and sorting apply.</p>
 </section>
 <section id="stream-rows-from-python">
 <h2>Stream rows from Python<a class="headerlink" href="#stream-rows-from-python" title="Link to this heading">¶</a></h2>
@@ -278,35 +319,79 @@ spaday store.</p>
 </section>
 <section id="add-a-delete-button-to-each-row">
 <h2>Add a delete button to each row<a class="headerlink" href="#add-a-delete-button-to-each-row" title="Link to this heading">¶</a></h2>
-<p>Create the source table with a unique index, include that column in the Datagrid, and annotate it:</p>
+<p>Create the source table with a unique index, set a command schema from a page script, and handle
+<code class="docutils literal notranslate"><span class="pre">perspective-command</span></code> in Python. The schema is a function, so Python cannot author it:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday</span><span class="w"> </span><span class="kn">import</span> <span class="n">CallEndpoint</span><span class="p">,</span> <span class="n">event_prop</span><span class="p">,</span> <span class="n">obj</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">spaday_perspective</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerspectiveViewer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">spaday.backends.starlette</span><span class="w"> </span><span class="kn">import</span> <span class="n">serve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">spaday_perspective</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerspectiveViewer</span><span class="p">,</span> <span class="n">package</span>
 
 <span class="n">orders</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">table</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"orders"</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="s2">"id"</span><span class="p">)</span>
-<span class="n">panel</span> <span class="o">=</span> <span class="n">PerspectiveViewer</span><span class="p">(</span>
-    <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
-    <span class="n">row_actions</span><span class="o">=</span><span class="p">{</span><span class="s2">"orders"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"action"</span><span class="p">:</span> <span class="s2">"delete"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Delete order"</span><span class="p">}}},</span>
-<span class="p">)</span><span class="o">.</span><span class="n">on</span><span class="p">(</span>
-    <span class="s2">"perspective-row-action"</span><span class="p">,</span>
-    <span class="n">CallEndpoint</span><span class="p">(</span><span class="s2">"POST"</span><span class="p">,</span> <span class="s2">"/orders/delete"</span><span class="p">,</span> <span class="n">obj</span><span class="p">({</span><span class="s2">"id"</span><span class="p">:</span> <span class="n">event_prop</span><span class="p">(</span><span class="s2">"detail.key"</span><span class="p">)}),</span> <span class="n">result</span><span class="o">=</span><span class="s2">"reply"</span><span class="p">),</span>
+<span class="n">panel</span> <span class="o">=</span> <span class="n">PerspectiveViewer</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="s2">"orders"</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span><span class="o">.</span><span class="n">on</span><span class="p">(</span>
+    <span class="s2">"perspective-command"</span><span class="p">,</span>
+    <span class="n">CallEndpoint</span><span class="p">(</span><span class="s2">"POST"</span><span class="p">,</span> <span class="s2">"/orders/delete"</span><span class="p">,</span> <span class="n">obj</span><span class="p">({</span><span class="s2">"id"</span><span class="p">:</span> <span class="n">event_prop</span><span class="p">(</span><span class="s2">"detail.context.hit.id"</span><span class="p">)}),</span> <span class="n">result</span><span class="o">=</span><span class="s2">"reply"</span><span class="p">),</span>
 <span class="p">)</span>
+
+<span class="n">commands</span> <span class="o">=</span> <span class="s2">"""</span>
+<span class="s2">&lt;script type="module"&gt;</span>
+<span class="s2">  const commands = [{ kind: "Command", key: "delete", label: "", icon: "delete", title: "Delete order" }];</span>
+<span class="s2">  const schema = ({ table, hit }) =&gt; ({</span>
+<span class="s2">    commands: table === "orders" &amp;&amp; hit?.id?.length &amp;&amp; !hit.row_path.length ? commands : [],</span>
+<span class="s2">  });</span>
+<span class="s2">  await customElements.whenDefined("perspective-panel");</span>
+<span class="s2">  let panel;</span>
+<span class="s2">  while (!(panel = document.querySelector("#orders"))) await new Promise(requestAnimationFrame);</span>
+<span class="s2">  await panel.setCommandSchema(schema, { scopes: ["datagrid-row"] });</span>
+<span class="s2">&lt;/script&gt;</span>
+<span class="s2">"""</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">serve</span><span class="p">(</span><span class="n">panel</span><span class="p">,</span> <span class="n">packages</span><span class="o">=</span><span class="p">[</span><span class="n">package</span><span class="p">],</span> <span class="n">head</span><span class="o">=</span><span class="n">commands</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>The Datagrid draws the button in its command column on every flat row; the <code class="docutils literal notranslate"><span class="pre">hit</span></code> test leaves
+grouped rows and the total row without one, since their <code class="docutils literal notranslate"><span class="pre">id</span></code> is a group path, not an order.
+<code class="docutils literal notranslate"><span class="pre">detail.context.hit.id</span></code> is the row’s index values as a list, <code class="docutils literal notranslate"><span class="pre">[7]</span></code> for the order whose <code class="docutils literal notranslate"><span class="pre">id</span></code> is 7.</p>
 <p>In the endpoint, validate the ID and the authenticated user’s permission, then update authoritative
 storage and call <code class="docutils literal notranslate"><span class="pre">orders.remove([key])</span></code>. Use <code class="docutils literal notranslate"><span class="pre">reply</span></code> to show success or rejection. Do not delete by
-displayed row number or use a clicked group’s filters as a bulk-delete predicate. If several actions
-share a handler, validate the requested action and table against an allowlist too.</p>
-<p>The main example (<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">spaday_perspective.example</span></code>) and browser preview include delete buttons
-in the live blotter. Both call the same Python deletion handler. The table retains up to 1,000 rows;
-summary totals count all trades received, including deleted trades.</p>
+displayed row number or use a clicked group’s filters as a bulk-delete predicate. If several
+commands share a handler, validate <code class="docutils literal notranslate"><span class="pre">detail.key</span></code> and <code class="docutils literal notranslate"><span class="pre">detail.context.table</span></code> against an allowlist too.</p>
+<p>The main example (<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">spaday_perspective.example</span></code>) and browser preview include copy and
+delete buttons in the live blotter. Both call the same Python deletion handler. The table retains up
+to 1,000 rows; summary totals count all trades received, including deleted trades.</p>
 <p>Run the smaller example with a locked-record policy using:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>spaday_perspective.row_actions
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>spaday_perspective.commands
 </pre></div>
 </div>
 <p>Open <a class="reference external" href="http://127.0.0.1:8017">http://127.0.0.1:8017</a> in two windows. Deleting an unlocked order updates both; locked orders
 return an error. This local demo illustrates a record policy, not production authentication. Its
 Perspective socket is application-owned; production hosts must also restrict client-side table writes.
 For a mirrored table, configure its local <code class="docutils literal notranslate"><span class="pre">index</span></code> to match the authoritative index.</p>
+</section>
+<section id="add-the-agent">
+<h2>Add the agent<a class="headerlink" href="#add-the-agent" title="Link to this heading">¶</a></h2>
+<p>Configure the viewer’s embedded agent once, then send prompts from your own controls. Point <code class="docutils literal notranslate"><span class="pre">url</span></code>
+at a same-origin endpoint that forwards OpenAI-style chat completions and adds the API key on the
+server, so the key never reaches the page:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday</span><span class="w"> </span><span class="kn">import</span> <span class="n">CallEndpoint</span><span class="p">,</span> <span class="n">Invoke</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">SetField</span><span class="p">,</span> <span class="n">by_id</span><span class="p">,</span> <span class="n">element</span><span class="p">,</span> <span class="n">event_prop</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">obj</span>
+
+<span class="n">DOCS</span> <span class="o">=</span> <span class="s2">"/components/perspective/vendor/@perspective-dev/viewer/dist/docs/perspective-docs.json"</span>
+
+<span class="n">configure</span> <span class="o">=</span> <span class="n">Sequence</span><span class="p">(</span>
+    <span class="n">CallEndpoint</span><span class="p">(</span><span class="s2">"GET"</span><span class="p">,</span> <span class="n">DOCS</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="s2">"agent_docs"</span><span class="p">),</span>
+    <span class="n">Invoke</span><span class="p">(</span>
+        <span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"agentConfig"</span><span class="p">,</span>
+        <span class="n">obj</span><span class="p">({</span><span class="s2">"url"</span><span class="p">:</span> <span class="s2">"/api/llm/chat/completions"</span><span class="p">,</span> <span class="s2">"model"</span><span class="p">:</span> <span class="s2">"claude-opus-5"</span><span class="p">,</span> <span class="s2">"docs"</span><span class="p">:</span> <span class="n">field</span><span class="p">(</span><span class="s2">"agent_docs.body"</span><span class="p">)}),</span>
+    <span class="p">),</span>
+<span class="p">)</span>
+<span class="n">ask</span> <span class="o">=</span> <span class="n">Invoke</span><span class="p">(</span><span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"agentPrompt"</span><span class="p">,</span> <span class="n">field</span><span class="p">(</span><span class="s2">"prompt"</span><span class="p">),</span> <span class="n">result</span><span class="o">=</span><span class="s2">"answer"</span><span class="p">)</span>
+<span class="n">reset</span> <span class="o">=</span> <span class="n">Invoke</span><span class="p">(</span><span class="n">by_id</span><span class="p">(</span><span class="s2">"workspace"</span><span class="p">),</span> <span class="s2">"agentReset"</span><span class="p">)</span>
+
+<span class="n">panel</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="s2">"perspective-agent-tool"</span><span class="p">,</span> <span class="n">SetField</span><span class="p">(</span><span class="s2">"last_tool"</span><span class="p">,</span> <span class="n">event_prop</span><span class="p">(</span><span class="s2">"detail"</span><span class="p">)))</span>
+<span class="n">element</span><span class="p">(</span><span class="s2">"button"</span><span class="p">)</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"Ask"</span><span class="p">)</span><span class="o">.</span><span class="n">on</span><span class="p">(</span><span class="s2">"click"</span><span class="p">,</span> <span class="n">ask</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Run <code class="docutils literal notranslate"><span class="pre">configure</span></code> from a button or a spaday initial effect before the first prompt. <code class="docutils literal notranslate"><span class="pre">answer</span></code> holds
+the agent’s reply, and <code class="docutils literal notranslate"><span class="pre">last_tool</span></code> the JSON string of the latest tool call. See
+<a class="reference internal" href="reference.html#methods"><span class="std std-ref">Methods</span></a> for what Python cannot pass.</p>
 </section>
 <section id="switch-between-saved-workspaces">
 <h2>Switch between saved workspaces<a class="headerlink" href="#switch-between-saved-workspaces" title="Link to this heading">¶</a></h2>
@@ -354,15 +439,13 @@ their names instead:</p>
 </pre></div>
 </div>
 </section>
-<section id="configure-selection-and-find-a-value">
-<h2>Configure selection and find a value<a class="headerlink" href="#configure-selection-and-find-a-value" title="Link to this heading">¶</a></h2>
-<p>Enable region selection, cell-aligned scrolling, and Find from Python:</p>
+<section id="configure-selection">
+<h2>Configure selection<a class="headerlink" href="#configure-selection" title="Link to this heading">¶</a></h2>
+<p>Enable region selection and cell-aligned scrolling from Python:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday_perspective</span><span class="w"> </span><span class="kn">import</span> <span class="n">EditMode</span><span class="p">,</span> <span class="n">PerspectiveViewer</span><span class="p">,</span> <span class="n">Theme</span>
 
 <span class="n">panel</span> <span class="o">=</span> <span class="n">PerspectiveViewer</span><span class="p">(</span>
     <span class="n">theme</span><span class="o">=</span><span class="n">Theme</span><span class="o">.</span><span class="n">DARK</span><span class="p">,</span>
-    <span class="n">toolbar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-    <span class="n">find</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">config</span><span class="o">=</span><span class="p">{</span>
         <span class="s2">"ws_url"</span><span class="p">:</span> <span class="s2">"/perspective"</span><span class="p">,</span>
         <span class="s2">"workspace"</span><span class="p">:</span> <span class="p">{</span>
@@ -379,11 +462,9 @@ their names instead:</p>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p>Select cells and press Ctrl+C / Cmd+C to copy. Press Ctrl+F / Cmd+F while the grid is focused, or click
-Find, then choose a column and enter an exact value. Apply filter keeps existing filters. Use
-Perspective Settings to change or remove them. Cancel leaves the data view unchanged.</p>
-<p>The main Python example and browser preview include these controls. To use a custom Find button,
-call <code class="docutils literal notranslate"><span class="pre">Invoke(by_id(&quot;your-panel-id&quot;),</span> <span class="pre">&quot;openFind&quot;)</span></code> from its click action; keep <code class="docutils literal notranslate"><span class="pre">find=True</span></code> on the panel.</p>
+<p>Select cells and press Ctrl+C / Cmd+C to copy them as CSV. A button outside the grid copies the
+same selection with <code class="docutils literal notranslate"><span class="pre">Invoke(by_id(&quot;workspace&quot;),</span> <span class="pre">&quot;copy&quot;,</span> <span class="pre">{&quot;method&quot;:</span> <span class="pre">&quot;csv-selected&quot;})</span></code>, and the whole
+view with <code class="docutils literal notranslate"><span class="pre">copy</span></code> and no options; see <a class="reference internal" href="reference.html#methods"><span class="std std-ref">Methods</span></a>.</p>
 </section>
 <section id="persist-user-edited-layouts">
 <h2>Persist user-edited layouts<a class="headerlink" href="#persist-user-edited-layouts" title="Link to this heading">¶</a></h2>
@@ -419,10 +500,12 @@ architecture — reads (scrolls, sorts, filters) stop round-tripping to Python:<
 <span class="p">)</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">index</span></code> and <code class="docutils literal notranslate"><span class="pre">limit</span></code> apply to the local copy. <code class="docutils literal notranslate"><span class="pre">default_architecture</span></code> flips the default for every
-plain entry.</p>
-<p>Mirrors resnapshot after source changes so deletions and replacements propagate correctly. Keep
-large, high-frequency tables on the default server architecture to avoid full-table transfer on refresh.</p>
+<p>Omit <code class="docutils literal notranslate"><span class="pre">index</span></code> and <code class="docutils literal notranslate"><span class="pre">limit</span></code> to inherit the source table’s options, or specify them for the local copy.
+A local <code class="docutils literal notranslate"><span class="pre">limit</span></code> is ignored with a warning when the source table is indexed.
+Use <code class="docutils literal notranslate"><span class="pre">default_architecture</span></code> to set the architecture for plain table-name entries.</p>
+<p>Perspective creates the local table from a source view and maintains the replica as rows change,
+including deletions, clear, and replace operations. Choose the default server architecture when
+the table should remain on the server rather than occupy browser memory.</p>
 </section>
 <section id="share-perspective-with-your-own-library">
 <h2>Share Perspective with your own library<a class="headerlink" href="#share-perspective-with-your-own-library" title="Link to this heading">¶</a></h2>
@@ -494,10 +577,16 @@ server, and <code class="docutils literal notranslate"><span class="pre">.worker
     <a href="#select-and-filter-a-table">Select and filter a table</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
-    <a href="#embed-a-grid-without-internal-tabs">Embed a grid without internal tabs</a>
+    <a href="#set-application-defaults-before-loading">Set application defaults before loading</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
-    <a href="#export-rows-without-action-columns">Export rows without action columns</a>
+    <a href="#add-a-find-control">Add a Find control</a>
+  </li>
+  <li class="fd-toc-item" data-depth="1">
+    <a href="#embed-a-sized-grid">Embed a sized grid</a>
+  </li>
+  <li class="fd-toc-item" data-depth="1">
+    <a href="#export-rows">Export rows</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
     <a href="#stream-rows-from-python">Stream rows from Python</a>
@@ -506,13 +595,16 @@ server, and <code class="docutils literal notranslate"><span class="pre">.worker
     <a href="#add-a-delete-button-to-each-row">Add a delete button to each row</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
+    <a href="#add-the-agent">Add the agent</a>
+  </li>
+  <li class="fd-toc-item" data-depth="1">
     <a href="#switch-between-saved-workspaces">Switch between saved workspaces</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
     <a href="#map-a-page-theme">Map a page theme</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
-    <a href="#configure-selection-and-find-a-value">Configure selection and find a value</a>
+    <a href="#configure-selection">Configure selection</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
     <a href="#persist-user-edited-layouts">Persist user-edited layouts</a>

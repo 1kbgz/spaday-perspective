@@ -79,6 +79,7 @@ asyncio.create_task(example.stream_trades())
 json.dumps({
     "tree": example.page.to_node(),
     "style": example.styles,
+    "script": example.commands_script,
     "store": example.initial_store,
     "rows": example.initial_trades,
     "wires": opening,

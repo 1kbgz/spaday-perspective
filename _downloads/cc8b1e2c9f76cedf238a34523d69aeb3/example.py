@@ -5,7 +5,25 @@ from datetime import UTC, datetime
 
 import transports
 from pydantic import BaseModel
-from spaday import CallEndpoint, Download, If, Invoke, Sequence, SetField, ToggleField, by_id, cond, element, eq, event_prop, field, obj
+from spaday import (
+    CallEndpoint,
+    Download,
+    If,
+    Invoke,
+    Sequence,
+    SetField,
+    ToggleField,
+    any_,
+    arr,
+    by_id,
+    cond,
+    element,
+    eq,
+    event_prop,
+    field,
+    obj,
+    prop,
+)
 from spaday.backends.starlette import serve
 from starlette.responses import JSONResponse
 from starlette.routing import Route
@@ -141,10 +159,16 @@ async def submit_trade(request):
     return JSONResponse({"message": f"Added {quantity} {symbol} shares at ${price:,.2f}"})
 
 
-async def delete_trade(request):
-    payload = await request.json()
+def trade_key(payload) -> int | None:
+    """The trade id from a command's ``hit.id``, the row's index values as a list."""
     key = payload.get("id") if isinstance(payload, dict) else None
-    if type(key) is not int:
+    key = key[0] if isinstance(key, list) and len(key) == 1 else None
+    return key if type(key) is int else None
+
+
+async def delete_trade(request):
+    key = trade_key(await request.json())
+    if key is None:
         return JSONResponse({"message": "Expected an integer trade ID"}, status_code=422)
     if key not in records:
         return JSONResponse({"message": "Trade no longer exists"}, status_code=404)
@@ -154,9 +178,8 @@ async def delete_trade(request):
 
 
 async def copy_trade(request):
-    payload = await request.json()
-    key = payload.get("id") if isinstance(payload, dict) else None
-    if type(key) is not int:
+    key = trade_key(await request.json())
+    if key is None:
         return JSONResponse({"message": "Expected an integer trade ID"}, status_code=422)
     if key not in records:
         return JSONResponse({"message": "Trade no longer exists"}, status_code=404)
@@ -203,36 +226,19 @@ def layout(*, grouped: bool = False) -> dict:
 panel = (
     PerspectiveViewer(
         id="market-grid",
-        toolbar=True,
-        hide_tabs=True,
-        find=True,
-        row_actions={
-            "trades": {
-                "@copy": {
-                    "header": "Copy",
-                    "position": "start",
-                    "buttons": [{"action": "copy", "label": "Copy trade to form", "icon": "copy"}],
-                },
-                "@delete": {
-                    "header": "Delete",
-                    "position": "end",
-                    "buttons": [{"action": "delete", "label": "Delete trade", "icon": "delete"}],
-                },
-            }
-        },
     )
     .on(
-        "perspective-row-action",
+        "perspective-command",
         If(
-            eq(event_prop("detail.action"), "delete"),
+            eq(event_prop("detail.key"), "delete"),
             Sequence(
-                SetField("delete_trade_id", event_prop("detail.key")),
+                SetField("delete_trade_id", event_prop("detail.context.hit.id")),
                 Invoke(by_id("delete-trade-dialog"), "showModal"),
             ),
             If(
-                eq(event_prop("detail.action"), "copy"),
+                eq(event_prop("detail.key"), "copy"),
                 Sequence(
-                    CallEndpoint("POST", "/api/trades/copy", obj({"id": event_prop("detail.key")}), result="copy_result"),
+                    CallEndpoint("POST", "/api/trades/copy", obj({"id": event_prop("detail.context.hit.id")}), result="copy_result"),
                     SetField("trade_result", field("copy_result")),
                     If(
                         field("copy_result.ok"),
@@ -296,7 +302,7 @@ page = element(
                 "Use Delete to confirm removal or Copy to fill the form. Totals cover all retained trades, including filtered-out rows."
             ),
             element("p").text("Buy trades and All trades update this panel's filter; grouping and other settings stay unchanged."),
-            element("p").text("Select cells to copy with Ctrl+C / Cmd+C. Use Find or Ctrl+F / Cmd+F in the grid to filter a column."),
+            element("p").text("Select cells to copy with Ctrl+C / Cmd+C."),
         ),
         element(
             "div",
@@ -320,18 +326,86 @@ page = element(
                     Invoke(by_id("market-grid"), "showTable", "trades", result="trade_panel"),
                     Invoke(
                         by_id("market-grid"),
-                        "exportData",
-                        obj({"panel": field("trade_panel"), "format": "csv"}),
+                        "export",
+                        obj({"panel": field("trade_panel"), "method": "csv"}),
                         result="exported_trades",
                     ),
                     Download("trades.csv", field("exported_trades"), "text/csv"),
                 ),
             ),
+            element("button").text("Find").on("click", Invoke(by_id("find-trade-dialog"), "showModal")),
             class_="segmented",
         ),
         class_="workspace-heading",
     ),
     element("section", panel, class_="workspace-shell"),
+    element(
+        "dialog",
+        element("h2").text("Find trade"),
+        element("p").text("Filter trades by an exact column value. Other column filters stay unchanged."),
+        element(
+            "div",
+            element("label", htmlFor="find-trade-column").text("Column"),
+            element(
+                "select",
+                *(element("option", value=name).text(name) for name in ("symbol", "side", "venue", "time", "id", "quantity", "price")),
+                id="find-trade-column",
+            )
+            .bind("value", "find_column", mode="two-way")
+            .on("change", SetField("find_value", "")),
+        ),
+        element(
+            "label",
+            "Equals",
+            element("input", id="find-trade-value", required=True)
+            .compute("type", cond(any_(*(eq(field("find_column"), name) for name in ("id", "quantity", "price"))), "number", "text"))
+            .compute("step", cond(eq(field("find_column"), "price"), "any", "1"))
+            .bind("value", "find_value", mode="two-way"),
+        ),
+        element(
+            "div",
+            element("button", type="button").text("Cancel").on("click", Invoke(by_id("find-trade-dialog"), "close")),
+            element("button", type="button")
+            .text("Apply filter")
+            .on(
+                "click",
+                Sequence(
+                    Invoke(by_id("find-trade-value"), "reportValidity", result="find_valid"),
+                    If(
+                        field("find_valid"),
+                        Sequence(
+                            Invoke(
+                                by_id("market-grid"),
+                                "showTable",
+                                "trades",
+                                obj(
+                                    {
+                                        "filter": arr(
+                                            arr(
+                                                field("find_column"),
+                                                "==",
+                                                cond(
+                                                    any_(*(eq(field("find_column"), name) for name in ("id", "quantity", "price"))),
+                                                    prop(by_id("find-trade-value"), "valueAsNumber"),
+                                                    field("find_value"),
+                                                ),
+                                            )
+                                        )
+                                    }
+                                ),
+                                result="find_panel",
+                            ),
+                            Invoke(by_id("find-trade-dialog"), "close"),
+                        ),
+                    ),
+                ),
+            ),
+            class_="dialog-actions",
+        ),
+        id="find-trade-dialog",
+        class_="delete-dialog",
+        **{"aria-label": "Find trade"},
+    ),
     element(
         "dialog",
         element("h2").text("Delete trade?"),
@@ -395,6 +469,24 @@ page = element(
     class_="dashboard",
 ).compute("class", cond(field("dark"), "dashboard dark", "dashboard"))
 
+# The viewer's command schema is a function, so the page sets it rather than Python: icon-only row
+# buttons on the flat blotter. A grouped row is a group, not a trade; its `id` is its group path.
+commands_script = """
+<script type="module">
+  const commands = [
+    { kind: "Command", key: "copy", label: "", icon: "copy", title: "Copy trade to form" },
+    { kind: "Command", key: "delete", label: "", icon: "delete", title: "Delete trade" },
+  ];
+  const schema = ({ table, hit }) => ({
+    commands: table === "trades" && hit?.id?.length && !hit.row_path.length ? commands : [],
+  });
+  await customElements.whenDefined("perspective-panel");
+  let panel;
+  while (!(panel = document.querySelector("#market-grid"))) await new Promise(requestAnimationFrame);
+  await panel.setCommandSchema(schema, { scopes: ["datagrid-row"] });
+</script>
+"""
+
 styles = """
 <style>
   :root { color-scheme: light dark; }
@@ -422,7 +514,7 @@ styles = """
   .live-metric { display: flex; align-items: center; gap: .55rem; } .live-metric strong { margin: 0; }
   .live-dot { width: .65rem; height: .65rem; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 .28rem #d1fae5; }
   .workspace-heading { margin-bottom: .75rem; }
-  .segmented { display: flex; gap: .45rem; }
+  .segmented { display: flex; flex-wrap: wrap; gap: .45rem; }
   .workspace-shell { height: min(58vh, 34rem); overflow: hidden; border: 1px solid #cbd5e1; border-radius: 1rem; background: #fff;
     box-shadow: 0 18px 48px rgba(15,23,42,.12); }
   #market-grid { display: block; width: 100%; height: 100%; }
@@ -456,7 +548,7 @@ if not IS_PYODIDE:
         WebSocketRoute("/perspective", perspective_socket),
     ]
 
-initial_store = {"view": "blotter", "dark": False, "symbol": "AAPL", "side": "Buy", "quantity": 100}
+initial_store = {"view": "blotter", "dark": False, "symbol": "AAPL", "side": "Buy", "quantity": 100, "find_column": "symbol", "find_value": ""}
 
 app = serve(
     page,
@@ -465,7 +557,7 @@ app = serve(
     routes=routes,
     background=[transports.autosync(transport_server), stream_trades()],
     store=initial_store,
-    head=styles,
+    head=styles + commands_script,
     title="spaday-perspective example",
 )
 

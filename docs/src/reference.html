@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API reference &#8212; spaday-perspective v0.8.4</title>
+    <title>API reference &#8212; spaday-perspective v0.9.0</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../_static/fuma.css?v=ca04d621" />
     <link rel="stylesheet" type="text/css" href="../../_static/fuma-code.css?v=a950e949" />
@@ -13,15 +13,15 @@
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css?v=4ae1632d" />
     <link rel="stylesheet" type="text/css" href="../../_static/autodoc_pydantic.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=6a604523" />
     <link rel="stylesheet" type="text/css" href="../../_static/fonts/fuma-fonts.css?v=c2892c73" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/custom.css?v=88c24c6a" />
-    <script src="../../_static/documentation_options.js?v=b41f4c93"></script>
+    <script src="../../_static/documentation_options.js?v=39bb1c6d"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
-    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../../_static/design-tabs.js?v=fcb327ea"></script>
     <script data-searchlite-index="searchlite-index.json" defer="defer" src="../../_static/searchlite.js?v=a5320898"></script>
     <script defer="defer" src="../../_static/fuma.js?v=9c325f6c"></script>
     <script src="../../_static/js/custom.js?v=956e5d78"></script>
@@ -49,7 +49,7 @@
   <div class="fd-subnav-inner">
     <button type="button" class="fd-icon-button fd-sidebar-toggle" aria-controls="fd-sidebar" aria-expanded="false" aria-label="Toggle navigation" title="Toggle navigation">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="fd-icon "><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
-    </button><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.8.4</span>
+    </button><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.9.0</span>
 </a>
 
     <div class="fd-nav-actions">
@@ -64,7 +64,7 @@
 
 <aside id="fd-sidebar" aria-label="Documentation">
   <div class="fd-sidebar-header">
-    <div class="fd-sidebar-brand-row"><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.8.4</span>
+    <div class="fd-sidebar-brand-row"><a class="fd-brand" href="../../index.html"><span class="fd-brand-name">spaday-perspective v0.9.0</span>
 </a>
       <button type="button" class="fd-icon-button fd-sidebar-collapse" aria-label="Collapse sidebar" title="Collapse sidebar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="fd-icon "><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg></button>
     </div>
@@ -125,6 +125,9 @@
     <a href="#spaday_perspective.PerspectiveViewer">PerspectiveViewer</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
+    <a href="#configuration-defaults">Configuration defaults</a>
+  </li>
+  <li class="fd-toc-item" data-depth="1">
     <a href="#terminology-and-compatibility">Terminology and compatibility</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
@@ -137,7 +140,7 @@
     <a href="#table-architectures">Table architectures</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
-    <a href="#row-actions">Row actions</a>
+    <a href="#commands">Commands</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
     <a href="#events">Events</a>
@@ -146,7 +149,7 @@
     <a href="#methods">Methods</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
-    <a href="#themes-and-tokens">THEMES and TOKENS</a>
+    <a href="#themes">THEMES</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
     <a href="#package">package</a>
@@ -203,18 +206,6 @@ class; both imports serialize to the same tag. The wrapper manages a multi-panel
 <td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
 <td><p>Whether the settings sidebar is open.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">toolbar</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
-<td><p>Show table controls and Copy selection (default <code class="docutils literal notranslate"><span class="pre">False</span></code>).</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">hide_tabs</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
-<td><p>Hide internal viewer tab strips and reclaim their space (default <code class="docutils literal notranslate"><span class="pre">False</span></code>).</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">find</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
-<td><p>Enable focused-grid Ctrl+F / Cmd+F and the toolbar Find button (default <code class="docutils literal notranslate"><span class="pre">False</span></code>).</p></td>
-</tr>
 </tbody>
 </table>
 <dl class="py attribute">
@@ -223,6 +214,50 @@ class; both imports serialize to the same tag. The wrapper manages a multi-panel
 <dd><p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">PerspectivePanel</span></code></p>
 </dd></dl>
 
+</section>
+<section id="configuration-defaults">
+<h2>Configuration defaults<a class="headerlink" href="#configuration-defaults" title="Link to this heading">¶</a></h2>
+<p>The following are the viewer’s static configuration-default methods, passed through with their
+arguments unchanged. They are instance methods here so that <code class="docutils literal notranslate"><span class="pre">Invoke</span></code> can reach them, and they
+return promises: each waits for Perspective initialization and runs through the panel’s lifecycle
+queue, so a <code class="docutils literal notranslate"><span class="pre">Sequence</span></code> can order a setter before a config.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Arguments</p></th>
+<th class="head"><p>Result</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">setPluginConfigDefaults(defaults,</span> <span class="pre">options?)</span></code></p></td>
+<td><p>Mapping or <code class="docutils literal notranslate"><span class="pre">null</span></code>; optional <code class="docutils literal notranslate"><span class="pre">{plugin}</span></code></p></td>
+<td><p>No value</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">getPluginConfigDefaults()</span></code></p></td>
+<td><p>None</p></td>
+<td><p>List of <code class="docutils literal notranslate"><span class="pre">{defaults,</span> <span class="pre">plugin?}</span></code> entries</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">setColumnConfigDefaults(defaults,</span> <span class="pre">options?)</span></code></p></td>
+<td><p>Mapping or <code class="docutils literal notranslate"><span class="pre">null</span></code>; optional <code class="docutils literal notranslate"><span class="pre">{plugin,</span> <span class="pre">type}</span></code></p></td>
+<td><p>No value</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">getColumnConfigDefaults()</span></code></p></td>
+<td><p>None</p></td>
+<td><p>List of <code class="docutils literal notranslate"><span class="pre">{defaults,</span> <span class="pre">plugin?,</span> <span class="pre">type?}</span></code> entries</p></td>
+</tr>
+</tbody>
+</table>
+<p>Defaults apply to <strong>every Perspective viewer on the page</strong>, including viewers outside this wrapper.
+Set them before assigning connection/workspace config or restoring any viewer. Separate wrappers
+have separate lifecycle queues; the application must finish initialization before loading them.
+Removing a wrapper does not remove defaults. Saved workspaces omit defaults and do not contain the
+application’s defaults registry.</p>
+<p>Each setter merges values for the same options. A <code class="docutils literal notranslate"><span class="pre">null</span></code> value removes a key at any depth;
+<code class="docutils literal notranslate"><span class="pre">defaults=null</span></code> removes all defaults for those options. Column types are <code class="docutils literal notranslate"><span class="pre">integer</span></code>, <code class="docutils literal notranslate"><span class="pre">float</span></code>,
+<code class="docutils literal notranslate"><span class="pre">string</span></code>, <code class="docutils literal notranslate"><span class="pre">boolean</span></code>, <code class="docutils literal notranslate"><span class="pre">date</span></code>, and <code class="docutils literal notranslate"><span class="pre">datetime</span></code>. Perspective validates arguments and applies scope
+precedence and format merging. See its <a class="reference external" href="https://perspective-dev.github.io/guide/how_to/javascript/config_defaults.html">configuration defaults reference</a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">find</span></code> and <code class="docutils literal notranslate"><span class="pre">openFind</span></code> are not wrapper APIs. The market-monitor example implements its Find dialog
+with Python components and the general <code class="docutils literal notranslate"><span class="pre">showTable</span></code> method.</p>
 </section>
 <section id="terminology-and-compatibility">
 <h2>Terminology and compatibility<a class="headerlink" href="#terminology-and-compatibility" title="Link to this heading">¶</a></h2>
@@ -276,10 +311,6 @@ while <code class="docutils literal notranslate"><span class="pre">closeTablePan
 </section>
 <section id="configuration">
 <h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">hide_tabs</span></code> hides every internal tab strip without changing the saved workspace or its panels.
-It does not hide the wrapper toolbar. For multiple tables, provide navigation through the toolbar
-or your own buttons calling <code class="docutils literal notranslate"><span class="pre">openTablePanel</span></code>; hidden tabs cannot be selected or dragged by the user.
-The browser property is <code class="docutils literal notranslate"><span class="pre">hideTabs</span></code>.</p>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Key</p></th>
@@ -324,8 +355,9 @@ The browser property is <code class="docutils literal notranslate"><span class="
 </table>
 <p>Changing <code class="docutils literal notranslate"><span class="pre">ws_url</span></code> opens a new client connection. Changing the serialized <code class="docutils literal notranslate"><span class="pre">workspace</span></code> restores the viewer’s panels.
 The wrapper queues asynchronous changes in assignment order.</p>
-<p>For a <code class="docutils literal notranslate"><span class="pre">client-server</span></code> mirror, omitting both <code class="docutils literal notranslate"><span class="pre">index</span></code> and <code class="docutils literal notranslate"><span class="pre">limit</span></code> inherits the source table’s index.
-An explicit index or limit takes precedence; unindexed sources remain unindexed.</p>
+<p>For a <code class="docutils literal notranslate"><span class="pre">client-server</span></code> mirror, omitted <code class="docutils literal notranslate"><span class="pre">index</span></code> and <code class="docutils literal notranslate"><span class="pre">limit</span></code> options are inherited from the source table.
+Explicit options apply to the local copy, except that <code class="docutils literal notranslate"><span class="pre">limit</span></code> is ignored with a warning when the
+source table is indexed. Composite indexes are supported.</p>
 <section id="validation-and-enums">
 <h3>Validation and enums<a class="headerlink" href="#validation-and-enums" title="Link to this heading">¶</a></h3>
 <p>The public <code class="docutils literal notranslate"><span class="pre">spaday_perspective.PerspectiveViewer</span></code> validates literal configuration when serialized
@@ -345,7 +377,9 @@ installed Datagrid’s declarations.</p>
 <p>In the browser, the schema check needs Perspective’s <code class="docutils literal notranslate"><span class="pre">migrate</span></code> binary, which the bundle loads
 alongside the viewer. A layout assigned before it arrives is checked when it is applied and
 reported through <code class="docutils literal notranslate"><span class="pre">perspective-error</span></code>; from then on <code class="docutils literal notranslate"><span class="pre">config</span></code> throws <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> as it does for the
-wrapper’s own settings. Any panel’s <code class="docutils literal notranslate"><span class="pre">perspective-ready</span></code> follows that load.</p>
+wrapper’s own settings. Any panel’s <code class="docutils literal notranslate"><span class="pre">perspective-ready</span></code> follows that load.
+Without <code class="docutils literal notranslate"><span class="pre">perspective-python</span></code> installed, as in the Pyodide example, the Python check passes
+layouts through to the browser.</p>
 <p>Python string enums are exported for configuration:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">EditMode</span></code>: <code class="docutils literal notranslate"><span class="pre">EDIT</span></code>, <code class="docutils literal notranslate"><span class="pre">READ_ONLY</span></code>, <code class="docutils literal notranslate"><span class="pre">SELECT_ROW</span></code>, <code class="docutils literal notranslate"><span class="pre">SELECT_COLUMN</span></code>, <code class="docutils literal notranslate"><span class="pre">SELECT_REGION</span></code>, <code class="docutils literal notranslate"><span class="pre">SELECT_ROW_TREE</span></code>.</p></li>
@@ -377,99 +411,111 @@ panels. Replacing <code class="docutils literal notranslate"><span class="pre">w
 <h2>Table architectures<a class="headerlink" href="#table-architectures" title="Link to this heading">¶</a></h2>
 <p>A <code class="docutils literal notranslate"><span class="pre">server</span></code> table (the default) reads over the websocket: every scroll, sort, and filter round-trips
 to the Python server. A <code class="docutils literal notranslate"><span class="pre">client-server</span></code> table mirrors into a local Web Worker engine: the wrapper
-opens the server table and replaces a local copy (with the entry’s <code class="docutils literal notranslate"><span class="pre">index</span></code> / <code class="docutils literal notranslate"><span class="pre">limit</span></code>) from an Arrow
-snapshot after source changes, loading the worker client before the websocket client so the
-local copy wins the viewer’s table-name lookup. Reads are then local; the server stays authoritative
-for writes. Set architectures in the initial <code class="docutils literal notranslate"><span class="pre">config</span></code> — changing the mirrored set later reconnects.</p>
-<p>Row deltas omit deleted keys. Snapshot replacement propagates removals, clear, and replace operations
-and avoids duplicate appends for unindexed mirrors. Refreshes are serialized and notifications during
-an in-flight refresh coalesce into another snapshot. This sends the full source table on refresh;
-server architecture avoids that cost for large or frequently changing tables.</p>
+opens a view of the server table and passes it to the worker’s <code class="docutils literal notranslate"><span class="pre">table(view,</span> <span class="pre">options)</span></code> API.
+The worker client loads before the websocket client so the local copy wins the viewer’s table-name
+lookup. Reads are then local; the server stays authoritative for writes. Set architectures in the
+initial <code class="docutils literal notranslate"><span class="pre">config</span></code> — changing the mirrored set later reconnects.</p>
+<p>Perspective’s native mirroring maintains the replica through source updates, removals, clear, and
+replace operations. Wrappers using the same connection, table, and mirror options share a local
+table and subscription. The server architecture keeps the data on the server; a client-server
+mirror stores a copy in browser memory.</p>
 </section>
-<section id="row-actions">
-<h2>Row actions<a class="headerlink" href="#row-actions" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">row_actions</span></code> (JavaScript <code class="docutils literal notranslate"><span class="pre">rowActions</span></code>) maps table names to indexed-column button descriptions:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectiveViewer</span><span class="p">(</span><span class="n">row_actions</span><span class="o">=</span><span class="p">{</span><span class="s2">"orders"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"action"</span><span class="p">:</span> <span class="s2">"delete"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Delete order"</span><span class="p">,</span> <span class="s2">"text"</span><span class="p">:</span> <span class="s2">"×"</span><span class="p">}}})</span>
+<section id="commands">
+<h2>Commands<a class="headerlink" href="#commands" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">setCommandSchema(schema,</span> <span class="pre">options?)</span></code> is the viewer’s own method, passed through unchanged. <code class="docutils literal notranslate"><span class="pre">schema</span></code>
+is a synchronous function from Perspective’s command context to <code class="docutils literal notranslate"><span class="pre">{commands}</span></code>, or <code class="docutils literal notranslate"><span class="pre">null</span></code> to remove
+it; <code class="docutils literal notranslate"><span class="pre">options.scopes</span></code> lists the surfaces it is evaluated for: <code class="docutils literal notranslate"><span class="pre">context-menu</span></code> (the default),
+<code class="docutils literal notranslate"><span class="pre">datagrid-row</span></code>, <code class="docutils literal notranslate"><span class="pre">datagrid-cell</span></code> and <code class="docutils literal notranslate"><span class="pre">chart-tooltip</span></code>. Called before the panel is connected, the
+schema is held and set ahead of the first workspace restore. See Perspective’s
+<a class="reference external" href="https://perspective-dev.github.io/guide/how_to/javascript/commands.html">custom commands guide</a>
+for the context, <code class="docutils literal notranslate"><span class="pre">hit</span></code> and <code class="docutils literal notranslate"><span class="pre">CommandSpec</span></code>.</p>
+<p>The schema is a function, so it is set from a script on the page; Python cannot author it. Python
+handles the result:</p>
+<div class="highlight-html notranslate"><div class="highlight"><pre><span></span><span class="p">&lt;</span><span class="nt">script</span> <span class="na">type</span><span class="o">=</span><span class="s">"module"</span><span class="p">&gt;</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">commands</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[{</span><span class="w"> </span><span class="nx">kind</span><span class="o">:</span><span class="w"> </span><span class="s2">"Command"</span><span class="p">,</span><span class="w"> </span><span class="nx">key</span><span class="o">:</span><span class="w"> </span><span class="s2">"delete"</span><span class="p">,</span><span class="w"> </span><span class="nx">label</span><span class="o">:</span><span class="w"> </span><span class="s2">""</span><span class="p">,</span><span class="w"> </span><span class="nx">icon</span><span class="o">:</span><span class="w"> </span><span class="s2">"delete"</span><span class="p">,</span><span class="w"> </span><span class="nx">title</span><span class="o">:</span><span class="w"> </span><span class="s2">"Delete order"</span><span class="w"> </span><span class="p">}];</span>
+<span class="w">  </span><span class="c1">// a grouped row's `id` is its group path and the total row's is empty; neither is an order</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">schema</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">({</span><span class="w"> </span><span class="nx">table</span><span class="p">,</span><span class="w"> </span><span class="nx">hit</span><span class="w"> </span><span class="p">})</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">({</span>
+<span class="w">    </span><span class="nx">commands</span><span class="o">:</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">"orders"</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">hit</span><span class="o">?</span><span class="p">.</span><span class="nx">id</span><span class="o">?</span><span class="p">.</span><span class="nx">length</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="nx">hit</span><span class="p">.</span><span class="nx">row_path</span><span class="p">.</span><span class="nx">length</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="nx">commands</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">  </span><span class="p">});</span>
+<span class="w">  </span><span class="k">await</span><span class="w"> </span><span class="nx">customElements</span><span class="p">.</span><span class="nx">whenDefined</span><span class="p">(</span><span class="s2">"perspective-panel"</span><span class="p">);</span>
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="nx">panel</span><span class="p">;</span>
+<span class="w">  </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="nx">panel</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">document</span><span class="p">.</span><span class="nx">querySelector</span><span class="p">(</span><span class="s2">"#orders"</span><span class="p">)))</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">Promise</span><span class="p">(</span><span class="nx">requestAnimationFrame</span><span class="p">);</span>
+<span class="w">  </span><span class="k">await</span><span class="w"> </span><span class="nx">panel</span><span class="p">.</span><span class="nx">setCommandSchema</span><span class="p">(</span><span class="nx">schema</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">scopes</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"datagrid-row"</span><span class="p">]</span><span class="w"> </span><span class="p">});</span>
+<span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
 </pre></div>
 </div>
-<p>A column accepts one description or a list, rendered in order in the same cell:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectiveViewer</span><span class="p">(</span><span class="n">row_actions</span><span class="o">=</span><span class="p">{</span><span class="s2">"orders"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"id"</span><span class="p">:</span> <span class="p">[</span>
-    <span class="p">{</span><span class="s2">"action"</span><span class="p">:</span> <span class="s2">"delete"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Delete order"</span><span class="p">},</span>
-    <span class="p">{</span><span class="s2">"action"</span><span class="p">:</span> <span class="s2">"copy"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Copy order to form"</span><span class="p">,</span> <span class="s2">"text"</span><span class="p">:</span> <span class="s2">"⧉"</span><span class="p">},</span>
-<span class="p">]}})</span>
+<p>Pass the script to <code class="docutils literal notranslate"><span class="pre">serve(head=...)</span></code>. <code class="docutils literal notranslate"><span class="pre">icon</span></code> names a <code class="docutils literal notranslate"><span class="pre">--psp-icon--&lt;name&gt;--mask-image</span></code> property on
+the viewer: Perspective’s themes define <code class="docutils literal notranslate"><span class="pre">copy</span></code>, <code class="docutils literal notranslate"><span class="pre">close</span></code>, <code class="docutils literal notranslate"><span class="pre">export</span></code> and others, and this package adds
+<code class="docutils literal notranslate"><span class="pre">delete</span></code>, <code class="docutils literal notranslate"><span class="pre">add</span></code> and <code class="docutils literal notranslate"><span class="pre">share</span></code>. An empty <code class="docutils literal notranslate"><span class="pre">label</span></code> with an <code class="docutils literal notranslate"><span class="pre">icon</span></code> gives an icon-only button whose
+<code class="docutils literal notranslate"><span class="pre">title</span></code> is its tooltip and accessible name.</p>
+<p>Picking a command fires <code class="docutils literal notranslate"><span class="pre">perspective-command</span></code>, re-dispatched from the panel, with <code class="docutils literal notranslate"><span class="pre">{key,</span> <span class="pre">context}</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">panel</span><span class="o">.</span><span class="n">on</span><span class="p">(</span>
+    <span class="s2">"perspective-command"</span><span class="p">,</span>
+    <span class="n">CallEndpoint</span><span class="p">(</span><span class="s2">"POST"</span><span class="p">,</span> <span class="s2">"/orders/delete"</span><span class="p">,</span> <span class="n">obj</span><span class="p">({</span><span class="s2">"id"</span><span class="p">:</span> <span class="n">event_prop</span><span class="p">(</span><span class="s2">"detail.context.hit.id"</span><span class="p">)})),</span>
+<span class="p">)</span>
 </pre></div>
 </div>
-<p>Dedicated columns use identifiers starting with <code class="docutils literal notranslate"><span class="pre">&#64;</span></code> and do not replace the real index column:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectiveViewer</span><span class="p">(</span><span class="n">row_actions</span><span class="o">=</span><span class="p">{</span><span class="s2">"orders"</span><span class="p">:</span> <span class="p">{</span>
-    <span class="s2">"@copy"</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">"header"</span><span class="p">:</span> <span class="s2">"Copy"</span><span class="p">,</span> <span class="s2">"position"</span><span class="p">:</span> <span class="s2">"start"</span><span class="p">,</span>
-        <span class="s2">"buttons"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"action"</span><span class="p">:</span> <span class="s2">"copy"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Copy order"</span><span class="p">,</span> <span class="s2">"icon"</span><span class="p">:</span> <span class="s2">"copy"</span><span class="p">}],</span>
-    <span class="p">},</span>
-    <span class="s2">"@delete"</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">"header"</span><span class="p">:</span> <span class="s2">"Delete"</span><span class="p">,</span> <span class="s2">"position"</span><span class="p">:</span> <span class="s2">"end"</span><span class="p">,</span>
-        <span class="s2">"buttons"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"action"</span><span class="p">:</span> <span class="s2">"delete"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Delete order"</span><span class="p">,</span> <span class="s2">"icon"</span><span class="p">:</span> <span class="s2">"delete"</span><span class="p">}],</span>
-    <span class="p">},</span>
-<span class="p">}})</span>
-</pre></div>
-</div>
-<p>Any number of dedicated columns may appear at either end, in mapping insertion order within
-each position. Each accepts multiple buttons. Headers must be unique and must not collide with
-source columns or user expressions. An empty button list removes the generated column.
-View-level expressions provide the record keys; source tables are unchanged. The wrapper’s
-<code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> and <code class="docutils literal notranslate"><span class="pre">savePortableWorkspace()</span></code> omit those expressions and columns, which are recreated from
-<code class="docutils literal notranslate"><span class="pre">row_actions</span></code> on restoration. Direct calls to <code class="docutils literal notranslate"><span class="pre">viewer.saveWorkspace()</span></code> include them and are not
-portable to a fresh wrapper with the same action policy; use wrapper <code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> or <code class="docutils literal notranslate"><span class="pre">savePortableWorkspace()</span></code>
-for persistence. Matching expression text alone does not establish wrapper ownership.
-Replace a panel’s table through <code class="docutils literal notranslate"><span class="pre">config.workspace</span></code>. Partial table swaps through the raw viewer API
-can retain the old table’s expressions, including generated action fields; the wrapper does not
-assume ownership of expressions on a different table.
-In dedicated-column events, <code class="docutils literal notranslate"><span class="pre">column</span></code> is the stable <code class="docutils literal notranslate"><span class="pre">&#64;</span></code> identifier, not its display header.</p>
-<p>An empty list removes an indexed column’s buttons. The market example uses a leading copy
-column and a trailing delete column. Copy fills the existing order form without inserting a row.
-Delete opens a dialog authored in Python; Cancel and Escape leave the table unchanged, and
-confirmation calls the Python deletion endpoint. Its summary totals
-cover all retained trades, including rows hidden by filters, and update when rows are deleted or expire.</p>
-<p><code class="docutils literal notranslate"><span class="pre">action</span></code> and accessible <code class="docutils literal notranslate"><span class="pre">label</span></code> are nonempty strings. <code class="docutils literal notranslate"><span class="pre">icon</span></code> accepts <code class="docutils literal notranslate"><span class="pre">copy</span></code>, <code class="docutils literal notranslate"><span class="pre">delete</span></code> (an X),
-<code class="docutils literal notranslate"><span class="pre">add</span></code>, or <code class="docutils literal notranslate"><span class="pre">share</span></code> (a chain link). Icons are built-in SVGs, use the button’s color, and are hidden from assistive technology;
-<code class="docutils literal notranslate"><span class="pre">label</span></code> supplies the accessible name. <code class="docutils literal notranslate"><span class="pre">text</span></code> may accompany an icon. Without an icon, it defaults to <code class="docutils literal notranslate"><span class="pre">×</span></code>.
-Labels and text are rendered as text, never HTML. Annotations apply to all Datagrid panels for that
-table and are separate from Perspective’s saved layout and column configuration.</p>
-<p>Literal <code class="docutils literal notranslate"><span class="pre">row_actions</span></code> values are validated by Python at serialization, including <code class="docutils literal notranslate"><span class="pre">.prop(&quot;rowActions&quot;,</span> <span class="pre">...)</span></code>.
-<code class="docutils literal notranslate"><span class="pre">validate_row_actions(value)</span></code> performs the same check explicitly. Computed values are validated in
-the browser. Header collisions with live table columns or expressions are checked in the browser;
-one failing panel emits <code class="docutils literal notranslate"><span class="pre">perspective-error</span></code> without preventing other panels or workspace saves.
-Repeated identical errors are reported once until recovery. Initial <code class="docutils literal notranslate"><span class="pre">perspective-ready</span></code> waits for
-action configuration to succeed. Removing or correcting the conflicting policy recovers it.
-User-edited expressions are preserved, even when their name previously belonged to an action column.</p>
-<p>Removing generated columns also removes their grouping, splitting, sort, filter, aggregate and
-style references. Saved layouts omit those references with the generated columns.</p>
-<p>Indexed-column buttons replace the displayed index value without changing data. Only flat, unsplit views with a
-string or safe-integer key are enabled. Grouped views, non-index columns, and missing/unsupported
-keys disable the button. Other plugins do not display dedicated columns.</p>
-<p><code class="docutils literal notranslate"><span class="pre">rowActions</span></code> supports computed bindings, including nested labels:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectiveViewer</span><span class="p">()</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="s2">"rowActions"</span><span class="p">,</span> <span class="n">obj</span><span class="p">({</span><span class="s2">"orders"</span><span class="p">:</span> <span class="n">obj</span><span class="p">({</span><span class="s2">"id"</span><span class="p">:</span> <span class="n">obj</span><span class="p">({</span>
-    <span class="s2">"action"</span><span class="p">:</span> <span class="s2">"copy"</span><span class="p">,</span> <span class="s2">"label"</span><span class="p">:</span> <span class="n">field</span><span class="p">(</span><span class="s2">"copy_label"</span><span class="p">),</span> <span class="s2">"icon"</span><span class="p">:</span> <span class="s2">"copy"</span><span class="p">,</span>
-<span class="p">})})}))</span>
-</pre></div>
-</div>
-<p>Here <code class="docutils literal notranslate"><span class="pre">obj</span></code> and <code class="docutils literal notranslate"><span class="pre">field</span></code> are imported from <code class="docutils literal notranslate"><span class="pre">spaday</span></code>. Updating the store’s <code class="docutils literal notranslate"><span class="pre">copy_label</span></code> updates
-button labels without recreating the panel or mutating its data.</p>
-<p>Pointer or keyboard activation emits bubbling, composed <code class="docutils literal notranslate"><span class="pre">perspective-row-action</span></code> with
-<code class="docutils literal notranslate"><span class="pre">{action,</span> <span class="pre">panel,</span> <span class="pre">table,</span> <span class="pre">column,</span> <span class="pre">key}</span></code>. <code class="docutils literal notranslate"><span class="pre">key</span></code> retains its string/number type; <code class="docutils literal notranslate"><span class="pre">panel</span></code> is the current
-Perspective panel ID. Buttons do not select/edit cells or mutate data. The application owns
-authorization, confirmation, deletion, and error presentation. No optimistic removal occurs.</p>
-<p>The adapter uses the pinned Datagrid’s <code class="docutils literal notranslate"><span class="pre">regular_table</span></code> style listeners and rendered cell metadata,
-not asynchronous row-position lookup. A pointer gesture is cancelled if its button/identity changes
-before click. Listeners and rendered buttons are removed when annotations or the wrapper are removed.</p>
-<p>Button colors inherit the active theme and accept <code class="docutils literal notranslate"><span class="pre">--spa-perspective-action-color</span></code>,
-<code class="docutils literal notranslate"><span class="pre">--spa-perspective-action-background</span></code>, and <code class="docutils literal notranslate"><span class="pre">--spa-perspective-action-border</span></code> overrides.</p>
+<p><code class="docutils literal notranslate"><span class="pre">detail.context.hit.id</span></code> is a list of the table’s index values, <code class="docutils literal notranslate"><span class="pre">[7]</span></code> for an order whose <code class="docutils literal notranslate"><span class="pre">id</span></code> is 7
+and the key tuple in index order for a composite index.
+The application owns authorization, confirmation and mutation; nothing changes automatically. A
+handler that changes state the schema reads calls <code class="docutils literal notranslate"><span class="pre">viewer.invalidate()</span></code> to redraw the buttons.</p>
+<p>The Datagrid places its command column by <code class="docutils literal notranslate"><span class="pre">plugin_config.command_column</span></code> (<code class="docutils literal notranslate"><span class="pre">left</span></code> by default,
+<code class="docutils literal notranslate"><span class="pre">right</span></code>, <code class="docutils literal notranslate"><span class="pre">tree</span></code> after the group columns, or <code class="docutils literal notranslate"><span class="pre">none</span></code>) and shows cell buttons while
+<code class="docutils literal notranslate"><span class="pre">plugin_config.command_cells</span></code> is true. Both are per-panel plugin config in <code class="docutils literal notranslate"><span class="pre">config.workspace</span></code>,
+saved by Perspective. The Datagrid accepts them only once it has drawn with the scope declared, so
+they are dropped from the workspace a page loads with; apply them afterwards with <code class="docutils literal notranslate"><span class="pre">restorePanel</span></code>.
+The schema itself is not saved and survives restores.</p>
+<p>Migrating from <code class="docutils literal notranslate"><span class="pre">row_actions</span></code>, removed in 0.9.0:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><code class="docutils literal notranslate"><span class="pre">row_actions</span></code></p></th>
+<th class="head"><p>Commands</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>the <code class="docutils literal notranslate"><span class="pre">row_actions</span></code> prop</p></td>
+<td><p>a page script calling <code class="docutils literal notranslate"><span class="pre">setCommandSchema</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>table name key</p></td>
+<td><p>test <code class="docutils literal notranslate"><span class="pre">context.table</span></code> in the schema</p></td>
+</tr>
+<tr class="row-even"><td><p>indexed column key</p></td>
+<td><p>scope <code class="docutils literal notranslate"><span class="pre">datagrid-cell</span></code>, testing <code class="docutils literal notranslate"><span class="pre">hit.column_names</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&#64;</span></code> dedicated column with <code class="docutils literal notranslate"><span class="pre">position</span></code></p></td>
+<td><p>scope <code class="docutils literal notranslate"><span class="pre">datagrid-row</span></code>; the side is <code class="docutils literal notranslate"><span class="pre">plugin_config.command_column</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">header</span></code></p></td>
+<td><p>gone; the command column has no header text</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">action</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">key</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">label</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">title</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">text</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">label</span></code>, empty for an icon-only button</p></td>
+</tr>
+<tr class="row-even"><td><p>disabled on grouped, split or unindexed rows</p></td>
+<td><p>return no commands unless <code class="docutils literal notranslate"><span class="pre">hit.id</span></code> is non-empty and <code class="docutils literal notranslate"><span class="pre">hit.row_path</span></code> is empty</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">perspective-row-action</span></code> <code class="docutils literal notranslate"><span class="pre">{action,</span> <span class="pre">panel,</span> <span class="pre">table,</span> <span class="pre">column,</span> <span class="pre">key}</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">perspective-command</span></code> <code class="docutils literal notranslate"><span class="pre">{key,</span> <span class="pre">context}</span></code>; the row key is <code class="docutils literal notranslate"><span class="pre">context.hit.id</span></code>, always a list</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">TOKENS</span></code> and <code class="docutils literal notranslate"><span class="pre">--spa-perspective-action-*</span></code></p></td>
+<td><p>gone; buttons follow the Perspective theme</p></td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="events">
 <h2>Events<a class="headerlink" href="#events" title="Link to this heading">¶</a></h2>
-<p>Perspective’s viewer events do not bubble, so the panel re-dispatches the observational set as
-bubbling DOM events usable from spaday’s <code class="docutils literal notranslate"><span class="pre">.on(...)</span></code>: <code class="docutils literal notranslate"><span class="pre">perspective-click</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-select</span></code>,
+<p>The viewer’s observational events reach the panel as bubbling DOM events usable from spaday’s
+<code class="docutils literal notranslate"><span class="pre">.on(...)</span></code>; the panel re-dispatches the ones Perspective does not bubble itself: <code class="docutils literal notranslate"><span class="pre">perspective-click</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-select</span></code>,
 <code class="docutils literal notranslate"><span class="pre">perspective-global-filter</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-global-filter-update</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-config-update</span></code>,
-<code class="docutils literal notranslate"><span class="pre">perspective-toggle-settings</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-statusbar-pointerdown</span></code>, and <code class="docutils literal notranslate"><span class="pre">perspective-table-delete</span></code>.
+<code class="docutils literal notranslate"><span class="pre">perspective-toggle-settings</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-statusbar-pointerdown</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-table-delete</span></code>,
+<code class="docutils literal notranslate"><span class="pre">perspective-active-panel-update</span></code>, <code class="docutils literal notranslate"><span class="pre">perspective-command</span></code>, and <code class="docutils literal notranslate"><span class="pre">perspective-agent-tool</span></code>.
 <code class="docutils literal notranslate"><span class="pre">perspective-config-update</span></code> fires on user edits (layout drags, view changes, filters). A handler can
 call <code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> to capture the whole workspace for persistence; the event payload is not a
 workspace token. Two wrapper lifecycle events complete the picture:
@@ -481,48 +527,48 @@ the viewer directly for those.</p>
 </section>
 <section id="methods">
 <h2>Methods<a class="headerlink" href="#methods" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">exportData({panel?,</span> <span class="pre">format?})</span></code> returns CSV text by default or JSON text with <code class="docutils literal notranslate"><span class="pre">format:</span> <span class="pre">&quot;json&quot;</span></code>.
-<code class="docutils literal notranslate"><span class="pre">panel</span></code> defaults to the active panel. It exports the configured view, excluding synthetic action
-value columns, and retains filtering, sorting, grouping, splitting and expressions. Group keys
-remain present, including when a generated expression is used as a grouping key. This exports
-the whole configured view rather than the selected block or viewport. The temporary export view
-is deleted on success and failure; the displayed view is not changed.</p>
-<p>Native Perspective export and selected-cell copying retain their original view-based behavior:
-selected/exported action fields contain record IDs. <code class="docutils literal notranslate"><span class="pre">exportData</span></code> provides the separate data-only
-path used by the example’s <strong>Export CSV</strong> button.</p>
-<p><code class="docutils literal notranslate"><span class="pre">openFind()</span></code> opens the column/value prompt for the active panel when <code class="docutils literal notranslate"><span class="pre">find=True</span></code>. With the toolbar
-enabled, Find invokes this method. Ctrl+F / Cmd+F instead targets the Datagrid receiving the key event.
-Other page content, editable inputs, and wrappers with Find disabled keep browser find behavior.</p>
-<p>Find lists source-table columns and uses <code class="docutils literal notranslate"><span class="pre">==</span></code>, converting the entered value to the column’s type.
-Dates use UTC midnight; datetime input uses browser-local time. Computed columns and null-value
-search are not offered. A selected column is preselected when its position maps unambiguously to
-the source schema. Applying adds a filter without replacing existing filters or adding an identical
-duplicate. Configurations reporting OR-combined filters are refused instead of changing their meaning.
-Zero matches leave an empty filtered view. Filters can be edited or removed in Perspective Settings.</p>
-<p>Find reads schema metadata and applies the filter through Perspective’s public API; it does not
-export or search rows in the browser. Filtering may still scan data in the engine. Cancellation,
-disabling Find, or disconnecting closes the prompt; it does not undo a filter already submitted.</p>
-<p><code class="docutils literal notranslate"><span class="pre">copySelection()</span></code> copies the last focused grid’s selection using Perspective’s plugin text export.
-It must be called directly from a user gesture and resolves <code class="docutils literal notranslate"><span class="pre">true</span></code> on success, <code class="docutils literal notranslate"><span class="pre">false</span></code> for no selection,
-cancellation, or failure. Ctrl+C, Cmd+C, and the optional toolbar’s Copy selection button use this path.
-Inputs, editable content, and ordinary browser text selections retain native copying.</p>
-<p>The secure Clipboard API is invoked before asynchronous export completes. When unavailable or denied,
-a text-only copy-event fallback is attempted while user activation remains valid. Failure emits
-<code class="docutils literal notranslate"><span class="pre">perspective-copy-error</span></code> with <code class="docutils literal notranslate"><span class="pre">{message,</span> <span class="pre">error}</span></code>; the application owns notifications. Pending exports
-are cancelled by selection/config changes, focus changes, new gestures, or disconnects. A write already
-accepted by the operating system cannot be revoked.</p>
-<p>Perspective 5.5’s native Copy menu uses its own clipboard implementation. On insecure HTTP pages,
-the adapter blocks that menu’s copy action and emits <code class="docutils literal notranslate"><span class="pre">perspective-copy-error</span></code>. Copy selection and
-keyboard copying can still use the fallback where browser policy permits it; otherwise Export remains
-available. Secure-context native-menu writes are not intercepted by the adapter.</p>
+<p><code class="docutils literal notranslate"><span class="pre">copy(options?)</span></code> and <code class="docutils literal notranslate"><span class="pre">export(options?)</span></code> are the viewer’s own methods, passed through unchanged.
+<code class="docutils literal notranslate"><span class="pre">options</span></code> is Perspective’s <code class="docutils literal notranslate"><span class="pre">ExportOptions</span></code>, <code class="docutils literal notranslate"><span class="pre">{method?,</span> <span class="pre">panel?}</span></code>: <code class="docutils literal notranslate"><span class="pre">method</span></code> is an <code class="docutils literal notranslate"><span class="pre">ExportMethod</span></code>
+(<code class="docutils literal notranslate"><span class="pre">csv</span></code> by default; <code class="docutils literal notranslate"><span class="pre">csv-selected</span></code>, <code class="docutils literal notranslate"><span class="pre">json</span></code>, <code class="docutils literal notranslate"><span class="pre">json-selected</span></code>, <code class="docutils literal notranslate"><span class="pre">arrow</span></code>, <code class="docutils literal notranslate"><span class="pre">plugin</span></code>, …) and <code class="docutils literal notranslate"><span class="pre">panel</span></code>
+defaults to the active panel. <code class="docutils literal notranslate"><span class="pre">export</span></code> resolves to the data in that method’s type, a string for the
+CSV methods and an object of columns for the JSON ones; it is what the example’s <strong>Export CSV</strong>
+button downloads. <code class="docutils literal notranslate"><span class="pre">copy</span></code> writes the
+data to the clipboard from within a user gesture, so call it directly from a click handler. It
+rejects when the write fails or is denied, and a <code class="docutils literal notranslate"><span class="pre">-selected</span></code> method rejects with
+“Nothing is selected” when the panel has no selection. Copying needs a secure context (HTTPS or
+localhost); there is no fallback.</p>
+<p>Two button patterns follow. A whole-view button calls <code class="docutils literal notranslate"><span class="pre">copy()</span></code> and is always enabled. A
+selected-view button calls <code class="docutils literal notranslate"><span class="pre">copy({&quot;method&quot;:</span> <span class="pre">&quot;csv-selected&quot;})</span></code> and is disabled until
+<code class="docutils literal notranslate"><span class="pre">perspective-select</span></code> reports a non-null detail, re-reading <code class="docutils literal notranslate"><span class="pre">viewer.getSelection()</span></code> when
+<code class="docutils literal notranslate"><span class="pre">perspective-active-panel-update</span></code> fires, since both address the active panel. A copy snapshots the
+selection when called, so later selection, focus or config changes do not alter what is written.
+Clicking a panel’s body activates it, so a button outside the panel needs no focus tracking.</p>
+<p>Ctrl+C and Cmd+C inside a grid call <code class="docutils literal notranslate"><span class="pre">copy({&quot;method&quot;:</span> <span class="pre">&quot;csv-selected&quot;,</span> <span class="pre">&quot;panel&quot;:</span> <span class="pre">&lt;that</span> <span class="pre">grid&gt;})</span></code>. The
+panel adds no selection guard, so Perspective’s rejections are reported as <code class="docutils literal notranslate"><span class="pre">perspective-copy-error</span></code>
+with <code class="docutils literal notranslate"><span class="pre">{message,</span> <span class="pre">error}</span></code>; the application owns notifications. Inputs, editable content, and ordinary
+browser text selections keep native copying.</p>
+<p><code class="docutils literal notranslate"><span class="pre">agentConfig(config)</span></code>, <code class="docutils literal notranslate"><span class="pre">agentPrompt(prompt)</span></code> and <code class="docutils literal notranslate"><span class="pre">agentReset()</span></code> are the viewer’s own methods for its
+embedded LLM agent, passed through unchanged; see Perspective’s documentation for <code class="docutils literal notranslate"><span class="pre">config</span></code>. All
+three take JSON, so Python dispatches them with <code class="docutils literal notranslate"><span class="pre">Invoke</span></code>, and <code class="docutils literal notranslate"><span class="pre">agentPrompt</span></code> resolves with the
+agent’s reply for <code class="docutils literal notranslate"><span class="pre">result=</span></code>. <code class="docutils literal notranslate"><span class="pre">perspective-agent-tool</span></code> is re-dispatched from the panel for each tool
+the agent calls. The agent’s <code class="docutils literal notranslate"><span class="pre">docs</span></code> bundle is served at
+<code class="docutils literal notranslate"><span class="pre">components/perspective/vendor/&#64;perspective-dev/viewer/dist/docs/perspective-docs.json</span></code>. Limits:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">config.engine</span></code>, and <code class="docutils literal notranslate"><span class="pre">config.docs</span></code> as a <code class="docutils literal notranslate"><span class="pre">Response</span></code> or a promise, are in-page objects; set those
+from a page script calling <code class="docutils literal notranslate"><span class="pre">panel.agentConfig(...)</span></code>. From Python, pass <code class="docutils literal notranslate"><span class="pre">docs</span></code> as the parsed bundle.</p></li>
+<li><p>An <code class="docutils literal notranslate"><span class="pre">apiKey</span></code> passed from Python is visible in the page. Point <code class="docutils literal notranslate"><span class="pre">url</span></code> at a same-origin proxy that
+adds the key on the server.</p></li>
+<li><p>A failed <code class="docutils literal notranslate"><span class="pre">agentPrompt</span></code> rejects with an error carrying <code class="docutils literal notranslate"><span class="pre">retry()</span></code>, which <code class="docutils literal notranslate"><span class="pre">Invoke</span></code> cannot reach;
+invoke <code class="docutils literal notranslate"><span class="pre">agentPrompt</span></code> again.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">perspective-agent-tool</span></code> detail is a JSON string of <code class="docutils literal notranslate"><span class="pre">{name,</span> <span class="pre">args}</span></code>, so <code class="docutils literal notranslate"><span class="pre">event_prop(&quot;detail&quot;)</span></code>
+is that string and <code class="docutils literal notranslate"><span class="pre">detail.name</span></code> does not resolve.</p></li>
+<li><p>The configuration is not saved with the workspace, and <code class="docutils literal notranslate"><span class="pre">agentConfig</span></code> replaces the conversation.</p></li>
+</ul>
 <p><code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> waits for pending connection and restore work, then returns the whole-element workspace
 config (a <code class="docutils literal notranslate"><span class="pre">layout</span></code> tree plus per-panel viewer configs).</p>
 <p>For tables in <code class="docutils literal notranslate"><span class="pre">panel_defaults</span></code> or <code class="docutils literal notranslate"><span class="pre">tables</span></code>, <code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> also includes <code class="docutils literal notranslate"><span class="pre">retained_panel_configs_by_table</span></code>, a mapping from table name
-to its last panel configuration. <code class="docutils literal notranslate"><span class="pre">savePortableWorkspace()</span></code> returns the same shape with themes and datagrid column
-size overrides removed from both displayed and retained panel configurations. Width removal covers
-Perspective’s <code class="docutils literal notranslate"><span class="pre">columns_config</span></code> and the older <code class="docutils literal notranslate"><span class="pre">plugin_config.columns</span></code> format, preserving other styles.
-These are durable presentation settings; use <code class="docutils literal notranslate"><span class="pre">saveWorkspace()</span></code> to retain them. Both results can be assigned to
-<code class="docutils literal notranslate"><span class="pre">config.workspace</span></code>. Storage and downloads remain application-owned.</p>
+to its last panel configuration. <code class="docutils literal notranslate"><span class="pre">savePortableWorkspace()</span></code> is an alias kept for existing callers. The result can
+be assigned to <code class="docutils literal notranslate"><span class="pre">config.workspace</span></code>. Storage and downloads remain application-owned.</p>
 <p><code class="docutils literal notranslate"><span class="pre">openTablePanel(name)</span></code> accepts names from <code class="docutils literal notranslate"><span class="pre">config.panel_defaults</span></code> or <code class="docutils literal notranslate"><span class="pre">config.tables</span></code> (string and object entries).
 It opens the table using its retained configuration, then defaults from <code class="docutils literal notranslate"><span class="pre">config.panel_defaults</span></code>, or Datagrid
 when no panel defaults exist. Declaring a table does not create it; it must be available from the
@@ -544,13 +590,13 @@ This operation retains other tabs even with <code class="docutils literal notran
 existing clauses on those columns; filters on other columns remain. Omitting <code class="docutils literal notranslate"><span class="pre">filter</span></code> or passing an
 empty list leaves filters unchanged. Use <code class="docutils literal notranslate"><span class="pre">restorePanel(id,</span> <span class="pre">{&quot;filter&quot;:</span> <span class="pre">[]})</span></code> to clear every filter.
 Arguments are snapshotted when called. Selection, creation, and filtering run together on the
-lifecycle queue; the returned promise resolves to the selected panel ID after rendering and action
-column refresh. Unknown tables, malformed options, and upstream restore failures reject without
+lifecycle queue; the returned promise resolves to the selected panel ID after rendering. Unknown
+tables, malformed options, and upstream restore failures reject without
 blocking later queued operations.</p>
 <p><code class="docutils literal notranslate"><span class="pre">restorePanel(id,</span> <span class="pre">config)</span></code> applies a partial viewer configuration to an existing panel through the
 same lifecycle queue. <code class="docutils literal notranslate"><span class="pre">id</span></code> is a key in <code class="docutils literal notranslate"><span class="pre">saveWorkspace().panels</span></code>, not a table name. Unspecified settings and
-other panels remain unchanged. The method snapshots its arguments when called, validates against the
-panel’s effective plugin, and refreshes synthetic action columns after restoring. It returns a promise
+other panels remain unchanged. The method snapshots its arguments when called and validates against
+the panel’s effective plugin. It returns a promise
 that rejects for missing panels, invalid configurations, or an upstream restore failure. Later queued
 operations can still run after a rejection. Panel existence is checked when the operation executes.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">spaday</span><span class="w"> </span><span class="kn">import</span> <span class="n">Invoke</span><span class="p">,</span> <span class="n">by_id</span><span class="p">,</span> <span class="n">element</span>
@@ -566,33 +612,13 @@ operations can still run after a rejection. Panel existence is checked when the 
 </div>
 <p>This example selects a detail panel for <code class="docutils literal notranslate"><span class="pre">trades</span></code> and stores its ID in <code class="docutils literal notranslate"><span class="pre">shown</span></code>. The runnable market
 example uses the returned ID to export rows without inspecting the workspace layout.</p>
-<p>The optional toolbar lists only entries in <code class="docutils literal notranslate"><span class="pre">config.panel_defaults</span></code> and uses these same methods. Its container has class <code class="docutils literal notranslate"><span class="pre">perspective-panel-titlebar</span></code>
-and inherits <code class="docutils literal notranslate"><span class="pre">--spa-text</span></code> and <code class="docutils literal notranslate"><span class="pre">--spa-surface</span></code>. Custom design-kit controls can call the methods through
-Spaday <code class="docutils literal notranslate"><span class="pre">Invoke</span></code> without enabling the toolbar or accessing the viewer’s shadow DOM.</p>
 <p><code class="docutils literal notranslate"><span class="pre">viewer</span></code> returns the underlying <code class="docutils literal notranslate"><span class="pre">&lt;perspective-viewer&gt;</span></code> element — the escape hatch for its
 imperative and query API (<code class="docutils literal notranslate"><span class="pre">getTable</span></code>, <code class="docutils literal notranslate"><span class="pre">getSelection</span></code>, <code class="docutils literal notranslate"><span class="pre">download</span></code>, <code class="docutils literal notranslate"><span class="pre">copy</span></code>, <code class="docutils literal notranslate"><span class="pre">addPanel</span></code>/<code class="docutils literal notranslate"><span class="pre">removePanel</span></code>,
 <code class="docutils literal notranslate"><span class="pre">setActivePanel</span></code>, the agent methods, …), typically from a <code class="docutils literal notranslate"><span class="pre">NamedJs</span></code> handler.</p>
 </section>
-<section id="themes-and-tokens">
-<h2><code class="docutils literal notranslate"><span class="pre">THEMES</span></code> and <code class="docutils literal notranslate"><span class="pre">TOKENS</span></code><a class="headerlink" href="#themes-and-tokens" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">spaday_perspective.TOKENS</span></code> lists <code class="docutils literal notranslate"><span class="pre">spa_perspective_action_color</span></code>, <code class="docutils literal notranslate"><span class="pre">spa_perspective_action_background</span></code>,
-and <code class="docutils literal notranslate"><span class="pre">spa_perspective_action_border</span></code> for the optional row buttons. Pass these keywords to <code class="docutils literal notranslate"><span class="pre">.css()</span></code>
-to set the corresponding <code class="docutils literal notranslate"><span class="pre">--spa-perspective-*</span></code> properties. <code class="docutils literal notranslate"><span class="pre">spa_perspective_divider_color</span></code> controls
-panel borders and resize gaps; <code class="docutils literal notranslate"><span class="pre">spa_perspective_divider_hover_color</span></code> controls feedback while hovering
-or dragging a divider. Defaults follow Perspective’s inactive border and active colors in light and
-dark themes. These do not replace Perspective’s grid themes.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PerspectiveViewer</span><span class="p">()</span><span class="o">.</span><span class="n">css</span><span class="p">(</span>
-    <span class="n">spa_perspective_divider_color</span><span class="o">=</span><span class="s2">"#666"</span><span class="p">,</span>
-    <span class="n">spa_perspective_divider_hover_color</span><span class="o">=</span><span class="s2">"#0af"</span><span class="p">,</span>
-<span class="p">)</span>
-</pre></div>
-</div>
-<p>The wrapper contains frame and title overflow and uses Perspective’s own resize coordination.
-Applications do not need shadow-root observers or frame selectors. These frame styles target the
-pinned Perspective minor version and have narrow-pane and divider-drag tests in Chromium and WebKit.
-Legacy <code class="docutils literal notranslate"><span class="pre">--psp-workspace--tabbar-*</span></code> variables belong to the removed workspace component and do not
-style Perspective 5.6 frames.
-Perspective themes itself by name; <code class="docutils literal notranslate"><span class="pre">spaday_perspective.THEMES</span></code> maps page modes to those names:
+<section id="themes">
+<h2><code class="docutils literal notranslate"><span class="pre">THEMES</span></code><a class="headerlink" href="#themes" title="Link to this heading">¶</a></h2>
+<p>Perspective themes itself by name; <code class="docutils literal notranslate"><span class="pre">spaday_perspective.THEMES</span></code> maps page modes to those names:
 <code class="docutils literal notranslate"><span class="pre">{&quot;light&quot;:</span> <span class="pre">&quot;Pro</span> <span class="pre">Light&quot;,</span> <span class="pre">&quot;dark&quot;:</span> <span class="pre">&quot;Pro</span> <span class="pre">Dark&quot;}</span></code>, the Perspective theme a panel applies for each page
 mode. A panel with no <code class="docutils literal notranslate"><span class="pre">theme</span></code> follows the nearest <code class="docutils literal notranslate"><span class="pre">wa-dark</span></code> / <code class="docutils literal notranslate"><span class="pre">wa-light</span></code> ancestor to one of these.
 <code class="docutils literal notranslate"><span class="pre">theme</span></code> and <code class="docutils literal notranslate"><span class="pre">themes</span></code> accept the keys as shorthands and pass any other name to Perspective unchanged,
@@ -637,7 +663,7 @@ finishes before the newest config applies. Imperative methods remain queued in o
 including inactive tabs. Only panels whose view configuration changed are restored; unchanged panels
 receive no per-panel restore. Comparison uses live state, so restoring a saved workspace resets user edits.</p>
 <p>Reuse requires complete saved configurations and unchanged derived tables. Incomplete configurations,
-added or removed panels, table/plugin/style changes, and row-action policies use a full restore.
+added or removed panels, and table/plugin/style changes use a full restore.
 Perspective merges plugin and column styles during per-panel updates; full restoration preserves the
 replacement semantics of saved workspaces in those cases.</p>
 <p><code class="docutils literal notranslate"><span class="pre">js/tests/workspace-restores.spec.js</span></code> measures layout-only changes on 48 panels and changed saved
@@ -690,6 +716,9 @@ Initial loads and structural changes still include upstream panel construction a
     <a href="#spaday_perspective.PerspectiveViewer">PerspectiveViewer</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
+    <a href="#configuration-defaults">Configuration defaults</a>
+  </li>
+  <li class="fd-toc-item" data-depth="1">
     <a href="#terminology-and-compatibility">Terminology and compatibility</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
@@ -702,7 +731,7 @@ Initial loads and structural changes still include upstream panel construction a
     <a href="#table-architectures">Table architectures</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
-    <a href="#row-actions">Row actions</a>
+    <a href="#commands">Commands</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
     <a href="#events">Events</a>
@@ -711,7 +740,7 @@ Initial loads and structural changes still include upstream panel construction a
     <a href="#methods">Methods</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
-    <a href="#themes-and-tokens">THEMES and TOKENS</a>
+    <a href="#themes">THEMES</a>
   </li>
   <li class="fd-toc-item" data-depth="1">
     <a href="#package">package</a>

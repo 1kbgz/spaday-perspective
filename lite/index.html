@@ -205,11 +205,19 @@
             const {
               tree,
               style,
+              script,
               store: initialStore,
               rows,
               wires,
             } = event.data.payload;
             document.head.insertAdjacentHTML("beforeend", style);
+            // markup inserted as HTML does not run its scripts; the example's sets the command schema
+            const commands = document.createElement("script");
+            commands.type = "module";
+            commands.textContent = new DOMParser()
+              .parseFromString(script, "text/html")
+              .querySelector("script").textContent;
+            document.head.append(commands);
 
             const perspective = await globalThis.__spadayPerspective.worker();
             trades = await perspective.table(rows, {
