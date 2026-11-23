@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
@@ -43,19 +43,24 @@ test("browser configuration validation agrees with Python fixtures", async ({
 });
 
 // The Python enums and the wrapper's `Alignment` cells are the only Datagrid values this package
-// repeats; they are checked against the installed plugin's declarations.
+// repeats; they are checked against the installed declarations. Perspective has moved these between
+// the plugin and the viewer (`Align` in 5.10), so both packages' typings are searched.
 test("repeated Datagrid enums match the installed plugin", () => {
-  const types = read(
-    "../node_modules/@perspective-dev/viewer-datagrid/dist/esm/types.d.ts",
-  );
-  const declared = (name) =>
-    [
-      ...types
-        .match(new RegExp(`export type ${name} =([\\s\\S]*?);`))[1]
-        .matchAll(/"([^"]+)"/g),
-    ]
-      .map((m) => m[1])
-      .sort();
+  const typings = ["viewer-datagrid", "viewer"].flatMap((name) => {
+    const root = new URL(
+      `../node_modules/@perspective-dev/${name}/dist/esm/`,
+      import.meta.url,
+    );
+    return readdirSync(root, { recursive: true })
+      .filter((file) => file.endsWith(".d.ts"))
+      .map((file) => readFileSync(new URL(file, root), "utf8"));
+  });
+  const declared = (name) => {
+    const pattern = new RegExp(`export type ${name} =([\\s\\S]*?);`);
+    const found = typings.map((text) => text.match(pattern)).filter(Boolean);
+    expect(found, `${name} is declared exactly once`).toHaveLength(1);
+    return [...found[0][1].matchAll(/"([^"]+)"/g)].map((m) => m[1]).sort();
+  };
   const python = read("../../spaday_perspective/config.py");
   const members = (name) =>
     [

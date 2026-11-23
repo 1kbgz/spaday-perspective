@@ -183,6 +183,7 @@ const ready = Promise.all([
   import("@perspective-dev/viewer"),
   import("@perspective-dev/viewer-datagrid"),
   import("@perspective-dev/viewer-charts"),
+  import("@perspective-dev/viewer-summary"),
   validatorReady,
 ])
   .finally(() =>
