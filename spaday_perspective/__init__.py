@@ -7,7 +7,7 @@ from .config import Alignment, EditMode, Theme, validate_config
 from .panel import PerspectivePanel
 from .workspace import migrate_layout
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 
 PerspectiveViewer = PerspectivePanel
 
