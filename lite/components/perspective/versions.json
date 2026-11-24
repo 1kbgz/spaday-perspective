@@ -1,7 +1,8 @@
 {
-  "@perspective-dev/client": "5.9.4",
-  "@perspective-dev/server": "5.9.4",
-  "@perspective-dev/viewer": "5.9.4",
-  "@perspective-dev/viewer-charts": "5.9.4",
-  "@perspective-dev/viewer-datagrid": "5.9.4"
+  "@perspective-dev/client": "5.10.0",
+  "@perspective-dev/server": "5.10.0",
+  "@perspective-dev/viewer": "5.10.0",
+  "@perspective-dev/viewer-charts": "5.10.0",
+  "@perspective-dev/viewer-datagrid": "5.10.0",
+  "@perspective-dev/viewer-summary": "5.10.0"
 }
